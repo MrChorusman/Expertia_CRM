@@ -772,6 +772,23 @@
                 );
             }
             
+            // === COMPONENTE STATCARD PARA MÉTRICAS ===
+            function StatCard({ title, value, icon, className = "bg-white" }) {
+                return (
+                    <div className={`p-6 rounded-lg shadow ${className}`}>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-sm font-medium opacity-90">{title}</h3>
+                                <p className="text-2xl font-bold mt-1">{value}</p>
+                            </div>
+                            <div className="text-2xl opacity-75">
+                                {icon}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+            
             // Formulario de Cliente
             function ClientForm({ client = {}, onSave, onCancel }) {
                 const [formData, setFormData] = useState({
@@ -1895,7 +1912,349 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 );
             }
 
-            function ReportsDashboard() { return <div className="p-6"><h2>Dashboard de Informes - En desarrollo</h2></div>; }
+            // === DASHBOARD DE INFORMES Y ESTADÍSTICAS ===
+            function ReportsDashboard({ allInvoices }) {
+                const [productFilter, setProductFilter] = useState('all');
+                const [salespersonFilter, setSalespersonFilter] = useState('all');
+                const [dateFilter, setDateFilter] = useState('all');
+                
+                const paidInvoices = allInvoices.filter(inv => inv.status === 'Pagada');
+
+                const productOptions = useMemo(() => {
+                    const products = new Set();
+                    paidInvoices.forEach(inv => {
+                        if (inv.items) {
+                            inv.items.forEach(item => { 
+                                if(item.description) products.add(item.description);
+                            });
+                        }
+                    });
+                    return ['all', ...Array.from(products)];
+                }, [paidInvoices]);
+
+                const salespersonOptions = useMemo(() => {
+                    const salespersons = new Set();
+                    paidInvoices.forEach(inv => { 
+                        if(inv.createdBy) salespersons.add(inv.createdBy);
+                    });
+                    return ['all', ...Array.from(salespersons)];
+                }, [paidInvoices]);
+
+                const filteredInvoices = useMemo(() => {
+                    return paidInvoices.filter(inv => {
+                        const productMatch = productFilter === 'all' || 
+                            (inv.items && inv.items.some(item => item.description === productFilter));
+                        
+                        const salespersonMatch = salespersonFilter === 'all' || inv.createdBy === salespersonFilter;
+                        
+                        let dateMatch = true;
+                        if (dateFilter !== 'all') {
+                            const invDate = new Date(inv.invoiceDate);
+                            const now = new Date();
+                            switch(dateFilter) {
+                                case 'thisMonth':
+                                    dateMatch = invDate.getMonth() === now.getMonth() && 
+                                              invDate.getFullYear() === now.getFullYear();
+                                    break;
+                                case 'lastMonth':
+                                    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1);
+                                    dateMatch = invDate.getMonth() === lastMonth.getMonth() && 
+                                              invDate.getFullYear() === lastMonth.getFullYear();
+                                    break;
+                                case 'thisYear':
+                                    dateMatch = invDate.getFullYear() === now.getFullYear();
+                                    break;
+                                case 'lastYear':
+                                    dateMatch = invDate.getFullYear() === now.getFullYear() - 1;
+                                    break;
+                            }
+                        }
+                        
+                        return productMatch && salespersonMatch && dateMatch;
+                    });
+                }, [paidInvoices, productFilter, salespersonFilter, dateFilter]);
+
+                const salesByMonth = useMemo(() => {
+                    const monthlyData = {};
+                    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+                    
+                    filteredInvoices.forEach(inv => {
+                        const date = new Date(inv.invoiceDate);
+                        if (isNaN(date.getTime())) return;
+                        
+                        const month = date.getMonth();
+                        const year = date.getFullYear();
+                        const key = `${year}-${monthNames[month]}`;
+                        
+                        if (!monthlyData[key]) monthlyData[key] = 0;
+                        monthlyData[key] += inv.total;
+                    });
+                    
+                    return Object.entries(monthlyData)
+                        .map(([name, Ventas]) => ({ 
+                            name, 
+                            Ventas: parseFloat(Ventas.toFixed(2)) 
+                        }))
+                        .sort((a, b) => {
+                            const [yearA, monthA] = a.name.split('-');
+                            const [yearB, monthB] = b.name.split('-');
+                            const dateA = new Date(yearA, monthNames.indexOf(monthA));
+                            const dateB = new Date(yearB, monthNames.indexOf(monthB));
+                            return dateA - dateB;
+                        });
+                }, [filteredInvoices]);
+
+                const salesByQuarter = useMemo(() => {
+                    const quarterlyData = {};
+                    
+                    filteredInvoices.forEach(inv => {
+                        const date = new Date(inv.invoiceDate);
+                        if (isNaN(date.getTime())) return;
+                        
+                        const year = date.getFullYear();
+                        const quarter = Math.floor(date.getMonth() / 3) + 1;
+                        const key = `${year}-T${quarter}`;
+                        
+                        if (!quarterlyData[key]) quarterlyData[key] = 0;
+                        quarterlyData[key] += inv.total;
+                    });
+                    
+                    return Object.entries(quarterlyData)
+                        .map(([name, Ventas]) => ({ 
+                            name, 
+                            Ventas: parseFloat(Ventas.toFixed(2)) 
+                        }))
+                        .sort((a, b) => a.name.localeCompare(b.name));
+                }, [filteredInvoices]);
+
+                const topProducts = useMemo(() => {
+                    const productSales = {};
+                    
+                    filteredInvoices.forEach(inv => {
+                        if (inv.items) {
+                            inv.items.forEach(item => {
+                                if (item.description) {
+                                    if (!productSales[item.description]) {
+                                        productSales[item.description] = {
+                                            name: item.description,
+                                            quantity: 0,
+                                            revenue: 0
+                                        };
+                                    }
+                                    productSales[item.description].quantity += item.quantity;
+                                    productSales[item.description].revenue += item.quantity * item.price;
+                                }
+                            });
+                        }
+                    });
+                    
+                    return Object.values(productSales)
+                        .sort((a, b) => b.revenue - a.revenue)
+                        .slice(0, 5);
+                }, [filteredInvoices]);
+
+                const totalSales = useMemo(() => 
+                    filteredInvoices.reduce((sum, inv) => sum + inv.total, 0), 
+                    [filteredInvoices]
+                );
+
+                const averageTicket = useMemo(() => 
+                    filteredInvoices.length > 0 ? totalSales / filteredInvoices.length : 0, 
+                    [totalSales, filteredInvoices.length]
+                );
+
+                const totalInvoices = filteredInvoices.length;
+                const totalVat = useMemo(() => 
+                    filteredInvoices.reduce((sum, inv) => sum + (inv.vat || 0), 0), 
+                    [filteredInvoices]
+                );
+
+                return (
+                    <div className="space-y-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <h1 className="text-3xl font-bold text-gray-900">📊 Informes de Ventas</h1>
+                            <div className="text-sm text-gray-500">
+                                Actualizado: {new Date().toLocaleDateString('es-ES')}
+                            </div>
+                        </div>
+                        
+                        {/* Filtros */}
+                        <div className="bg-white p-4 rounded-lg shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <FormSelect 
+                                label="Filtrar por Producto" 
+                                value={productFilter} 
+                                onChange={(e) => setProductFilter(e.target.value)} 
+                                options={productOptions.map(p => ({
+                                    value: p, 
+                                    label: p === 'all' ? 'Todos los productos' : p
+                                }))} 
+                            />
+                            <FormSelect 
+                                label="Filtrar por Comercial" 
+                                value={salespersonFilter} 
+                                onChange={(e) => setSalespersonFilter(e.target.value)} 
+                                options={salespersonOptions.map(s => ({
+                                    value: s, 
+                                    label: s === 'all' ? 'Todos los comerciales' : s.substring(0,15) + (s.length > 15 ? '...' : '')
+                                }))} 
+                            />
+                            <FormSelect 
+                                label="Filtrar por Período" 
+                                value={dateFilter} 
+                                onChange={(e) => setDateFilter(e.target.value)} 
+                                options={[
+                                    { value: 'all', label: 'Todo el tiempo' },
+                                    { value: 'thisMonth', label: 'Este mes' },
+                                    { value: 'lastMonth', label: 'Mes pasado' },
+                                    { value: 'thisYear', label: 'Este año' },
+                                    { value: 'lastYear', label: 'Año pasado' }
+                                ]} 
+                            />
+                        </div>
+
+                        {/* Métricas principales */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <StatCard 
+                                title="Ventas Totales" 
+                                value={`${totalSales.toFixed(2)} €`} 
+                                icon={<DollarSignIcon />}
+                                className="bg-gradient-to-r from-green-500 to-green-600 text-white"
+                            />
+                            <StatCard 
+                                title="Nº Facturas Pagadas" 
+                                value={totalInvoices} 
+                                icon={<CheckSquareIcon />}
+                                className="bg-gradient-to-r from-blue-500 to-blue-600 text-white"
+                            />
+                            <StatCard 
+                                title="Ticket Medio" 
+                                value={`${averageTicket.toFixed(2)} €`} 
+                                icon={<UserIcon />}
+                                className="bg-gradient-to-r from-purple-500 to-purple-600 text-white"
+                            />
+                            <StatCard 
+                                title="IVA Recaudado" 
+                                value={`${totalVat.toFixed(2)} €`} 
+                                icon={<TrendingUpIcon />}
+                                className="bg-gradient-to-r from-orange-500 to-orange-600 text-white"
+                            />
+                        </div>
+
+                        {/* Gráficos */}
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            {salesByMonth.length > 0 && (
+                                <div className="bg-white p-6 rounded-lg shadow">
+                                    <h3 className="text-xl font-semibold mb-4 text-gray-800">
+                                        📈 Ventas por Mes
+                                    </h3>
+                                    <div style={{ width: '100%', height: 300 }}>
+                                        <Recharts.ResponsiveContainer>
+                                            <Recharts.LineChart data={salesByMonth} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                                <Recharts.CartesianGrid strokeDasharray="3 3" />
+                                                <Recharts.XAxis dataKey="name" />
+                                                <Recharts.YAxis />
+                                                <Recharts.Tooltip formatter={(value) => [`${value} €`, 'Ventas']} />
+                                                <Recharts.Legend />
+                                                <Recharts.Line 
+                                                    type="monotone" 
+                                                    dataKey="Ventas" 
+                                                    stroke="#008080" 
+                                                    strokeWidth={3}
+                                                    dot={{ fill: '#008080', strokeWidth: 2, r: 4 }}
+                                                />
+                                            </Recharts.LineChart>
+                                        </Recharts.ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+
+                            {salesByQuarter.length > 0 && (
+                                <div className="bg-white p-6 rounded-lg shadow">
+                                    <h3 className="text-xl font-semibold mb-4 text-gray-800">
+                                        📊 Ventas por Trimestre
+                                    </h3>
+                                    <div style={{ width: '100%', height: 300 }}>
+                                        <Recharts.ResponsiveContainer>
+                                            <Recharts.BarChart data={salesByQuarter} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                                <Recharts.CartesianGrid strokeDasharray="3 3" />
+                                                <Recharts.XAxis dataKey="name" />
+                                                <Recharts.YAxis />
+                                                <Recharts.Tooltip formatter={(value) => [`${value} €`, 'Ventas']} />
+                                                <Recharts.Legend />
+                                                <Recharts.Bar 
+                                                    dataKey="Ventas" 
+                                                    fill="#006666"
+                                                    radius={[4, 4, 0, 0]}
+                                                />
+                                            </Recharts.BarChart>
+                                        </Recharts.ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Top Productos */}
+                        {topProducts.length > 0 && (
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-xl font-semibold mb-4 text-gray-800">
+                                    🏆 Top 5 Productos por Ingresos
+                                </h3>
+                                <div className="space-y-3">
+                                    {topProducts.map((product, index) => (
+                                        <div key={product.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold
+                                                    ${index === 0 ? 'bg-yellow-500' : 
+                                                      index === 1 ? 'bg-gray-400' : 
+                                                      index === 2 ? 'bg-orange-600' : 'bg-gray-300'}`}>
+                                                    {index + 1}
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-gray-900">{product.name}</div>
+                                                    <div className="text-sm text-gray-500">
+                                                        {product.quantity} unidades vendidas
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="font-bold text-green-600">
+                                                    {product.revenue.toFixed(2)} €
+                                                </div>
+                                                <div className="text-sm text-gray-500">
+                                                    {(product.revenue / product.quantity).toFixed(2)} €/ud
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Mensaje cuando no hay datos */}
+                        {filteredInvoices.length === 0 && (
+                            <div className="bg-white p-8 rounded-lg shadow text-center">
+                                <div className="text-gray-400 text-6xl mb-4">📊</div>
+                                <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                                    No hay datos para mostrar
+                                </h3>
+                                <p className="text-gray-500">
+                                    No se encontraron facturas pagadas que coincidan con los filtros seleccionados.
+                                </p>
+                                <button 
+                                    onClick={() => {
+                                        setProductFilter('all');
+                                        setSalespersonFilter('all');
+                                        setDateFilter('all');
+                                    }}
+                                    className="mt-4 px-4 py-2 bg-[#008080] text-white rounded-lg hover:bg-[#006666]"
+                                >
+                                    Limpiar filtros
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
             function BulkCommunication() { return <div className="p-6"><h2>Comunicaciones Masivas - En desarrollo</h2></div>; }
             
             // Formulario de Perfil de Usuario
