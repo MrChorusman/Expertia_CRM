@@ -1,0 +1,15 @@
+{
+  "name": "expertia-crm",
+  "version": "1.9.0",
+  "description": "CRM para Expertia Medical Solutions SL.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "author": "Expertia Medical Solutions SL",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  }
+}
