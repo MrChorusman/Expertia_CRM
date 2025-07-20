@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función para verificar si el usuario es administrador
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Función para verificar si el usuario es comercial o admin
+    function isCommercialOrAdmin() {
+      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return userRole == 'admin' || userRole == 'comercial';
+    }
+    
+    // Usuarios - Solo admins pueden gestionar usuarios
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && isAdmin();
+      allow list: if request.auth != null && isAdmin();
+    }
+    
+    // Clientes - Comerciales y admins pueden gestionar
+    match /clientes/{clienteId} {
+      allow read, write: if request.auth != null && isCommercialOrAdmin();
+      allow list: if request.auth != null && isCommercialOrAdmin();
+      
+      // Recordatorios de clientes - subcolección
+      match /recordatorios/{recordatorioId} {
+        allow read, write: if request.auth != null && isCommercialOrAdmin();
+        allow list: if request.auth != null && isCommercialOrAdmin();
+      }
+    }
+    
+    // Productos - Solo admins pueden gestionar
+    match /productos/{productoId} {
+      allow read: if request.auth != null && isCommercialOrAdmin();
+      allow write: if request.auth != null && isAdmin();
+      allow list: if request.auth != null && isCommercialOrAdmin();
+    }
+    
+    // Facturas - Comerciales y admins pueden gestionar
+    match /facturas/{facturaId} {
+      allow read, write: if request.auth != null && isCommercialOrAdmin();
+      allow list: if request.auth != null && isCommercialOrAdmin();
+      
+      // Pagos de facturas - subcolección
+      match /payments/{paymentId} {
+        allow read, write: if request.auth != null && isCommercialOrAdmin();
+        allow list: if request.auth != null && isCommercialOrAdmin();
+      }
+    }
+    
+    // Ofertas - Comerciales y admins pueden gestionar
+    match /ofertas/{ofertaId} {
+      allow read, write: if request.auth != null && isCommercialOrAdmin();
+      allow list: if request.auth != null && isCommercialOrAdmin();
+    }
+    
+    // Contadores para numeración secuencial de facturas
+    match /counters/{counterId} {
+      allow read, write: if request.auth != null && isCommercialOrAdmin();
+    }
+  }
+}
