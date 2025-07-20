@@ -751,14 +751,651 @@
                 );
             }
             
+            // Componentes de formulario helper
+            function FormField({ label, ...props }) {
+                return (
+                    <div>
+                        {label && <label htmlFor={props.name} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
+                        <input id={props.name} {...props} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#006666] focus:ring-[#006666] sm:text-sm p-3" />
+                    </div>
+                );
+            }
+
+            function FormSelect({ label, options, ...props }) {
+                return (
+                    <div>
+                        <label htmlFor={props.name} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                        <select id={props.name} {...props} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#006666] focus:ring-[#006666] sm:text-sm p-3">
+                            {options.map(opt => <option key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</option>)}
+                        </select>
+                    </div>
+                );
+            }
+            
+            // Formulario de Cliente
+            function ClientForm({ client = {}, onSave, onCancel }) {
+                const [formData, setFormData] = useState({
+                    id: client.id || null, 
+                    name: client.name || '', 
+                    company: client.company || '',
+                    email: client.email || '', 
+                    phone: client.phone || '', 
+                    address: client.address || '',
+                    funnelStage: client.funnelStage || 'Lead', 
+                    contactPreference: client.contactPreference || 'Email',
+                    productInterest: client.productInterest || [], 
+                    notes: client.notes || '', 
+                    consentGiven: client.consentGiven || false,
+                    acceptsMarketing: client.acceptsMarketing || false,
+                    lastContact: client.lastContact || new Date().toISOString().split('T')[0]
+                });
+
+                const handleChange = (e) => {
+                    const { name, value, type, checked } = e.target;
+                    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+                };
+
+                const handleBrandChange = (e) => {
+                    const { value, checked } = e.target;
+                    setFormData(prev => {
+                        const interests = prev.productInterest;
+                        if (checked) return { ...prev, productInterest: [...interests, value] };
+                        else return { ...prev, productInterest: interests.filter(b => b !== value) };
+                    });
+                };
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    if (!formData.consentGiven) {
+                        alert('Debe obtener el consentimiento del cliente para guardar sus datos según el RGPD.');
+                        return;
+                    }
+                    onSave(formData);
+                };
+
+                return (
+                    <div className="max-w-4xl mx-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h1 className="text-3xl font-bold text-gray-900">
+                                {client.id ? 'Editar Cliente' : 'Nuevo Cliente'}
+                            </h1>
+                            <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
+                                <XIcon width={24} height={24} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-lg space-y-6">
+                            <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-6 border p-4 rounded-md">
+                                <legend className="text-lg font-semibold px-2">Información de Contacto</legend>
+                                <FormField label="Nombre del Contacto" name="name" value={formData.name} onChange={handleChange} required />
+                                <FormField label="Empresa/Clínica" name="company" value={formData.company} onChange={handleChange} required />
+                                <FormField label="Email" name="email" type="email" value={formData.email} onChange={handleChange} required />
+                                <FormField label="Teléfono" name="phone" value={formData.phone} onChange={handleChange} />
+                            </fieldset>
+
+                            <fieldset className="border p-4 rounded-md">
+                                <legend className="text-lg font-semibold px-2">Dirección</legend>
+                                <div className="mt-4">
+                                    <FormField label="Dirección Completa" name="address" value={formData.address} onChange={handleChange} />
+                                </div>
+                            </fieldset>
+
+                            <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-6 border p-4 rounded-md">
+                                <legend className="text-lg font-semibold px-2">Datos Comerciales</legend>
+                                <FormSelect 
+                                    label="Fase del Embudo" 
+                                    name="funnelStage" 
+                                    value={formData.funnelStage} 
+                                    onChange={handleChange} 
+                                    options={Object.keys(FUNNEL_TAGS)} 
+                                />
+                                <FormSelect 
+                                    label="Contacto Preferente" 
+                                    name="contactPreference" 
+                                    value={formData.contactPreference} 
+                                    onChange={handleChange} 
+                                    options={Object.keys(CONTACT_PREFERENCES)} 
+                                />
+                                <FormField 
+                                    label="Último Contacto" 
+                                    name="lastContact" 
+                                    type="date" 
+                                    value={formData.lastContact} 
+                                    onChange={handleChange} 
+                                />
+                                <div className="md:col-span-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Interesado en</label>
+                                    <div className="flex flex-wrap gap-4">
+                                        {['STORZ MEDICAL', 'ZAMAR', 'Equipos Diagnóstico', 'Software Médico'].map(interest => (
+                                            <label key={interest} className="flex items-center gap-2">
+                                                <input 
+                                                    type="checkbox" 
+                                                    value={interest} 
+                                                    checked={formData.productInterest.includes(interest)} 
+                                                    onChange={handleBrandChange} 
+                                                    className="h-4 w-4 rounded border-gray-300 text-[#006666] focus:ring-[#006666]" 
+                                                />
+                                                {interest}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <div>
+                                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                                <textarea 
+                                    id="notes" 
+                                    name="notes" 
+                                    rows="4" 
+                                    value={formData.notes} 
+                                    onChange={handleChange} 
+                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#006666] focus:ring-[#006666] sm:text-sm p-3" 
+                                    placeholder="Añadir notas sobre el cliente..."
+                                />
+                            </div>
+
+                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 space-y-3">
+                                <div className="flex items-start">
+                                    <input 
+                                        id="consentGiven" 
+                                        name="consentGiven" 
+                                        type="checkbox" 
+                                        checked={formData.consentGiven} 
+                                        onChange={handleChange} 
+                                        className="h-4 w-4 mt-1 rounded border-gray-300 text-[#006666] focus:ring-[#006666]" 
+                                    />
+                                    <label htmlFor="consentGiven" className="ml-3 text-sm text-yellow-800">
+                                        <strong>Confirmo que el cliente ha dado su consentimiento</strong> para el tratamiento de sus datos para la gestión del servicio (RGPD).
+                                    </label>
+                                </div>
+                                <div className="flex items-start">
+                                    <input 
+                                        id="acceptsMarketing" 
+                                        name="acceptsMarketing" 
+                                        type="checkbox" 
+                                        checked={formData.acceptsMarketing} 
+                                        onChange={handleChange} 
+                                        className="h-4 w-4 mt-1 rounded border-gray-300 text-[#006666] focus:ring-[#006666]" 
+                                    />
+                                    <label htmlFor="acceptsMarketing" className="ml-3 text-sm text-yellow-800">
+                                        Confirmo que el cliente ha dado su consentimiento explícito para recibir comunicaciones comerciales.
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-4 pt-6">
+                                <button 
+                                    type="button" 
+                                    onClick={onCancel} 
+                                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="px-6 py-3 bg-[#006666] text-white rounded-lg hover:bg-[#005555]"
+                                >
+                                    {client.id ? 'Actualizar' : 'Crear'} Cliente
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                );
+            }
+            
+            // Detalle de Cliente
+            function ClientDetail({ client, onEdit, onDelete, onBack, onCreateInvoice, onGenerateConsent }) {
+                if (!client) return <div>Cliente no encontrado</div>;
+
+                return (
+                    <div className="max-w-4xl mx-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h1 className="text-3xl font-bold text-gray-900">{client.name}</h1>
+                            <button onClick={onBack} className="text-gray-500 hover:text-gray-700">
+                                <XIcon width={24} height={24} />
+                            </button>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                            <div className="p-6">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div>
+                                        <h2 className="text-2xl font-semibold text-gray-800">{client.company}</h2>
+                                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-2 ${FUNNEL_TAGS[client.funnelStage] || 'bg-gray-200 text-gray-800'}`}>
+                                            {client.funnelStage}
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => onEdit(client)}
+                                            className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
+                                            title="Editar cliente"
+                                        >
+                                            <EditIcon />
+                                        </button>
+                                        <button 
+                                            onClick={() => onDelete(client.id)}
+                                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                                            title="Eliminar cliente"
+                                        >
+                                            <TrashIcon />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Información de Contacto</h3>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-3">
+                                                <MailIcon />
+                                                <div>
+                                                    <span className="text-sm text-gray-500">Email</span>
+                                                    <p className="font-medium">{client.email}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <PhoneIcon />
+                                                <div>
+                                                    <span className="text-sm text-gray-500">Teléfono</span>
+                                                    <p className="font-medium">{client.phone}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <MapPinIcon />
+                                                <div>
+                                                    <span className="text-sm text-gray-500">Dirección</span>
+                                                    <p className="font-medium">{client.address || 'No especificada'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Datos Comerciales</h3>
+                                        <div className="space-y-3">
+                                            <div>
+                                                <span className="text-sm text-gray-500">Último Contacto</span>
+                                                <p className="font-medium">{client.lastContact ? new Date(client.lastContact).toLocaleDateString('es-ES') : 'No registrado'}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-sm text-gray-500">Contacto Preferente</span>
+                                                <p className="font-medium">{client.contactPreference || 'No especificado'}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-sm text-gray-500">Intereses</span>
+                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                    {client.productInterest?.length > 0 ? 
+                                                        client.productInterest.map(interest => (
+                                                            <span key={interest} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                                                {interest}
+                                                            </span>
+                                                        )) :
+                                                        <span className="text-gray-500 text-sm">No especificados</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {client.notes && (
+                                    <div className="mt-8 pt-6 border-t border-gray-200">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-3">Notas</h3>
+                                        <div className="bg-gray-50 p-4 rounded-lg">
+                                            <p className="text-gray-700 whitespace-pre-wrap">{client.notes}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mt-8 pt-6 border-t border-gray-200">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Consentimientos RGPD</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-gray-50 p-4 rounded-lg">
+                                            <div className="flex items-center gap-2">
+                                                {client.consentGiven ? 
+                                                    <span className="text-green-600">✅</span> : 
+                                                    <span className="text-red-600">❌</span>
+                                                }
+                                                <span className="font-medium">Consentimiento de Datos</span>
+                                            </div>
+                                            <p className="text-sm text-gray-600 mt-1">
+                                                {client.consentGiven ? 'Consentimiento otorgado' : 'Consentimiento pendiente'}
+                                            </p>
+                                        </div>
+                                        <div className="bg-gray-50 p-4 rounded-lg">
+                                            <div className="flex items-center gap-2">
+                                                {client.acceptsMarketing ? 
+                                                    <span className="text-green-600">✅</span> : 
+                                                    <span className="text-gray-600">📧</span>
+                                                }
+                                                <span className="font-medium">Marketing</span>
+                                            </div>
+                                            <p className="text-sm text-gray-600 mt-1">
+                                                {client.acceptsMarketing ? 'Acepta comunicaciones' : 'No acepta marketing'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-50 px-6 py-4">
+                                <div className="flex justify-between items-center">
+                                    <button 
+                                        onClick={onBack}
+                                        className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                    >
+                                        ← Volver al Dashboard
+                                    </button>
+                                    
+                                    <div className="flex gap-3">
+                                        <button 
+                                            onClick={() => onGenerateConsent(client)}
+                                            className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+                                        >
+                                            📄 Generar Consentimiento
+                                        </button>
+                                        <button 
+                                            onClick={() => onCreateInvoice(client)}
+                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                        >
+                                            💰 Crear Factura
+                                        </button>
+                                        <button 
+                                            onClick={() => onEdit(client)}
+                                            className="px-4 py-2 bg-[#006666] text-white rounded-lg hover:bg-[#005555]"
+                                        >
+                                            ✏️ Editar Cliente
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+            
+            // Formulario de Consentimiento RGPD
+            function ConsentForm({ client, onBack }) {
+                const consentText = `CONSENTIMIENTO PARA EL TRATAMIENTO DE DATOS PERSONALES
+
+Yo, ${client.name || '[Nombre del Cliente]'}, con DNI/CIF [DNI/CIF del Cliente], en mi propio nombre y representación, o en representación de la entidad ${client.company || '[Nombre de la Empresa/Clínica]'}, por la presente otorgo mi consentimiento explícito a EXPERTIA MEDICAL SOLUTIONS SL para el tratamiento de mis datos personales.
+
+FINALIDADES:
+[X] Gestión de la relación comercial y contractual (necesario para el servicio).
+[ ] Envío de comunicaciones comerciales sobre productos, servicios y novedades de EXPERTIA MEDICAL SOLUTIONS SL.
+
+DERECHOS:
+Puede ejercer sus derechos de acceso, rectificación, supresión, limitación del tratamiento, portabilidad y oposición dirigiéndose a info@expertia.com o a la dirección postal de EXPERTIA MEDICAL SOLUTIONS SL.
+
+Más información en nuestra política de privacidad: www.expertia.com/privacidad
+
+En ${new Date().toLocaleDateString('es-ES', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+})}.
+
+Fdo.: ${client.name || '[Firma del Cliente]'}`;
+
+                const [text, setText] = useState(consentText);
+
+                const handleSendEmail = () => {
+                    const subject = 'Consentimiento Informado - Expertia Medical Solutions';
+                    const body = encodeURIComponent(text);
+                    window.location.href = `mailto:${client.email}?subject=${subject}&body=${body}`;
+                };
+
+                const handleCopyToClipboard = () => {
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(text)
+                            .then(() => alert('Texto copiado al portapapeles.'))
+                            .catch(err => console.error('Error al copiar', err));
+                    } else {
+                        // Fallback para navegadores más antiguos
+                        const textArea = document.createElement("textarea");
+                        textArea.value = text;
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        try {
+                            document.execCommand('copy');
+                            alert('Texto copiado al portapapeles.');
+                        } catch (err) {
+                            console.error('Fallback: No se pudo copiar', err);
+                        }
+                        document.body.removeChild(textArea);
+                    }
+                };
+
+                const handleDownload = () => {
+                    const element = document.createElement("a");
+                    const file = new Blob([text], { type: 'text/plain' });
+                    element.href = URL.createObjectURL(file);
+                    element.download = `consentimiento_${client.name?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+                    document.body.appendChild(element);
+                    element.click();
+                    document.body.removeChild(element);
+                };
+
+                return (
+                    <div className="max-w-4xl mx-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h1 className="text-3xl font-bold text-gray-900">Generar Consentimiento Informado</h1>
+                            <button onClick={onBack} className="text-gray-500 hover:text-gray-700">
+                                <XIcon width={24} height={24} />
+                            </button>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-lg p-8">
+                            <div className="mb-6">
+                                <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                                    Cliente: {client.name} - {client.company}
+                                </h2>
+                                <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+                                    <div className="flex">
+                                        <div className="flex-shrink-0">
+                                            <CheckSquareIcon />
+                                        </div>
+                                        <div className="ml-3">
+                                            <p className="text-sm text-blue-700">
+                                                <strong>RGPD:</strong> Este formulario genera el consentimiento necesario según el Reglamento General de Protección de Datos.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Texto del Consentimiento (editable)
+                                </label>
+                                <textarea 
+                                    value={text} 
+                                    onChange={(e) => setText(e.target.value)} 
+                                    rows="20" 
+                                    className="w-full p-4 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm"
+                                    style={{ fontFamily: 'monospace' }}
+                                />
+                            </div>
+
+                            <div className="flex justify-between items-center">
+                                <button 
+                                    onClick={onBack} 
+                                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                                >
+                                    ← Volver al Cliente
+                                </button>
+                                
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={handleCopyToClipboard} 
+                                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                                    >
+                                        📋 Copiar Texto
+                                    </button>
+                                    <button 
+                                        onClick={handleDownload} 
+                                        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+                                    >
+                                        💾 Descargar
+                                    </button>
+                                    <button 
+                                        onClick={handleSendEmail} 
+                                        className="px-6 py-3 bg-[#006666] text-white rounded-lg hover:bg-[#005555] flex items-center gap-2"
+                                    >
+                                        📧 Enviar por Email
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+            
             // Placeholder para otros componentes
-            function ClientForm() { return <div className="p-6"><h2>Formulario de Cliente - En desarrollo</h2></div>; }
-            function ClientDetail() { return <div className="p-6"><h2>Detalle de Cliente - En desarrollo</h2></div>; }
             function OffersDashboard() { return <div className="p-6"><h2>Dashboard de Ofertas - En desarrollo</h2></div>; }
             function AccountingDashboard() { return <div className="p-6"><h2>Dashboard de Contabilidad - En desarrollo</h2></div>; }
             function ReportsDashboard() { return <div className="p-6"><h2>Dashboard de Informes - En desarrollo</h2></div>; }
-            function ProfileForm() { return <div className="p-6"><h2>Formulario de Perfil - En desarrollo</h2></div>; }
             function BulkCommunication() { return <div className="p-6"><h2>Comunicaciones Masivas - En desarrollo</h2></div>; }
+            
+            // Formulario de Perfil de Usuario
+            function ProfileForm({ userProfile, onSave, onBack }) {
+                const [profile, setProfile] = useState({ 
+                    name: '', 
+                    email: '', 
+                    phone: '', 
+                    photoURL: '',
+                    role: 'comercial'
+                });
+
+                useEffect(() => {
+                    if (userProfile) {
+                        setProfile(userProfile);
+                    }
+                }, [userProfile]);
+
+                const handleChange = (e) => {
+                    const { name, value } = e.target;
+                    setProfile({ ...profile, [name]: value });
+                };
+
+                const handlePhotoChange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            setProfile({ ...profile, photoURL: reader.result });
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    onSave(profile);
+                };
+
+                return (
+                    <div className="max-w-2xl mx-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h1 className="text-3xl font-bold text-gray-900">Perfil de Usuario</h1>
+                            <button onClick={onBack} className="text-gray-500 hover:text-gray-700">
+                                <XIcon width={24} height={24} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-lg space-y-6">
+                            <div className="flex justify-center mb-6">
+                                <div className="relative">
+                                    <img 
+                                        src={profile.photoURL || 'https://placehold.co/120x120/006666/FFFFFF?text=U'} 
+                                        alt="Foto de perfil" 
+                                        className="w-32 h-32 rounded-full object-cover border-4 border-[#006666]"
+                                    />
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handlePhotoChange}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    />
+                                    <div className="absolute bottom-0 right-0 bg-[#006666] text-white rounded-full p-2">
+                                        <EditIcon />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField 
+                                    label="Nombre Completo" 
+                                    name="name" 
+                                    value={profile.name} 
+                                    onChange={handleChange} 
+                                    required 
+                                />
+                                <FormField 
+                                    label="Email" 
+                                    name="email" 
+                                    type="email" 
+                                    value={profile.email} 
+                                    onChange={handleChange} 
+                                    required 
+                                />
+                                <FormField 
+                                    label="Teléfono" 
+                                    name="phone" 
+                                    value={profile.phone} 
+                                    onChange={handleChange} 
+                                />
+                                <FormSelect 
+                                    label="Rol en el Sistema" 
+                                    name="role" 
+                                    value={profile.role} 
+                                    onChange={handleChange}
+                                    options={[
+                                        { value: 'comercial', label: 'Comercial' },
+                                        { value: 'admin', label: 'Administrador' }
+                                    ]}
+                                />
+                            </div>
+
+                            <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+                                <div className="flex">
+                                    <div className="flex-shrink-0">
+                                        <UserIcon />
+                                    </div>
+                                    <div className="ml-3">
+                                        <p className="text-sm text-blue-700">
+                                            <strong>Información sobre roles:</strong>
+                                        </p>
+                                        <ul className="mt-2 text-sm text-blue-600">
+                                            <li>• <strong>Comercial:</strong> Acceso a gestión de clientes, ofertas y facturación</li>
+                                            <li>• <strong>Administrador:</strong> Acceso completo + gestión de productos y usuarios</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-4 pt-6">
+                                <button 
+                                    type="button" 
+                                    onClick={onBack} 
+                                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="px-6 py-3 bg-[#006666] text-white rounded-lg hover:bg-[#005555]"
+                                >
+                                    Guardar Perfil
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                );
+            }
             
             // Formulario de Productos
             function ProductForm({ product, onSave, onCancel }) {
