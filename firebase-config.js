@@ -2,16 +2,17 @@
 // Este archivo debe ser configurado con tus credenciales reales de Firebase
 
 const firebaseConfig = {
-    apiKey: "TU_API_KEY",
-    authDomain: "expertia-crm.firebaseapp.com",
-    projectId: "expertia-crm",
-    storageBucket: "expertia-crm.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abc123def456"
+  apiKey: "AIzaSyBvxsbp8Lo8bGWK5sbEDC3RN-01Gfj0jFY",
+  authDomain: "expertiacrm-7e7eb.firebaseapp.com",
+  databaseURL: "https://expertiacrm-7e7eb-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "expertiacrm-7e7eb",
+  storageBucket: "expertiacrm-7e7eb.firebasestorage.app",
+  messagingSenderId: "730578427970",
+  appId: "1:730578427970:web:d9a14fc298b786ba53cddb"
 };
 
 // ID único de la aplicación para organizar datos
-const appId = 'expertia-crm-production';
+const appId = 'expertiacrm-7e7eb';
 
 // Exportar configuración
 window.__firebase_config = JSON.stringify(firebaseConfig);

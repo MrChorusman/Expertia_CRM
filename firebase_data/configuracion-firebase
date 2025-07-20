@@ -1,0 +1,30 @@
+// EJEMPLO de configuración Firebase
+// Reemplaza estos valores con tus credenciales reales de Firebase Console
+
+const firebaseConfig = {
+    // Obtén estos valores de Firebase Console → Configuración del proyecto → Tus aplicaciones
+    apiKey: "AIzaSyC1234567890abcdefghijklmnop",          // Tu API Key real
+    authDomain: "expertia-crm.firebaseapp.com",           // Tu dominio real
+    projectId: "expertia-crm",                            // Tu Project ID real
+    storageBucket: "expertia-crm.appspot.com",           // Tu Storage Bucket real
+    messagingSenderId: "123456789012",                    // Tu Sender ID real
+    appId: "1:123456789012:web:abc123def456789ghi"       // Tu App ID real
+};
+
+// ID único de la aplicación para organizar datos
+const appId = 'expertia-crm-production';
+
+// Exportar configuración
+window.__firebase_config = JSON.stringify(firebaseConfig);
+window.__app_id = appId;
+
+/* 
+PASOS PARA OBTENER TUS CREDENCIALES:
+
+1. Ve a https://console.firebase.google.com/
+2. Selecciona tu proyecto (o créalo si no existe)
+3. Haz clic en el ícono de engranaje → "Configuración del proyecto"
+4. En "Tus aplicaciones", selecciona tu aplicación web
+5. Copia y pega la configuración `firebaseConfig` aquí
+6. Guarda este archivo como firebase-config.js
+*/
