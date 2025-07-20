@@ -446,7 +446,7 @@
                         alert('Solo los administradores pueden gestionar productos');
                         return;
                     }
-                    await handleSave('productos', productData, productData.id);
+                    await handleSave('products', productData, productData.id);
                 };
 
                 const getNextInvoiceNumber = async (type) => {
@@ -488,13 +488,13 @@
                     
                     if (convertFromProforma || !dataToSave.id) {
                         if (dataToSave.type !== 'Factura Proforma') {
-                            dataToSave.number = await getNextInvoiceNumber(dataToSave.series || 'EXP');
+                            dataToSave.invoiceNumber = await getNextInvoiceNumber(dataToSave.invoiceSeries || 'EXP');
                         } else {
-                            dataToSave.number = `PROFORMA-${Date.now()}`;
+                            dataToSave.invoiceNumber = `PROFORMA-${Date.now()}`;
                         }
                     }
                     
-                    await handleSave('facturas', dataToSave, dataToSave.id);
+                    await handleSave('invoices', dataToSave, dataToSave.id);
                     setActiveView('accounting');
                 };
 
@@ -502,7 +502,7 @@
                     const invoiceData = {
                         ...proformaInvoice,
                         type: 'Factura',
-                        status: 'Finalizada',
+                        status: 'Enviada',
                     };
                     await handleSaveInvoice(invoiceData, true);
                 };
@@ -514,20 +514,20 @@
                     const updatedInvoice = {
                         ...invoice,
                         totalPaid: newTotalPaid,
-                        status: newTotalPaid >= invoice.total ? 'Pagada' : 'Finalizada',
+                        status: newTotalPaid >= invoice.total ? 'Pagada' : 'Enviada',
                     };
                     
-                    await handleSave('facturas', updatedInvoice, updatedInvoice.id);
+                    await handleSave('invoices', updatedInvoice, updatedInvoice.id);
                     
                     // Registrar el pago en subcolección
                     if (db && user) {
                         const paymentData = { 
                             amount: paymentAmount, 
-                            date: new Date().toISOString(), 
+                            date: new Date().toISOString().split('T')[0], 
                             method: 'Transferencia',
                             registeredBy: user.uid
                         };
-                        await addDoc(collection(db, `facturas/${invoice.id}/payments`), paymentData);
+                        await addDoc(collection(db, `invoices/${invoice.id}/payments`), paymentData);
                     }
                     
                     setSelectedItem(updatedInvoice);
@@ -595,10 +595,10 @@
                                 products={products} 
                                 isAdmin={isAdmin()}
                                 onSaveProduct={handleSaveProduct} 
-                                onDeleteProduct={(id) => handleDelete('productos', id)} 
+                                onDeleteProduct={(id) => handleDelete('products', id)} 
                                 onCreateInvoice={() => { setSelectedItem(null); setActiveView('createInvoice'); }} 
                                 onViewInvoice={(invoice) => { setSelectedItem(invoice); setActiveView('viewInvoice'); }} 
-                                onDeleteInvoice={(id) => handleDelete('facturas', id)} 
+                                onDeleteInvoice={(id) => handleDelete('invoices', id)} 
                             />;
                         case 'createInvoice': 
                             return <InvoiceForm 
@@ -1405,7 +1405,496 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
             
             // Placeholder para otros componentes
             function OffersDashboard() { return <div className="p-6"><h2>Dashboard de Ofertas - En desarrollo</h2></div>; }
-            function AccountingDashboard() { return <div className="p-6"><h2>Dashboard de Contabilidad - En desarrollo</h2></div>; }
+            
+            // === SISTEMA DE CONTABILIDAD COMPLETO ===
+            function AccountingDashboard({ invoices, clients, products, onSaveProduct, onDeleteProduct, onCreateInvoice, onViewInvoice, onDeleteInvoice }) {
+                const [activeTab, setActiveTab] = useState('invoices');
+                const [newProduct, setNewProduct] = useState({ name: '', price: 0 });
+                const getClientName = (clientId) => clients.find(c => c.id === clientId)?.name || 'N/A';
+
+                const handleAddProduct = (e) => {
+                    e.preventDefault();
+                    if (!newProduct.name || newProduct.price <= 0) return;
+                    onSaveProduct(newProduct);
+                    setNewProduct({ name: '', price: 0 });
+                };
+
+                return (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h1 className="text-3xl font-bold text-gray-900">Contabilidad</h1>
+                        </div>
+                        <div className="border-b border-gray-200">
+                            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                                <button 
+                                    onClick={() => setActiveTab('invoices')} 
+                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'invoices' ? 'border-[#008080] text-[#008080]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                                >
+                                    Facturas
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('products')} 
+                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'products' ? 'border-[#008080] text-[#008080]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                                >
+                                    Productos
+                                </button>
+                            </nav>
+                        </div>
+                        
+                        {activeTab === 'invoices' && (
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <button 
+                                    onClick={onCreateInvoice} 
+                                    className="flex items-center gap-2 bg-[#008080] text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-[#006666] mb-4"
+                                >
+                                    <PlusIcon />Crear Factura
+                                </button>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-gray-100">
+                                            <tr>
+                                                <th className="p-3">Nº Factura</th>
+                                                <th className="p-3">Cliente</th>
+                                                <th className="p-3">Fecha</th>
+                                                <th className="p-3">Total</th>
+                                                <th className="p-3">Estado</th>
+                                                <th className="p-3">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {invoices.length > 0 ? invoices.map(inv => (
+                                                <tr key={inv.id} className="border-b hover:bg-gray-50">
+                                                    <td className="p-3 font-mono text-sm cursor-pointer" onClick={() => onViewInvoice(inv)}>
+                                                        {inv.invoiceNumber}
+                                                    </td>
+                                                    <td className="p-3">{getClientName(inv.clientId)}</td>
+                                                    <td className="p-3">{inv.invoiceDate}</td>
+                                                    <td className="p-3 font-semibold">{inv.total.toFixed(2)} €</td>
+                                                    <td className="p-3">
+                                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${INVOICE_STATUSES[inv.status]}`}>
+                                                            {inv.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <button onClick={() => onDeleteInvoice(inv.id)} className="text-red-500 p-1">
+                                                            <TrashIcon />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan="6" className="text-center p-6 text-gray-500">No hay facturas.</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {activeTab === 'products' && (
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-xl font-semibold mb-4 text-gray-800">Gestionar Productos</h3>
+                                <form onSubmit={handleAddProduct} className="flex gap-2 mb-4">
+                                    <input 
+                                        type="text" 
+                                        value={newProduct.name} 
+                                        onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} 
+                                        placeholder="Nombre del producto" 
+                                        className="flex-grow p-2 border rounded-md" 
+                                        required 
+                                    />
+                                    <input 
+                                        type="number" 
+                                        step="0.01" 
+                                        value={newProduct.price} 
+                                        onChange={e => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) || 0 })} 
+                                        placeholder="Precio" 
+                                        className="w-32 p-2 border rounded-md" 
+                                        required 
+                                    />
+                                    <button type="submit" className="bg-[#008080] text-white p-2 rounded-md">Añadir</button>
+                                </form>
+                                <ul className="space-y-2">
+                                    {products.map(p => (
+                                        <li key={p.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-md">
+                                            <span>{p.name} - <strong>{p.price.toFixed(2)}€</strong></span>
+                                            <button onClick={() => onDeleteProduct(p.id)} className="text-red-500">
+                                                <TrashIcon />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            // === FORMULARIO DE FACTURAS ===
+            function InvoiceForm({ clients, products, onSave, onCancel, invoiceData }) {
+                const [formData, setFormData] = useState({
+                    id: invoiceData?.id || null, 
+                    clientId: invoiceData?.client?.id || '',
+                    invoiceNumber: invoiceData?.invoiceNumber || '',
+                    invoiceDate: invoiceData?.invoiceDate || new Date().toISOString().split('T')[0],
+                    dueDate: invoiceData?.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    status: invoiceData?.status || 'Borrador',
+                    type: invoiceData?.type || 'Factura',
+                    invoiceSeries: invoiceData?.invoiceSeries || 'EXP',
+                    items: invoiceData?.items || [{ description: '', quantity: 1, price: 0, productId: '' }],
+                });
+
+                const subtotal = useMemo(() => formData.items.reduce((acc, item) => acc + (item.quantity * item.price), 0), [formData.items]);
+                const vat = useMemo(() => subtotal * VAT_RATE, [subtotal]);
+                const total = useMemo(() => subtotal + vat, [subtotal, vat]);
+
+                const handleChange = (e) => { 
+                    const { name, value } = e.target; 
+                    setFormData(prev => ({ ...prev, [name]: value })); 
+                };
+               
+                const handleItemChange = (index, e) => {
+                    const { name, value } = e.target;
+                    const items = [...formData.items];
+                    if (name === "productId") {
+                        const product = products.find(p => p.id === value);
+                        items[index].productId = value;
+                        items[index].description = product ? product.name : '';
+                        items[index].price = product ? product.price : 0;
+                    } else {
+                        items[index][name] = value;
+                    }
+                    setFormData(prev => ({ ...prev, items }));
+                };
+
+                const addItem = () => { 
+                    setFormData(prev => ({ 
+                        ...prev, 
+                        items: [...prev.items, { description: '', quantity: 1, price: 0, productId: '' }] 
+                    })); 
+                };
+                
+                const removeItem = (index) => { 
+                    const items = [...formData.items]; 
+                    items.splice(index, 1); 
+                    setFormData(prev => ({ ...prev, items })); 
+                };
+                
+                const handleSubmit = (e) => { 
+                    e.preventDefault(); 
+                    onSave({ ...formData, subtotal, vat, total }); 
+                };
+
+                return (
+                    <form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg space-y-6">
+                        <h2 className="text-2xl font-bold text-gray-900">
+                            {invoiceData?.id ? 'Editar Factura' : 'Crear Nueva Factura'}
+                        </h2>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700">Cliente</label>
+                                <select 
+                                    name="clientId" 
+                                    value={formData.clientId} 
+                                    onChange={handleChange} 
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#008080] focus:ring-[#008080]" 
+                                    required
+                                >
+                                    <option value="">Seleccionar cliente...</option>
+                                    {clients.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name} - {c.clinic}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            
+                            <FormField label="Fecha Factura" name="invoiceDate" type="date" value={formData.invoiceDate} onChange={handleChange} />
+                            <FormField label="Fecha Vencimiento" name="dueDate" type="date" value={formData.dueDate} onChange={handleChange} />
+                            
+                            <FormSelect label="Tipo Documento" name="type" value={formData.type} onChange={handleChange} options={['Factura', 'Factura Proforma']} />
+                            <FormSelect label="Serie Factura" name="invoiceSeries" value={formData.invoiceSeries} onChange={handleChange} options={['EXP', 'ALQ']} />
+                            <FormSelect label="Estado" name="status" value={formData.status} onChange={handleChange} options={Object.keys(INVOICE_STATUSES)} />
+                        </div>
+                        
+                        <div className="border-t pt-4">
+                            <h3 className="text-lg font-semibold mb-2">Líneas de la factura</h3>
+                            {formData.items.map((item, index) => (
+                                <div key={index} className="grid grid-cols-12 gap-2 mb-2 items-center">
+                                    <div className="col-span-6">
+                                        <select 
+                                            name="productId" 
+                                            value={item.productId} 
+                                            onChange={(e) => handleItemChange(index, e)} 
+                                            className="w-full p-2 border rounded-md bg-white shadow-sm"
+                                        >
+                                            <option value="">Seleccionar producto</option>
+                                            {products.map(p => (
+                                                <option key={p.id} value={p.id}>{p.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <FormField 
+                                            placeholder="Cant." 
+                                            name="quantity" 
+                                            type="number" 
+                                            value={item.quantity} 
+                                            onChange={(e) => handleItemChange(index, e)} 
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <FormField 
+                                            placeholder="Precio" 
+                                            name="price" 
+                                            type="number" 
+                                            step="0.01"
+                                            value={item.price} 
+                                            onChange={(e) => handleItemChange(index, e)} 
+                                        />
+                                    </div>
+                                    <div className="col-span-1 font-semibold text-right">
+                                        {(item.quantity * item.price).toFixed(2)}€
+                                    </div>
+                                    <div className="col-span-1">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => removeItem(index)} 
+                                            className="text-red-500 p-2 rounded-full hover:bg-red-100"
+                                        >
+                                            <TrashIcon />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            <button 
+                                type="button" 
+                                onClick={addItem} 
+                                className="text-sm text-[#008080] font-bold"
+                            >
+                                + Añadir línea
+                            </button>
+                        </div>
+                        
+                        <div className="flex justify-end">
+                            <div className="w-full md:w-1/3 space-y-2 text-right">
+                                <div className="flex justify-between">
+                                    <span className="font-semibold">Subtotal:</span>
+                                    <span>{subtotal.toFixed(2)} €</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-semibold">IVA ({VAT_RATE * 100}%):</span>
+                                    <span>{vat.toFixed(2)} €</span>
+                                </div>
+                                <div className="flex justify-between border-t pt-2 mt-2">
+                                    <span className="font-bold text-lg">Total:</span>
+                                    <span className="font-bold text-lg">{total.toFixed(2)} €</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex justify-end gap-4 pt-4">
+                            <button 
+                                type="button" 
+                                onClick={onCancel} 
+                                className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                type="submit" 
+                                className="bg-[#008080] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#006666]"
+                            >
+                                Guardar Factura
+                            </button>
+                        </div>
+                    </form>
+                );
+            }
+
+            // === DETALLE DE FACTURA ===
+            function InvoiceDetail({ invoice, clients, onBack, onRegisterPayment, db, userId, onConvertToInvoice }) {
+                if (!invoice) return null;
+                
+                const client = clients.find(c => c.id === invoice.clientId);
+                const [payments, setPayments] = useState([]);
+                const [paymentAmount, setPaymentAmount] = useState(0);
+                const amountPaid = invoice.totalPaid || 0;
+                const amountDue = invoice.total - amountPaid;
+                
+                useEffect(() => { 
+                    if (!db || !userId || !invoice.id) return; 
+                    const paymentsPath = `companies/${invoice.clientId}/invoices/${invoice.id}/payments`; 
+                    const q = query(collection(db, paymentsPath)); 
+                    const unsubscribe = onSnapshot(q, (snapshot) => { 
+                        setPayments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); 
+                    }); 
+                    return () => unsubscribe(); 
+                }, [db, userId, invoice.id]);
+                
+                const handlePaymentSubmit = (e) => { 
+                    e.preventDefault(); 
+                    const amount = parseFloat(paymentAmount); 
+                    if (amount > 0 && amount <= amountDue) { 
+                        onRegisterPayment(invoice, amount); 
+                        setPaymentAmount(0); 
+                    } else { 
+                        alert("El importe del pago no es válido."); 
+                    } 
+                };
+                
+                return (
+                    <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg">
+                        <div className="flex justify-between items-start mb-8">
+                            <div>
+                                <img src="https://storage.googleapis.com/gemini-generative-ai-api/f55a1dda-6560-4321-aidb-53f36780a82f" alt="Logo" className="h-14 mb-4" />
+                                <h2 className="text-2xl font-bold text-gray-900 uppercase">{invoice.type}</h2>
+                                <p className="text-gray-500">Nº: {invoice.invoiceNumber}</p>
+                            </div>
+                            <div className="text-right">
+                                <h3 className="text-xl font-bold">Expertia Medical Solutions SL</h3>
+                                <p className="text-sm">Calle Ficticia 123, 28080 Madrid</p>
+                                <p className="text-sm">B12345678</p>
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-8 mb-8">
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                                <h4 className="font-semibold text-gray-600 mb-2">Facturar a:</h4>
+                                {client ? (
+                                    <>
+                                        <p className="font-bold">{client.clinic}</p>
+                                        <p>{client.address}</p>
+                                        <p>{client.postalCode} {client.city}</p>
+                                        <p>Att: {client.name}</p>
+                                    </>
+                                ) : (
+                                    <p>Cliente no encontrado</p>
+                                )}
+                            </div>
+                            <div className="bg-gray-50 p-4 rounded-lg text-right">
+                                <p><span className="font-semibold">Fecha Factura:</span> {invoice.invoiceDate}</p>
+                                <p><span className="font-semibold">Vencimiento:</span> {invoice.dueDate}</p>
+                                <p className="mt-2">
+                                    <span className="font-semibold">Estado:</span> 
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ml-2 ${INVOICE_STATUSES[invoice.status]}`}>
+                                        {invoice.status}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <table className="w-full text-left mb-8">
+                            <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="p-3">Descripción</th>
+                                    <th className="p-3 text-center">Cantidad</th>
+                                    <th className="p-3 text-right">Precio Unitario</th>
+                                    <th className="p-3 text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {invoice.items.map((item, index) => (
+                                    <tr key={index} className="border-b">
+                                        <td className="p-3">{item.description}</td>
+                                        <td className="p-3 text-center">{item.quantity}</td>
+                                        <td className="p-3 text-right">{parseFloat(item.price).toFixed(2)} €</td>
+                                        <td className="p-3 text-right">{(item.quantity * item.price).toFixed(2)} €</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        
+                        <div className="flex justify-between items-start">
+                            <div className="w-1/2 pr-4">
+                                <h4 className="font-semibold text-gray-600 mb-2">Pagos Registrados</h4>
+                                {payments.length > 0 ? (
+                                    <ul className="text-sm space-y-1">
+                                        {payments.map(p => (
+                                            <li key={p.id} className="flex justify-between p-1 bg-gray-50 rounded">
+                                                <span>{p.date}:</span> 
+                                                <span className="font-semibold">{p.amount.toFixed(2)} €</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-sm text-gray-500">No hay pagos registrados.</p>
+                                )}
+                                
+                                {amountDue > 0 && (
+                                    <form onSubmit={handlePaymentSubmit} className="mt-4">
+                                        <h4 className="font-semibold text-gray-600 mb-2">Registrar Nuevo Pago</h4>
+                                        <div className="flex gap-2">
+                                            <input 
+                                                type="number" 
+                                                step="0.01" 
+                                                max={amountDue.toFixed(2)} 
+                                                value={paymentAmount} 
+                                                onChange={(e) => setPaymentAmount(e.target.value)} 
+                                                className="w-full rounded-md border-gray-300" 
+                                                placeholder="Importe" 
+                                            />
+                                            <button 
+                                                type="submit" 
+                                                className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700"
+                                            >
+                                                Pagar
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+                            </div>
+                            
+                            <div className="w-1/2 md:w-1/3 space-y-2 text-right">
+                                <div className="flex justify-between">
+                                    <span className="font-semibold">Subtotal:</span>
+                                    <span>{invoice.subtotal.toFixed(2)} €</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-semibold">IVA ({VAT_RATE * 100}%):</span>
+                                    <span>{invoice.vat.toFixed(2)} €</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-semibold">Total Factura:</span>
+                                    <span className="font-semibold">{invoice.total.toFixed(2)} €</span>
+                                </div>
+                                <div className="flex justify-between text-green-600">
+                                    <span className="font-semibold">Total Pagado:</span>
+                                    <span className="font-semibold">{amountPaid.toFixed(2)} €</span>
+                                </div>
+                                <div className="flex justify-between border-t-2 border-gray-800 pt-2 mt-2">
+                                    <span className="font-bold text-xl">Pendiente:</span>
+                                    <span className="font-bold text-xl text-red-600">{amountDue.toFixed(2)} €</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-12 flex justify-end gap-4">
+                            <button 
+                                onClick={onBack} 
+                                className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300"
+                            >
+                                Volver
+                            </button>
+                            {invoice.type === 'Factura Proforma' && (
+                                <button 
+                                    onClick={() => onConvertToInvoice(invoice)} 
+                                    className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg"
+                                >
+                                    Convertir a Factura
+                                </button>
+                            )}
+                            <button 
+                                onClick={() => window.print()} 
+                                className="bg-[#008080] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#006666]"
+                            >
+                                Imprimir / PDF
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
             function ReportsDashboard() { return <div className="p-6"><h2>Dashboard de Informes - En desarrollo</h2></div>; }
             function BulkCommunication() { return <div className="p-6"><h2>Comunicaciones Masivas - En desarrollo</h2></div>; }
             
@@ -1850,6 +2339,45 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                 )}
                             </div>
                         </div>
+                    </div>
+                );
+            }
+
+            // === COMPONENTES DE FORMULARIO ===
+            function FormField({ label, ...props }) {
+                return (
+                    <div>
+                        {label && (
+                            <label htmlFor={props.name} className="block text-sm font-medium text-gray-700 mb-1">
+                                {label}
+                            </label>
+                        )}
+                        <input 
+                            id={props.name} 
+                            {...props} 
+                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#008080] focus:ring-[#008080] sm:text-sm" 
+                        />
+                    </div>
+                );
+            }
+
+            function FormSelect({ label, options, ...props }) {
+                return (
+                    <div>
+                        <label htmlFor={props.name} className="block text-sm font-medium text-gray-700">
+                            {label}
+                        </label>
+                        <select 
+                            id={props.name} 
+                            {...props} 
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#008080] focus:ring-[#008080] sm:text-sm"
+                        >
+                            {options.map(opt => (
+                                <option key={opt.value || opt} value={opt.value || opt}>
+                                    {opt.label || opt}
+                                </option>
+                            ))}
+                        </select>
                     </div>
                 );
             }
