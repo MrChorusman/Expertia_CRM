@@ -91,6 +91,7 @@
             const FUNNEL_TAGS = { 'Lead': 'bg-gray-200 text-gray-800', 'Primer Contacto': 'bg-blue-200 text-blue-800', 'Interesado': 'bg-cyan-200 text-cyan-800', 'Demo Realizada': 'bg-indigo-200 text-indigo-800', 'Negociación': 'bg-purple-200 text-purple-800', 'En Cierre': 'bg-orange-200 text-orange-800', 'Ganado': 'bg-green-200 text-green-800', 'Perdido': 'bg-red-200 text-red-800' };
             const CONTACT_PREFERENCES = { 'Email': <MailIcon />, 'Teléfono': <PhoneIcon />, 'WhatsApp': <MessageSquareIcon />, 'Visita Comercial': <BuildingIcon /> };
             const INVOICE_STATUSES = { 'Borrador': 'bg-gray-200 text-gray-800', 'Finalizada': 'bg-blue-200 text-blue-800', 'Pagada': 'bg-green-200 text-green-800', 'Anulada': 'bg-red-300 text-red-900' };
+            const OFFER_STATUSES = { 'Borrador': 'bg-gray-200 text-gray-800', 'Enviada': 'bg-blue-200 text-blue-800', 'Aceptada': 'bg-green-200 text-green-800', 'Rechazada': 'bg-red-200 text-red-800', 'Expirada': 'bg-orange-200 text-orange-800' };
             const VAT_RATE = 0.21;
 
             // --- Configuración de Firebase ---
@@ -311,6 +312,81 @@
                         }
                     ]);
                     
+                    setOffers([
+                        { 
+                            id: 'OF-001', 
+                            offerNumber: 'OF-2025-001',
+                            offerSeries: 'OF',
+                            clientId: '3',
+                            offerDate: '2025-07-15',
+                            validUntil: '2025-08-15',
+                            status: 'Enviada',
+                            description: 'Propuesta de equipamiento completo para Centro Médico Valle',
+                            items: [
+                                { 
+                                    productId: '1', 
+                                    description: 'Equipo de Rayos X Digital', 
+                                    quantity: 1, 
+                                    price: 15000 
+                                },
+                                { 
+                                    productId: '2', 
+                                    description: 'Monitor de Signos Vitales', 
+                                    quantity: 2, 
+                                    price: 3500 
+                                }
+                            ],
+                            subtotal: 22000,
+                            vat: 4620,
+                            total: 26620,
+                            terms: 'Esta oferta es válida hasta la fecha indicada. Los precios incluyen IVA. Forma de pago: 50% a la firma del contrato, 50% a la entrega. Garantía de 2 años.'
+                        },
+                        { 
+                            id: 'OF-002', 
+                            offerNumber: 'OF-2025-002',
+                            offerSeries: 'OF',
+                            clientId: '2',
+                            offerDate: '2025-07-10',
+                            validUntil: '2025-08-10',
+                            status: 'Aceptada',
+                            description: 'Equipos especializados para clínica dental',
+                            items: [
+                                { 
+                                    productId: '3', 
+                                    description: 'Desfibrilador Automático', 
+                                    quantity: 1, 
+                                    price: 8500 
+                                }
+                            ],
+                            subtotal: 8500,
+                            vat: 1785,
+                            total: 10285,
+                            terms: 'Oferta especial con descuento del 10%. Instalación y formación incluidas.'
+                        },
+                        { 
+                            id: 'OF-003', 
+                            offerNumber: 'OF-2025-003',
+                            offerSeries: 'OF',
+                            clientId: '1',
+                            offerDate: '2025-06-15',
+                            validUntil: '2025-07-15',
+                            status: 'Expirada',
+                            description: 'Renovación de equipamiento existente',
+                            items: [
+                                { 
+                                    productId: '2', 
+                                    description: 'Monitor de Signos Vitales', 
+                                    quantity: 3, 
+                                    price: 3500 
+                                }
+                            ],
+                            subtotal: 10500,
+                            vat: 2205,
+                            total: 12705,
+                            terms: 'Oferta válida hasta la fecha indicada. Sin compromiso de compra.'
+                        }
+                    ]);
+                    
                     console.log("Datos demo cargados exitosamente");
                 };
 
@@ -435,11 +511,6 @@
                     await handleSave('users', profileData, user.uid);
                     setActiveView('dashboard');
                 };
-                
-                const handleSaveOffer = async (offerData) => {
-                    await handleSave('ofertas', offerData, offerData.id);
-                    setActiveView('offers');
-                };
 
                 const handleSaveProduct = async (productData) => {
                     if (!isAdmin()) {
@@ -533,6 +604,105 @@
                     setSelectedItem(updatedInvoice);
                 };
 
+                // === FUNCIONES ESPECÍFICAS PARA OFERTAS ===
+                const getNextOfferNumber = async (series = 'OF') => {
+                    if (!db) {
+                        // Modo demo - generar número temporal
+                        const timestamp = Date.now();
+                        return `${series}-DEMO-${timestamp}`;
+                    }
+
+                    const counterRef = doc(db, 'counters', 'offers');
+                    let nextNumber;
+                    
+                    try {
+                        await runTransaction(db, async (transaction) => {
+                            const counterDoc = await transaction.get(counterRef);
+                            if (!counterDoc.exists()) {
+                                nextNumber = 1;
+                                transaction.set(counterRef, { count: 1 });
+                            } else {
+                                nextNumber = counterDoc.data().count + 1;
+                                transaction.update(counterRef, { count: nextNumber });
+                            }
+                        });
+                        
+                        const year = new Date().getFullYear();
+                        return `${series}-${year}-${String(nextNumber).padStart(3, '0')}`;
+                    } catch (error) {
+                        console.error("Error getting next offer number:", error);
+                        return `${series}-${Date.now()}`;
+                    }
+                };
+
+                const handleSaveOffer = async (offerData) => {
+                    let dataToSave = { ...offerData };
+                    
+                    if (!dataToSave.id) {
+                        dataToSave.offerNumber = await getNextOfferNumber(dataToSave.offerSeries || 'OF');
+                    }
+                    
+                    await handleSave('ofertas', dataToSave, dataToSave.id);
+                    setActiveView('accounting');
+                };
+
+                const handleAcceptOffer = async (offerId) => {
+                    const offer = offers.find(o => o.id === offerId);
+                    if (offer) {
+                        const updatedOffer = { ...offer, status: 'Aceptada' };
+                        await handleSave('ofertas', updatedOffer, offerId);
+                        setSelectedItem(updatedOffer);
+                    }
+                };
+
+                const handleRejectOffer = async (offerId) => {
+                    const offer = offers.find(o => o.id === offerId);
+                    if (offer) {
+                        const updatedOffer = { ...offer, status: 'Rechazada' };
+                        await handleSave('ofertas', updatedOffer, offerId);
+                        setSelectedItem(updatedOffer);
+                    }
+                };
+
+                const handleExpireOffer = async (offerId) => {
+                    const offer = offers.find(o => o.id === offerId);
+                    if (offer) {
+                        const updatedOffer = { ...offer, status: 'Expirada' };
+                        await handleSave('ofertas', updatedOffer, offerId);
+                        setSelectedItem(updatedOffer);
+                    }
+                };
+
+                const handleConvertOfferToInvoice = async (offer) => {
+                    if (offer.status !== 'Aceptada') {
+                        alert('Solo se pueden convertir ofertas aceptadas en facturas');
+                        return;
+                    }
+
+                    const invoiceData = {
+                        clientId: offer.clientId,
+                        invoiceDate: new Date().toISOString().split('T')[0],
+                        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        status: 'Borrador',
+                        type: 'Factura',
+                        invoiceSeries: 'EXP',
+                        items: offer.items || [],
+                        subtotal: offer.subtotal,
+                        vat: offer.vat,
+                        total: offer.total,
+                        originOfferId: offer.id,
+                        originOfferNumber: offer.offerNumber
+                    };
+
+                    await handleSaveInvoice(invoiceData);
+                    
+                    // Opcional: actualizar estado de la oferta a "Convertida"
+                    // const updatedOffer = { ...offer, status: 'Convertida' };
+                    // await handleSave('ofertas', updatedOffer, offer.id);
+                    
+                    alert('La oferta ha sido convertida exitosamente en factura');
+                };
+
                 const filteredClients = useMemo(() => clients.filter(client =>
                     (searchTerm === '' || client.name.toLowerCase().includes(searchTerm.toLowerCase()) || client.clinic.toLowerCase().includes(searchTerm.toLowerCase())) &&
                     (filterTag === 'all' || client.tag === filterTag)
@@ -572,33 +742,43 @@
                         case 'consentForm': 
                             return <ConsentForm client={selectedItem} onBack={() => { setSelectedItem(selectedItem); setActiveView('detailClient'); }} />;
                         case 'offers': 
-                            return <OffersDashboard 
-                                offers={offers} 
-                                clients={clients} 
-                                onCreateOffer={() => { setSelectedItem(null); setActiveView('createOffer'); }} 
-                                onViewOffer={(offer) => { setSelectedItem(offer); setActiveView('viewOffer'); }} 
-                                onDeleteOffer={(id) => handleDelete('ofertas', id)} 
-                            />;
+                            // Redirigir a la tab de ofertas en accounting
+                            setActiveView('accounting');
+                            return null;
                         case 'createOffer': 
                             return <OfferForm 
                                 clients={clients} 
                                 products={products} 
                                 onSave={handleSaveOffer} 
-                                onCancel={() => setActiveView('offers')} 
+                                onCancel={() => setActiveView('accounting')} 
+                                offerData={selectedItem}
                             />;
                         case 'viewOffer': 
-                            return <OfferDetail offer={selectedItem} clients={clients} onBack={() => setActiveView('offers')} />;
+                            return <OfferDetail 
+                                offer={selectedItem} 
+                                clients={clients} 
+                                onBack={() => setActiveView('accounting')} 
+                                onAcceptOffer={handleAcceptOffer}
+                                onRejectOffer={handleRejectOffer}
+                                onExpireOffer={handleExpireOffer}
+                                onConvertToInvoice={handleConvertOfferToInvoice}
+                            />;
                         case 'accounting': 
                             return <AccountingDashboard 
                                 invoices={invoices} 
                                 clients={clients} 
                                 products={products} 
+                                offers={offers}
                                 isAdmin={isAdmin()}
                                 onSaveProduct={handleSaveProduct} 
                                 onDeleteProduct={(id) => handleDelete('products', id)} 
                                 onCreateInvoice={() => { setSelectedItem(null); setActiveView('createInvoice'); }} 
                                 onViewInvoice={(invoice) => { setSelectedItem(invoice); setActiveView('viewInvoice'); }} 
                                 onDeleteInvoice={(id) => handleDelete('invoices', id)} 
+                                onCreateOffer={() => { setSelectedItem(null); setActiveView('createOffer'); }} 
+                                onViewOffer={(offer) => { setSelectedItem(offer); setActiveView('viewOffer'); }} 
+                                onDeleteOffer={(id) => handleDelete('ofertas', id)}
+                                onConvertOfferToInvoice={handleConvertOfferToInvoice}
                             />;
                         case 'createInvoice': 
                             return <InvoiceForm 
@@ -1424,7 +1604,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
             function OffersDashboard() { return <div className="p-6"><h2>Dashboard de Ofertas - En desarrollo</h2></div>; }
             
             // === SISTEMA DE CONTABILIDAD COMPLETO ===
-            function AccountingDashboard({ invoices, clients, products, onSaveProduct, onDeleteProduct, onCreateInvoice, onViewInvoice, onDeleteInvoice }) {
+            function AccountingDashboard({ invoices, clients, products, offers = [], onSaveProduct, onDeleteProduct, onCreateInvoice, onViewInvoice, onDeleteInvoice, onCreateOffer, onViewOffer, onDeleteOffer, onConvertOfferToInvoice }) {
                 const [activeTab, setActiveTab] = useState('invoices');
                 const [newProduct, setNewProduct] = useState({ name: '', price: 0 });
                 const getClientName = (clientId) => clients.find(c => c.id === clientId)?.name || 'N/A';
@@ -1447,13 +1627,19 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                     onClick={() => setActiveTab('invoices')} 
                                     className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'invoices' ? 'border-[#008080] text-[#008080]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                                 >
-                                    Facturas
+                                    📄 Facturas
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('offers')} 
+                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'offers' ? 'border-[#008080] text-[#008080]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                                >
+                                    💼 Ofertas
                                 </button>
                                 <button 
                                     onClick={() => setActiveTab('products')} 
                                     className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'products' ? 'border-[#008080] text-[#008080]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                                 >
-                                    Productos
+                                    📦 Productos
                                 </button>
                             </nav>
                         </div>
@@ -1501,6 +1687,80 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                             )) : (
                                                 <tr>
                                                     <td colSpan="6" className="text-center p-6 text-gray-500">No hay facturas.</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {activeTab === 'offers' && (
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-semibold text-gray-800">💼 Gestión de Ofertas</h3>
+                                    <button 
+                                        onClick={onCreateOffer} 
+                                        className="flex items-center gap-2 bg-[#008080] text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-[#006666]"
+                                    >
+                                        <PlusIcon />Crear Oferta
+                                    </button>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-gray-100">
+                                            <tr>
+                                                <th className="p-3">Nº Oferta</th>
+                                                <th className="p-3">Cliente</th>
+                                                <th className="p-3">Fecha</th>
+                                                <th className="p-3">Validez</th>
+                                                <th className="p-3">Total</th>
+                                                <th className="p-3">Estado</th>
+                                                <th className="p-3">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {offers.length > 0 ? offers.map(offer => (
+                                                <tr key={offer.id} className="border-b hover:bg-gray-50">
+                                                    <td className="p-3 font-mono text-sm cursor-pointer" onClick={() => onViewOffer(offer)}>
+                                                        {offer.offerNumber}
+                                                    </td>
+                                                    <td className="p-3">{getClientName(offer.clientId)}</td>
+                                                    <td className="p-3">{offer.offerDate}</td>
+                                                    <td className="p-3">{offer.validUntil}</td>
+                                                    <td className="p-3 font-semibold">{offer.total.toFixed(2)} €</td>
+                                                    <td className="p-3">
+                                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${OFFER_STATUSES[offer.status] || 'bg-gray-200 text-gray-800'}`}>
+                                                            {offer.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3 flex gap-2">
+                                                        {offer.status === 'Aceptada' && (
+                                                            <button 
+                                                                onClick={() => onConvertOfferToInvoice(offer)} 
+                                                                className="text-green-600 p-1 hover:bg-green-50 rounded"
+                                                                title="Convertir a Factura"
+                                                            >
+                                                                📄
+                                                            </button>
+                                                        )}
+                                                        <button 
+                                                            onClick={() => onDeleteOffer(offer.id)} 
+                                                            className="text-red-500 p-1 hover:bg-red-50 rounded"
+                                                            title="Eliminar Oferta"
+                                                        >
+                                                            <TrashIcon />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan="7" className="text-center p-6 text-gray-500">
+                                                        No hay ofertas. 
+                                                        <button onClick={onCreateOffer} className="text-[#008080] ml-2 underline">
+                                                            Crear primera oferta
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             )}
                                         </tbody>
@@ -1729,6 +1989,236 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 );
             }
 
+            // === FORMULARIO DE OFERTAS ===
+            function OfferForm({ clients, products, onSave, onCancel, offerData }) {
+                const [formData, setFormData] = useState({
+                    id: offerData?.id || null, 
+                    clientId: offerData?.client?.id || '',
+                    offerNumber: offerData?.offerNumber || '',
+                    offerDate: offerData?.offerDate || new Date().toISOString().split('T')[0],
+                    validUntil: offerData?.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    status: offerData?.status || 'Borrador',
+                    offerSeries: offerData?.offerSeries || 'OF',
+                    description: offerData?.description || '',
+                    items: offerData?.items || [{ description: '', quantity: 1, price: 0, productId: '' }],
+                    terms: offerData?.terms || 'Esta oferta es válida hasta la fecha indicada. Los precios incluyen IVA.',
+                });
+
+                const subtotal = useMemo(() => formData.items.reduce((acc, item) => acc + (item.quantity * item.price), 0), [formData.items]);
+                const vat = useMemo(() => subtotal * VAT_RATE, [subtotal]);
+                const total = useMemo(() => subtotal + vat, [subtotal, vat]);
+
+                const handleChange = (e) => { 
+                    const { name, value } = e.target; 
+                    setFormData(prev => ({ ...prev, [name]: value })); 
+                };
+               
+                const handleItemChange = (index, e) => {
+                    const { name, value } = e.target;
+                    const items = [...formData.items];
+                    if (name === "productId") {
+                        const product = products.find(p => p.id === value);
+                        items[index].productId = value;
+                        items[index].description = product ? product.name : '';
+                        items[index].price = product ? product.price : 0;
+                    } else {
+                        items[index][name] = value;
+                    }
+                    setFormData(prev => ({ ...prev, items }));
+                };
+
+                const addItem = () => { 
+                    setFormData(prev => ({ 
+                        ...prev, 
+                        items: [...prev.items, { description: '', quantity: 1, price: 0, productId: '' }] 
+                    })); 
+                };
+                
+                const removeItem = (index) => { 
+                    const items = [...formData.items]; 
+                    items.splice(index, 1); 
+                    setFormData(prev => ({ ...prev, items })); 
+                };
+                
+                const handleSubmit = (e) => { 
+                    e.preventDefault(); 
+                    onSave({ ...formData, subtotal, vat, total }); 
+                };
+
+                return (
+                    <form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg space-y-6">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="text-3xl">💼</div>
+                            <h2 className="text-2xl font-bold text-gray-900">
+                                {offerData?.id ? 'Editar Oferta' : 'Crear Nueva Oferta'}
+                            </h2>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="md:col-span-2">
+                                <FormField 
+                                    label="Cliente *" 
+                                    as="select" 
+                                    name="clientId" 
+                                    value={formData.clientId} 
+                                    onChange={handleChange} 
+                                    required
+                                >
+                                    <option value="">Seleccionar cliente</option>
+                                    {clients.map(client => (
+                                        <option key={client.id} value={client.id}>{client.name}</option>
+                                    ))}
+                                </FormField>
+                            </div>
+                            <FormField label="Nº Oferta" name="offerNumber" value={formData.offerNumber} onChange={handleChange} required />
+                            <FormField label="Serie" name="offerSeries" value={formData.offerSeries} onChange={handleChange} required />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <FormField label="Fecha Oferta" name="offerDate" type="date" value={formData.offerDate} onChange={handleChange} required />
+                            <FormField label="Válida hasta" name="validUntil" type="date" value={formData.validUntil} onChange={handleChange} required />
+                            <FormSelect label="Estado" name="status" value={formData.status} onChange={handleChange} options={Object.keys(OFFER_STATUSES)} />
+                        </div>
+
+                        <div>
+                            <FormField 
+                                label="Descripción general de la oferta" 
+                                as="textarea" 
+                                name="description" 
+                                value={formData.description} 
+                                onChange={handleChange} 
+                                rows="3"
+                                placeholder="Describe brevemente el contenido de esta oferta..."
+                            />
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-semibold text-gray-800">Items de la Oferta</h3>
+                                <button type="button" onClick={addItem} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600">
+                                    + Agregar Item
+                                </button>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {formData.items.map((item, index) => (
+                                    <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-3 p-4 bg-gray-50 rounded-lg">
+                                        <div className="md:col-span-2">
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">Producto</label>
+                                            <select 
+                                                name="productId" 
+                                                value={item.productId} 
+                                                onChange={(e) => handleItemChange(index, e)} 
+                                                className="w-full text-sm border border-gray-300 rounded-md p-2"
+                                            >
+                                                <option value="">Manual</option>
+                                                {products.map(product => (
+                                                    <option key={product.id} value={product.id}>{product.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">Descripción</label>
+                                            <input 
+                                                type="text" 
+                                                name="description" 
+                                                value={item.description} 
+                                                onChange={(e) => handleItemChange(index, e)} 
+                                                className="w-full text-sm border border-gray-300 rounded-md p-2" 
+                                                placeholder="Descripción"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad</label>
+                                            <input 
+                                                type="number" 
+                                                name="quantity" 
+                                                value={item.quantity} 
+                                                onChange={(e) => handleItemChange(index, e)} 
+                                                className="w-full text-sm border border-gray-300 rounded-md p-2" 
+                                                min="1"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">Precio €</label>
+                                            <input 
+                                                type="number" 
+                                                step="0.01" 
+                                                name="price" 
+                                                value={item.price} 
+                                                onChange={(e) => handleItemChange(index, e)} 
+                                                className="w-full text-sm border border-gray-300 rounded-md p-2" 
+                                                min="0"
+                                            />
+                                        </div>
+                                        <div className="flex items-end">
+                                            <div className="text-sm font-semibold text-gray-900">
+                                                {(item.quantity * item.price).toFixed(2)}€
+                                            </div>
+                                        </div>
+                                        <div className="flex items-end">
+                                            <button 
+                                                type="button" 
+                                                onClick={() => removeItem(index)} 
+                                                className="text-red-500 hover:text-red-700 text-sm"
+                                                disabled={formData.items.length === 1}
+                                            >
+                                                Eliminar
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <FormField 
+                                label="Términos y condiciones" 
+                                as="textarea" 
+                                name="terms" 
+                                value={formData.terms} 
+                                onChange={handleChange} 
+                                rows="3"
+                                placeholder="Condiciones de la oferta, validez, términos de pago, etc..."
+                            />
+                        </div>
+
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                            <div className="grid grid-cols-3 gap-4 text-right">
+                                <div>
+                                    <div className="text-sm text-gray-600">Subtotal:</div>
+                                    <div className="font-semibold">{subtotal.toFixed(2)} €</div>
+                                </div>
+                                <div>
+                                    <div className="text-sm text-gray-600">IVA ({(VAT_RATE * 100).toFixed(0)}%):</div>
+                                    <div className="font-semibold">{vat.toFixed(2)} €</div>
+                                </div>
+                                <div>
+                                    <div className="text-sm text-gray-600">Total:</div>
+                                    <div className="text-xl font-bold text-[#008080]">{total.toFixed(2)} €</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between pt-6">
+                            <button 
+                                type="button" 
+                                onClick={onCancel} 
+                                className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                type="submit" 
+                                className="bg-[#008080] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#006666]"
+                            >
+                                Guardar Oferta
+                            </button>
+                        </div>
+                    </form>
+                );
+            }
+
             // === DETALLE DE FACTURA ===
             function InvoiceDetail({ invoice, clients, onBack, onRegisterPayment, db, userId, onConvertToInvoice }) {
                 if (!invoice) return null;
@@ -1907,6 +2397,189 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                             >
                                 Imprimir / PDF
                             </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // === DETALLE DE OFERTA ===
+            function OfferDetail({ offer, clients, onBack, onAcceptOffer, onRejectOffer, onExpireOffer, onConvertToInvoice }) {
+                if (!offer) return null;
+                
+                const client = clients.find(c => c.id === offer.clientId);
+                const isExpired = new Date(offer.validUntil) < new Date();
+                const canConvert = offer.status === 'Aceptada';
+
+                const handleStatusUpdate = (newStatus) => {
+                    switch(newStatus) {
+                        case 'Aceptada':
+                            onAcceptOffer(offer.id);
+                            break;
+                        case 'Rechazada':
+                            onRejectOffer(offer.id);
+                            break;
+                        case 'Expirada':
+                            onExpireOffer(offer.id);
+                            break;
+                    }
+                };
+
+                return (
+                    <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-[#008080] to-[#006666] text-white p-6">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h1 className="text-2xl font-bold">💼 Oferta {offer.offerNumber}</h1>
+                                    <p className="text-blue-100 mt-1">Serie: {offer.offerSeries}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className={`px-3 py-1 text-xs font-semibold rounded-full ml-2 ${OFFER_STATUSES[offer.status]}`}>
+                                        {offer.status}
+                                    </span>
+                                    {isExpired && offer.status !== 'Expirada' && (
+                                        <div className="text-yellow-200 text-sm mt-2">⚠️ Oferta expirada</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {/* Información del cliente y fechas */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-3">📋 Información del Cliente</h3>
+                                    <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                                        <div><strong>Nombre:</strong> {client?.name || 'N/A'}</div>
+                                        <div><strong>Empresa:</strong> {client?.company || 'N/A'}</div>
+                                        <div><strong>Email:</strong> {client?.email || 'N/A'}</div>
+                                        <div><strong>Teléfono:</strong> {client?.phone || 'N/A'}</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-3">📅 Información de la Oferta</h3>
+                                    <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                                        <div><strong>Fecha:</strong> {offer.offerDate}</div>
+                                        <div><strong>Válida hasta:</strong> {offer.validUntil}</div>
+                                        <div><strong>Descripción:</strong> {offer.description || 'Sin descripción'}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Items */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-800 mb-3">📦 Items de la Oferta</h3>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border border-gray-200 rounded-lg">
+                                        <thead className="bg-gray-100">
+                                            <tr>
+                                                <th className="text-left p-3 border-b">Descripción</th>
+                                                <th className="text-center p-3 border-b">Cantidad</th>
+                                                <th className="text-right p-3 border-b">Precio Unitario</th>
+                                                <th className="text-right p-3 border-b">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {offer.items?.map((item, index) => (
+                                                <tr key={index} className="border-b">
+                                                    <td className="p-3">{item.description}</td>
+                                                    <td className="p-3 text-center">{item.quantity}</td>
+                                                    <td className="p-3 text-right">{item.price.toFixed(2)} €</td>
+                                                    <td className="p-3 text-right font-semibold">{(item.quantity * item.price).toFixed(2)} €</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Términos y condiciones */}
+                            {offer.terms && (
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-3">📄 Términos y Condiciones</h3>
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-gray-700 whitespace-pre-line">{offer.terms}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Totales */}
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                                <div className="grid grid-cols-3 gap-4 text-right">
+                                    <div>
+                                        <div className="text-sm text-gray-600">Subtotal:</div>
+                                        <div className="font-semibold text-lg">{offer.subtotal?.toFixed(2)} €</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-gray-600">IVA:</div>
+                                        <div className="font-semibold text-lg">{offer.vat?.toFixed(2)} €</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-gray-600">Total:</div>
+                                        <div className="text-2xl font-bold text-[#008080]">{offer.total?.toFixed(2)} €</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Acciones */}
+                            <div className="border-t pt-6">
+                                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                                    <button 
+                                        onClick={onBack} 
+                                        className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300"
+                                    >
+                                        ← Volver
+                                    </button>
+                                    
+                                    <div className="flex flex-col sm:flex-row gap-2">
+                                        {/* Acciones de estado */}
+                                        {offer.status === 'Borrador' && (
+                                            <button 
+                                                onClick={() => handleStatusUpdate('Enviada')} 
+                                                className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700"
+                                            >
+                                                ✉️ Marcar como Enviada
+                                            </button>
+                                        )}
+                                        
+                                        {offer.status === 'Enviada' && !isExpired && (
+                                            <>
+                                                <button 
+                                                    onClick={() => handleStatusUpdate('Aceptada')} 
+                                                    className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700"
+                                                >
+                                                    ✅ Marcar como Aceptada
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleStatusUpdate('Rechazada')} 
+                                                    className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700"
+                                                >
+                                                    ❌ Marcar como Rechazada
+                                                </button>
+                                            </>
+                                        )}
+
+                                        {isExpired && offer.status !== 'Expirada' && (
+                                            <button 
+                                                onClick={() => handleStatusUpdate('Expirada')} 
+                                                className="bg-orange-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-700"
+                                            >
+                                                ⏰ Marcar como Expirada
+                                            </button>
+                                        )}
+
+                                        {/* Convertir a factura */}
+                                        {canConvert && (
+                                            <button 
+                                                onClick={() => onConvertToInvoice(offer)} 
+                                                className="bg-[#008080] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#006666]"
+                                            >
+                                                📄 Convertir a Factura
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 );
