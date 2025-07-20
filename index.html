@@ -2255,7 +2255,185 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     </div>
                 );
             }
-            function BulkCommunication() { return <div className="p-6"><h2>Comunicaciones Masivas - En desarrollo</h2></div>; }
+            function BulkCommunication({ clients, onBack }) {
+                const [message, setMessage] = useState('');
+                const [filter, setFilter] = useState('all');
+               
+                const eligibleClients = useMemo(() => {
+                    return clients.filter(c => c.acceptsMarketing && (filter === 'all' || c.funnelStage === filter));
+                }, [clients, filter]);
+
+                const handleSendEmail = () => {
+                    const emails = eligibleClients.map(c => c.email).filter(email => email).join(',');
+                    if (!emails) { 
+                        alert('No hay clientes elegibles para enviar email o no tienen dirección de correo.'); 
+                        return; 
+                    }
+                    window.location.href = `mailto:?bcc=${emails}&subject=Novedades de Expertia Medical Solutions&body=${encodeURIComponent(message)}`;
+                };
+
+                const handleSendWhatsapp = () => {
+                    if (!message) { 
+                        alert('El mensaje no puede estar vacío.'); 
+                        return; 
+                    }
+                    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                };
+
+                const funnelOptions = [
+                    { value: 'all', label: 'Todas las fases' },
+                    ...Object.keys(FUNNEL_TAGS).map(stage => ({ value: stage, label: stage }))
+                ];
+
+                return (
+                    <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="text-3xl">📢</div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900">Comunicación Masiva</h2>
+                                <p className="text-sm text-gray-600">Envía mensajes únicamente a clientes que aceptan comunicaciones comerciales</p>
+                            </div>
+                        </div>
+                        
+                        {/* Panel de filtros y estadísticas */}
+                        <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                <FormSelect 
+                                    label="Filtrar por Fase del Embudo" 
+                                    value={filter} 
+                                    onChange={(e) => setFilter(e.target.value)} 
+                                    options={funnelOptions}
+                                />
+                                <div className="md:col-span-2 flex items-center gap-4">
+                                    <div className="bg-white p-3 rounded-lg border flex-1">
+                                        <div className="text-2xl font-bold text-green-600">{eligibleClients.length}</div>
+                                        <div className="text-sm text-gray-600">Clientes seleccionados</div>
+                                    </div>
+                                    <div className="bg-white p-3 rounded-lg border flex-1">
+                                        <div className="text-2xl font-bold text-blue-600">
+                                            {eligibleClients.filter(c => c.email).length}
+                                        </div>
+                                        <div className="text-sm text-gray-600">Con email válido</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Lista de clientes seleccionados */}
+                        {eligibleClients.length > 0 && (
+                            <div className="mb-6">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                                    Clientes que recibirán el mensaje:
+                                </h3>
+                                <div className="bg-gray-50 p-4 rounded-lg max-h-32 overflow-y-auto">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                        {eligibleClients.map(client => (
+                                            <div key={client.id} className="flex items-center gap-2 text-sm">
+                                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                <span className="font-medium">{client.name}</span>
+                                                <span className="text-gray-500">({client.funnelStage})</span>
+                                                {!client.email && (
+                                                    <span className="text-red-500 text-xs">⚠️ Sin email</span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Editor de mensaje */}
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Mensaje a enviar:
+                            </label>
+                            <textarea 
+                                value={message} 
+                                onChange={(e) => setMessage(e.target.value)} 
+                                rows="8" 
+                                placeholder="Escribe tu mensaje aquí...
+
+Ejemplo:
+¡Hola! 👋
+
+Desde Expertia Medical Solutions queremos compartir contigo nuestras últimas novedades:
+
+✅ Nuevos productos disponibles
+✅ Ofertas especiales para este mes
+✅ Próximos webinars formativos
+
+¿Te interesa conocer más detalles? ¡Contáctanos!
+
+Saludos,
+Equipo Expertia Medical Solutions" 
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#008080] focus:border-transparent resize-none"
+                            />
+                            <div className="text-sm text-gray-500 mt-1">
+                                Caracteres: {message.length}
+                            </div>
+                        </div>
+
+                        {/* Botones de acción */}
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <button 
+                                onClick={onBack} 
+                                className="bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-lg hover:bg-gray-300 transition-colors"
+                            >
+                                ← Volver al Dashboard
+                            </button>
+                            
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <button 
+                                    onClick={handleSendWhatsapp}
+                                    disabled={!message.trim()}
+                                    className="bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                                >
+                                    📱 Enviar por WhatsApp
+                                </button>
+                                <button 
+                                    onClick={handleSendEmail}
+                                    disabled={!message.trim() || eligibleClients.filter(c => c.email).length === 0}
+                                    className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                                >
+                                    ✉️ Enviar por Email (BCC)
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Advertencias y información */}
+                        <div className="mt-6 space-y-3">
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <div className="flex items-start gap-2">
+                                    <div className="text-yellow-600 text-lg">⚠️</div>
+                                    <div>
+                                        <h4 className="font-semibold text-yellow-800">Información importante:</h4>
+                                        <ul className="text-sm text-yellow-700 mt-1 list-disc list-inside space-y-1">
+                                            <li>Solo se enviarán mensajes a clientes que han aceptado recibir comunicaciones comerciales</li>
+                                            <li>Para WhatsApp, se abrirá la aplicación con el mensaje preparado</li>
+                                            <li>Para email, se abrirá tu cliente de correo con los destinatarios en BCC (copia oculta)</li>
+                                            <li>Asegúrate de cumplir con la LOPD y el RGPD en tus comunicaciones</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {eligibleClients.length === 0 && (
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-red-600 text-lg">🚫</div>
+                                        <div>
+                                            <h4 className="font-semibold text-red-800">No hay clientes seleccionados</h4>
+                                            <p className="text-sm text-red-700 mt-1">
+                                                No hay clientes que cumplan los criterios de filtrado y que hayan aceptado recibir comunicaciones comerciales.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
             
             // Formulario de Perfil de Usuario
             function ProfileForm({ userProfile, onSave, onBack }) {
