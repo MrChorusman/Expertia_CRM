@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Firebase Connection - Expertia CRM</title>
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            margin: 40px;
+            background: #f7fafc;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result { 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 6px; 
+            border-left: 4px solid;
+        }
+        .success { 
+            background: #f0fff4; 
+            border-color: #38a169; 
+            color: #2f855a;
+        }
+        .error { 
+            background: #fed7d7; 
+            border-color: #e53e3e; 
+            color: #c53030;
+        }
+        .info { 
+            background: #ebf8ff; 
+            border-color: #3182ce; 
+            color: #2c5282;
+        }
+        .warning { 
+            background: #fefcbf; 
+            border-color: #d69e2e; 
+            color: #b7791f;
+        }
+        pre { 
+            background: #f7fafc; 
+            padding: 15px; 
+            border-radius: 6px; 
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #3182ce;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #2c5282; }
+        .loading { opacity: 0.6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Test de Conexión Firebase - Expertia CRM</h1>
+        <p>Esta página verifica la conectividad con Firebase y las colecciones existentes.</p>
+        
+        <div id="results"></div>
+        
+        <div style="margin-top: 30px;">
+            <button onclick="runAllTests()">🧪 Ejecutar Todas las Pruebas</button>
+            <button onclick="testAuth()">🔐 Probar Autenticación</button>
+            <button onclick="testCollections()">📚 Probar Colecciones</button>
+            <button onclick="clearResults()">🗑️ Limpiar Resultados</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="./firebase-config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
+        import { getFirestore, collection, getDocs, query, limit } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+        
+        // Variables globales para testing
+        let app, auth, db;
+        
+        function addResult(type, title, message, data = null) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            
+            let content = `<strong>${title}</strong><br>${message}`;
+            if (data) {
+                content += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            
+            resultDiv.innerHTML = content;
+            resultsDiv.appendChild(resultDiv);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function initFirebase() {
+            try {
+                addResult('info', '🚀 Iniciando Firebase', 'Intentando inicializar Firebase...');
+                
+                const firebaseConfig = typeof __firebase_config !== 'undefined' 
+                    ? JSON.parse(__firebase_config) 
+                    : null;
+                
+                if (!firebaseConfig) {
+                    throw new Error('Configuración de Firebase no encontrada');
+                }
+                
+                addResult('info', '⚙️ Configuración Encontrada', 'Firebase config cargado correctamente', {
+                    projectId: firebaseConfig.projectId,
+                    authDomain: firebaseConfig.authDomain
+                });
+                
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                
+                addResult('success', '✅ Firebase Inicializado', 'Firebase se ha inicializado correctamente');
+                return true;
+            } catch (error) {
+                addResult('error', '❌ Error de Inicialización', error.message, error);
+                return false;
+            }
+        }
+        
+        async function testAuth() {
+            try {
+                if (!auth) {
+                    const initialized = await initFirebase();
+                    if (!initialized) return;
+                }
+                
+                addResult('info', '🔐 Probando Autenticación', 'Intentando autenticación anónima...');
+                
+                return new Promise((resolve) => {
+                    const unsubscribe = onAuthStateChanged(auth, (user) => {
+                        unsubscribe();
+                        if (user) {
+                            addResult('success', '✅ Autenticación Exitosa', 'Usuario autenticado correctamente', {
+                                uid: user.uid,
+                                isAnonymous: user.isAnonymous,
+                                provider: user.providerData.length ? user.providerData[0].providerId : 'anonymous'
+                            });
+                            resolve(true);
+                        } else {
+                            addResult('warning', '⚠️ Sin Usuario', 'No hay usuario autenticado');
+                            resolve(false);
+                        }
+                    });
+                    
+                    signInAnonymously(auth).catch((error) => {
+                        addResult('error', '❌ Error de Autenticación', error.message, error);
+                        resolve(false);
+                    });
+                });
+            } catch (error) {
+                addResult('error', '❌ Error en Test de Auth', error.message, error);
+                return false;
+            }
+        }
+        
+        async function testCollections() {
+            try {
+                if (!db) {
+                    const initialized = await initFirebase();
+                    if (!initialized) return;
+                }
+                
+                addResult('info', '📚 Probando Colecciones', 'Verificando acceso a colecciones existentes...');
+                
+                const collections = ['users', 'adminUsers', 'products'];
+                const results = {};
+                
+                for (const collectionName of collections) {
+                    try {
+                        addResult('info', `🔍 Verificando ${collectionName}`, `Consultando colección ${collectionName}...`);
+                        
+                        const collectionRef = collection(db, collectionName);
+                        const querySnapshot = await getDocs(query(collectionRef, limit(5)));
+                        
+                        results[collectionName] = {
+                            exists: true,
+                            documentCount: querySnapshot.size,
+                            sampleDocuments: querySnapshot.docs.map(doc => ({
+                                id: doc.id,
+                                data: doc.data()
+                            }))
+                        };
+                        
+                        addResult('success', `✅ ${collectionName} Accesible`, 
+                            `Encontrados ${querySnapshot.size} documentos`, 
+                            results[collectionName]);
+                            
+                    } catch (error) {
+                        results[collectionName] = {
+                            exists: false,
+                            error: error.message
+                        };
+                        
+                        addResult('error', `❌ Error en ${collectionName}`, error.message, error);
+                    }
+                }
+                
+                addResult('info', '📊 Resumen de Colecciones', 'Resultado completo del test de colecciones', results);
+                return results;
+                
+            } catch (error) {
+                addResult('error', '❌ Error en Test de Colecciones', error.message, error);
+                return false;
+            }
+        }
+        
+        async function runAllTests() {
+            clearResults();
+            addResult('info', '🧪 Iniciando Batería de Pruebas', 'Ejecutando todos los tests de conexión...');
+            
+            const authResult = await testAuth();
+            if (authResult) {
+                await testCollections();
+            }
+            
+            addResult('info', '🏁 Tests Completados', 'Batería de pruebas finalizada. Revisa los resultados arriba.');
+        }
+        
+        // Exponer funciones globalmente
+        window.initFirebase = initFirebase;
+        window.testAuth = testAuth;
+        window.testCollections = testCollections;
+        window.runAllTests = runAllTests;
+        window.clearResults = clearResults;
+        
+        // Auto-ejecutar al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            addResult('info', '🌟 Test de Conexión Listo', 'Página cargada. Presiona "Ejecutar Todas las Pruebas" para comenzar.');
+        });
+    </script>
+</body>
+</html>
