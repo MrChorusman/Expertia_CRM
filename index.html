@@ -174,6 +174,9 @@
             const MegaphoneIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18 0a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2z"></path><path d="M11 11V5a3 3 0 0 0-6 0v6"></path><path d="M15 11v6a3 3 0 0 0 6 0v-6"></path></svg>;
             const StopCircleIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><rect x="9" y="9" width="6" height="6"></rect></svg>;
             const PackageIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>;
+            const TagIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>;
+            const SettingsIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V6a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+            const InfoIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
 
             // --- Constantes de la aplicación ---
             const FUNNEL_TAGS = { 'Lead': 'bg-gray-200 text-gray-800', 'Primer Contacto': 'bg-blue-200 text-blue-800', 'Interesado': 'bg-cyan-200 text-cyan-800', 'Demo Realizada': 'bg-indigo-200 text-indigo-800', 'Negociación': 'bg-purple-200 text-purple-800', 'En Cierre': 'bg-orange-200 text-orange-800', 'Ganado': 'bg-green-200 text-green-800', 'Perdido': 'bg-red-200 text-red-800' };
@@ -181,6 +184,58 @@
             const INVOICE_STATUSES = { 'Borrador': 'bg-gray-200 text-gray-800', 'Finalizada': 'bg-blue-200 text-blue-800', 'Pagada': 'bg-green-200 text-green-800', 'Anulada': 'bg-red-300 text-red-900' };
             const OFFER_STATUSES = { 'Borrador': 'bg-gray-200 text-gray-800', 'Enviada': 'bg-blue-200 text-blue-800', 'Aceptada': 'bg-green-200 text-green-800', 'Rechazada': 'bg-red-200 text-red-800', 'Expirada': 'bg-orange-200 text-orange-800' };
             const VAT_RATE = 0.21;
+
+            // --- Función de Exportación a Excel ---
+            function exportInvoicesToExcel(invoices, clients) {
+                const getClientName = (clientId) => clients.find(c => c.id === clientId)?.name || 'N/A';
+                const getClientClinic = (clientId) => clients.find(c => c.id === clientId)?.clinic || 'N/A';
+                
+                // Preparar datos para Excel
+                const excelData = invoices.map(invoice => ({
+                    'Nº Factura': invoice.invoiceNumber || '',
+                    'Serie': invoice.invoiceSeries || '',
+                    'Tipo': invoice.type || '',
+                    'Cliente': getClientName(invoice.clientId),
+                    'Clínica': getClientClinic(invoice.clientId),
+                    'Fecha Factura': invoice.invoiceDate || '',
+                    'Fecha Vencimiento': invoice.dueDate || '',
+                    'Subtotal': invoice.subtotal?.toFixed(2) || '0.00',
+                    'IVA': invoice.vat?.toFixed(2) || '0.00',
+                    'Total': invoice.total?.toFixed(2) || '0.00',
+                    'Estado': invoice.status || '',
+                    'Total Pagado': invoice.totalPaid?.toFixed(2) || '0.00',
+                    'Pendiente': ((invoice.total || 0) - (invoice.totalPaid || 0)).toFixed(2)
+                }));
+
+                // Crear CSV
+                const headers = Object.keys(excelData[0] || {});
+                const csvContent = [
+                    headers.join(','),
+                    ...excelData.map(row => 
+                        headers.map(header => {
+                            const value = row[header];
+                            // Escapar comillas y comas en los valores
+                            return `"${String(value).replace(/"/g, '""')}"`;
+                        }).join(',')
+                    )
+                ].join('\n');
+
+                // Crear y descargar archivo
+                const blob = new Blob(['\uFEFF' + csvContent], { 
+                    type: 'text/csv;charset=utf-8;' 
+                });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `facturas_${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Mostrar mensaje de confirmación
+                alert('Facturación exportada correctamente a Excel/CSV');
+            }
 
             // --- Configuración de Firebase ---
             const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
@@ -705,7 +760,7 @@
                         }
                     }
                     
-                    await handleSave('invoices', dataToSave, dataToSave.id);
+                    await handleSave('facturas', dataToSave, dataToSave.id);
                     setActiveView('accounting');
                 };
 
@@ -718,6 +773,40 @@
                     await handleSaveInvoice(invoiceData, true);
                 };
 
+                const handleCreateRectificativa = async (originalInvoice) => {
+                    try {
+                        // Crear una nueva factura rectificativa
+                        const rectificativaData = {
+                            ...originalInvoice,
+                            id: null, // Se generará un nuevo ID
+                            type: 'Factura Rectificativa',
+                            number: `${originalInvoice.number}-RECT`,
+                            originalInvoiceId: originalInvoice.id,
+                            originalInvoiceNumber: originalInvoice.number,
+                            date: new Date().toISOString().split('T')[0],
+                            status: 'Borrador',
+                            total: -originalInvoice.total, // Valor negativo para rectificar
+                            subtotal: -originalInvoice.subtotal,
+                            totalTax: -originalInvoice.totalTax,
+                            totalPaid: 0,
+                            // Invertir cantidades y precios de los productos/items
+                            items: (originalInvoice.items || []).map(item => ({
+                                ...item,
+                                quantity: -item.quantity,
+                                price: item.price, // El precio se mantiene positivo
+                                total: -item.total
+                            }))
+                        };
+
+                        // Cambiar a vista de creación con los datos de la rectificativa
+                        setSelectedItem(rectificativaData);
+                        setActiveView('createInvoice');
+                    } catch (error) {
+                        console.error('Error creating rectificativa:', error);
+                        alert('Error al crear la factura rectificativa');
+                    }
+                };
+
                 const handleRegisterPayment = async (invoice, paymentAmount) => {
                     if (!db || !invoice || !paymentAmount) return;
                     
@@ -728,7 +817,7 @@
                         status: newTotalPaid >= invoice.total ? 'Pagada' : 'Enviada',
                     };
                     
-                    await handleSave('invoices', updatedInvoice, updatedInvoice.id);
+                    await handleSave('facturas', updatedInvoice, updatedInvoice.id);
                     
                     // Registrar el pago en subcolección
                     if (db && user) {
@@ -738,7 +827,7 @@
                             method: 'Transferencia',
                             registeredBy: user.uid
                         };
-                        await addDoc(collection(db, `invoices/${invoice.id}/payments`), paymentData);
+                        await addDoc(collection(db, `facturas/${invoice.id}/payments`), paymentData);
                     }
                     
                     setSelectedItem(updatedInvoice);
@@ -952,18 +1041,10 @@
                             return <AccountingDashboard 
                                 invoices={invoices} 
                                 clients={clients} 
-                                products={products} 
-                                offers={offers}
-                                isAdmin={isAdmin()}
-                                onSaveProduct={handleSaveProduct} 
-                                onDeleteProduct={(id) => handleDelete('products', id)} 
                                 onCreateInvoice={() => { setSelectedItem(null); setActiveView('createInvoice'); }} 
                                 onViewInvoice={(invoice) => { setSelectedItem(invoice); setActiveView('viewInvoice'); }} 
-                                onDeleteInvoice={(id) => handleDelete('invoices', id)} 
-                                onCreateOffer={() => { setSelectedItem(null); setActiveView('createOffer'); }} 
-                                onViewOffer={(offer) => { setSelectedItem(offer); setActiveView('viewOffer'); }} 
-                                onDeleteOffer={(id) => handleDelete('ofertas', id)}
-                                onConvertOfferToInvoice={handleConvertOfferToInvoice}
+                                onDeleteInvoice={(id) => handleDelete('facturas', id)}
+                                showConfirm={showConfirm}
                             />;
                         case 'createInvoice': 
                             return <InvoiceForm 
@@ -982,6 +1063,7 @@
                                 db={db} 
                                 user={user} 
                                 onConvertToInvoice={handleConvertToInvoice} 
+                                onCreateRectificativa={handleCreateRectificativa}
                             />;
                         case 'reports': 
                             return <ReportsDashboard allInvoices={invoices} />;
@@ -1054,7 +1136,7 @@
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                             <div className="flex justify-between items-center h-20">
                                 <div className="flex items-center">
-                                    <img src="./data/LOGO EXPERTIA MEDICAL SOLUTIONS.jpg" alt="Expertia Medical Solutions Logo" className="h-12 w-auto" />
+                                    <img src="./LOGO_EXPERTIA.jpg" alt="Expertia Medical Solutions Logo" className="h-12 w-auto" />
                                 </div>
                                 <nav className="flex items-center gap-4">
                                     <span onClick={() => setActiveView('dashboard')} className={navItemClass('dashboard')}>
@@ -1983,208 +2065,86 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
             }
             
             // === SISTEMA DE CONTABILIDAD COMPLETO ===
-            function AccountingDashboard({ invoices, clients, products, offers = [], onSaveProduct, onDeleteProduct, onCreateInvoice, onViewInvoice, onDeleteInvoice, onCreateOffer, onViewOffer, onDeleteOffer, onConvertOfferToInvoice }) {
+            function AccountingDashboard({ invoices, clients, onCreateInvoice, onViewInvoice, onDeleteInvoice, showConfirm }) {
                 const [activeTab, setActiveTab] = useState('invoices');
-                const [newProduct, setNewProduct] = useState({ name: '', price: 0 });
                 const getClientName = (clientId) => clients.find(c => c.id === clientId)?.name || 'N/A';
-
-                const handleAddProduct = (e) => {
-                    e.preventDefault();
-                    if (!newProduct.name || newProduct.price <= 0) return;
-                    onSaveProduct(newProduct);
-                    setNewProduct({ name: '', price: 0 });
-                };
 
                 return (
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
                             <h1 className="text-3xl font-bold text-gray-900">Contabilidad</h1>
                         </div>
-                        <div className="border-b border-gray-200">
-                            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                                <button 
-                                    onClick={() => setActiveTab('invoices')} 
-                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'invoices' ? 'border-[#008080] text-[#008080]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                                >
-                                    <FileTextIcon width={16} height={16} /> Facturas
-                                </button>
-                                <button 
-                                    onClick={() => setActiveTab('offers')} 
-                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'offers' ? 'border-[#008080] text-[#008080]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                                >
-                                    <BriefcaseIcon width={16} height={16} /> Ofertas
-                                </button>
-                                <button 
-                                    onClick={() => setActiveTab('products')} 
-                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'products' ? 'border-[#008080] text-[#008080]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                                >
-                                    <PackageIcon width={16} height={16} /> Productos
-                                </button>
-                            </nav>
-                        </div>
                         
-                        {activeTab === 'invoices' && (
-                            <div className="bg-white p-6 rounded-lg shadow">
-                                <button 
-                                    onClick={onCreateInvoice} 
-                                    className="flex items-center gap-2 bg-[#008080] text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-[#006666] mb-4"
-                                >
-                                    <PlusIcon />Crear Factura
-                                </button>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-gray-100">
-                                            <tr>
-                                                <th className="p-3">Nº Factura</th>
-                                                <th className="p-3">Cliente</th>
-                                                <th className="p-3">Fecha</th>
-                                                <th className="p-3">Total</th>
-                                                <th className="p-3">Estado</th>
-                                                <th className="p-3">Acciones</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {invoices.length > 0 ? invoices.map(inv => (
-                                                <tr key={inv.id} className="border-b hover:bg-gray-50">
-                                                    <td className="p-3 font-mono text-sm cursor-pointer" onClick={() => onViewInvoice(inv)}>
-                                                        {inv.invoiceNumber}
-                                                    </td>
-                                                    <td className="p-3">{getClientName(inv.clientId)}</td>
-                                                    <td className="p-3">{inv.invoiceDate}</td>
-                                                    <td className="p-3 font-semibold">{inv.total.toFixed(2)} €</td>
-                                                    <td className="p-3">
-                                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${INVOICE_STATUSES[inv.status]}`}>
-                                                            {inv.status}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <button onClick={() => onDeleteInvoice(inv.id)} className="text-red-500 p-1">
-                                                            <TrashIcon />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            )) : (
-                                                <tr>
-                                                    <td colSpan="6" className="text-center p-6 text-gray-500">No hay facturas.</td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
-                        
-                        {activeTab === 'offers' && (
-                            <div className="bg-white p-6 rounded-lg shadow">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                                        <BriefcaseIcon width={20} height={20} /> Gestión de Ofertas
-                                    </h3>
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                                    <FileTextIcon /> Gestión de Facturas
+                                </h3>
+                                <div className="flex gap-3">
                                     <button 
-                                        onClick={onCreateOffer} 
+                                        onClick={() => exportInvoicesToExcel(invoices, clients)}
+                                        className="flex items-center gap-2 bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-green-700"
+                                    >
+                                        <DownloadIcon width={20} height={20} />Exportar Excel
+                                    </button>
+                                    <button 
+                                        onClick={onCreateInvoice} 
                                         className="flex items-center gap-2 bg-[#008080] text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-[#006666]"
                                     >
-                                        <PlusIcon />Crear Oferta
+                                        <PlusIcon />Crear Factura
                                     </button>
                                 </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-gray-100">
-                                            <tr>
-                                                <th className="p-3">Nº Oferta</th>
-                                                <th className="p-3">Cliente</th>
-                                                <th className="p-3">Fecha</th>
-                                                <th className="p-3">Validez</th>
-                                                <th className="p-3">Total</th>
-                                                <th className="p-3">Estado</th>
-                                                <th className="p-3">Acciones</th>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead className="bg-gray-100">
+                                        <tr>
+                                            <th className="p-3">Nº Factura</th>
+                                            <th className="p-3">Serie</th>
+                                            <th className="p-3">Cliente</th>
+                                            <th className="p-3">Fecha</th>
+                                            <th className="p-3">Vencimiento</th>
+                                            <th className="p-3">Total</th>
+                                            <th className="p-3">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {invoices.length > 0 ? invoices.map(inv => (
+                                            <tr key={inv.id} className="border-b hover:bg-gray-50">
+                                                <td className="p-3 font-mono text-sm cursor-pointer" onClick={() => onViewInvoice(inv)}>
+                                                    {inv.invoiceNumber}
+                                                </td>
+                                                <td className="p-3">
+                                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                                        inv.invoiceSeries === 'EXP' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                                                    }`}>
+                                                        {inv.invoiceSeries}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3">{getClientName(inv.clientId)}</td>
+                                                <td className="p-3">{inv.invoiceDate}</td>
+                                                <td className="p-3">{inv.dueDate}</td>
+                                                <td className="p-3 font-semibold">{inv.total?.toFixed(2) || '0.00'} €</td>
+                                                <td className="p-3">
+                                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${INVOICE_STATUSES[inv.status] || 'bg-gray-200 text-gray-800'}`}>
+                                                        {inv.status}
+                                                    </span>
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            {offers.length > 0 ? offers.map(offer => (
-                                                <tr key={offer.id} className="border-b hover:bg-gray-50">
-                                                    <td className="p-3 font-mono text-sm cursor-pointer" onClick={() => onViewOffer(offer)}>
-                                                        {offer.offerNumber}
-                                                    </td>
-                                                    <td className="p-3">{getClientName(offer.clientId)}</td>
-                                                    <td className="p-3">{offer.offerDate}</td>
-                                                    <td className="p-3">{offer.validUntil}</td>
-                                                    <td className="p-3 font-semibold">{offer.total.toFixed(2)} €</td>
-                                                    <td className="p-3">
-                                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${OFFER_STATUSES[offer.status] || 'bg-gray-200 text-gray-800'}`}>
-                                                            {offer.status}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-3 flex gap-2">
-                                                        {offer.status === 'Aceptada' && (
-                                                            <button 
-                                                                onClick={() => onConvertOfferToInvoice(offer)} 
-                                                                className="text-green-600 p-1 hover:bg-green-50 rounded flex items-center gap-1"
-                                                                title="Convertir a Factura"
-                                                            >
-                                                                <FileTextIcon width={16} height={16} />
-                                                            </button>
-                                                        )}
-                                                        <button 
-                                                            onClick={() => onDeleteOffer(offer.id)} 
-                                                            className="text-red-500 p-1 hover:bg-red-50 rounded"
-                                                            title="Eliminar Oferta"
-                                                        >
-                                                            <TrashIcon />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            )) : (
-                                                <tr>
-                                                    <td colSpan="7" className="text-center p-6 text-gray-500">
-                                                        No hay ofertas. 
-                                                        <button onClick={onCreateOffer} className="text-[#008080] ml-2 underline">
-                                                            Crear primera oferta
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        )) : (
+                                            <tr>
+                                                <td colSpan="7" className="text-center p-6 text-gray-500">
+                                                    No hay facturas. 
+                                                    <button onClick={onCreateInvoice} className="text-[#008080] ml-2 underline">
+                                                        Crear primera factura
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
-                        )}
-                        
-                        {activeTab === 'products' && (
-                            <div className="bg-white p-6 rounded-lg shadow">
-                                <h3 className="text-xl font-semibold mb-4 text-gray-800">Gestionar Productos</h3>
-                                <form onSubmit={handleAddProduct} className="flex gap-2 mb-4">
-                                    <input 
-                                        type="text" 
-                                        value={newProduct.name} 
-                                        onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} 
-                                        placeholder="Nombre del producto" 
-                                        className="flex-grow p-2 border rounded-md" 
-                                        required 
-                                    />
-                                    <input 
-                                        type="number" 
-                                        step="0.01" 
-                                        value={newProduct.price} 
-                                        onChange={e => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) || 0 })} 
-                                        placeholder="Precio" 
-                                        className="w-32 p-2 border rounded-md" 
-                                        required 
-                                    />
-                                    <button type="submit" className="bg-[#008080] text-white p-2 rounded-md">Añadir</button>
-                                </form>
-                                <ul className="space-y-2">
-                                    {products.map(p => (
-                                        <li key={p.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-md">
-                                            <span>{p.name} - <strong>{p.price.toFixed(2)}€</strong></span>
-                                            <button onClick={() => onDeleteProduct(p.id)} className="text-red-500">
-                                                <TrashIcon />
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
+                        </div>
                     </div>
                 );
             }
@@ -2601,7 +2561,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
             }
 
             // === DETALLE DE FACTURA ===
-            function InvoiceDetail({ invoice, clients, onBack, onRegisterPayment, db, userId, onConvertToInvoice }) {
+            function InvoiceDetail({ invoice, clients, onBack, onRegisterPayment, db, userId, onConvertToInvoice, onCreateRectificativa }) {
                 if (!invoice) return null;
                 
                 const client = clients.find(c => c.id === invoice.clientId);
@@ -2635,7 +2595,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg">
                         <div className="flex justify-between items-start mb-8">
                             <div>
-                                <img src="https://storage.googleapis.com/gemini-generative-ai-api/f55a1dda-6560-4321-aidb-53f36780a82f" alt="Logo" className="h-14 mb-4" />
+                                <img src="./LOGO_EXPERTIA.jpg" alt="Expertia Medical Solutions" className="h-14 mb-4" />
                                 <h2 className="text-2xl font-bold text-gray-900 uppercase">{invoice.type}</h2>
                                 <p className="text-gray-500">Nº: {invoice.invoiceNumber}</p>
                             </div>
@@ -2778,6 +2738,15 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                             >
                                 Imprimir / PDF
                             </button>
+                            {invoice.type !== 'Factura Rectificativa' && (
+                                <button 
+                                    onClick={() => onCreateRectificativa && onCreateRectificativa(invoice)} 
+                                    className="bg-orange-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-700 flex items-center gap-2"
+                                >
+                                    <FileTextIcon className="w-4 h-4" />
+                                    Crear rectificativa
+                                </button>
+                            )}
                         </div>
                     </div>
                 );
@@ -3646,25 +3615,57 @@ Equipo Expertia Medical Solutions"
             
             // Formulario de Productos
             function ProductForm({ product, onSave, onCancel }) {
+                const [activeTab, setActiveTab] = useState('basic');
                 const [formData, setFormData] = useState({
+                    // Información básica
                     name: product?.name || '',
                     description: product?.description || '',
                     category: product?.category || '',
-                    supplier: product?.supplier || '',
-                    price: product?.price || '',
+                    subcategory: product?.subcategory || '',
+                    brand: product?.brand || '',
+                    model: product?.model || '',
+                    
+                    // Códigos e identificación
                     code: product?.code || '',
+                    sku: product?.sku || '',
+                    
+                    // Precios e inventario
+                    price: product?.price || '',
                     stock: product?.stock || 0,
-                    minStock: product?.minStock || 0
+                    minStock: product?.minStock || 0,
+                    availability: product?.availability || 'En Stock',
+                    
+                    // Proveedor y especificaciones
+                    supplier: product?.supplier || '',
+                    specifications: product?.specifications || '',
+                    warranty: product?.warranty || '',
+                    
+                    // Estado y configuración
+                    active: product?.active !== undefined ? product.active : true,
+                    featured: product?.featured || false
                 });
 
                 const handleSubmit = (e) => {
                     e.preventDefault();
+                    const now = new Date().toISOString();
+                    const currentUser = 'Usuario Actual'; // TODO: obtener del contexto de autenticación
+                    
                     const productData = {
                         ...formData,
-                        price: parseFloat(formData.price),
-                        stock: parseInt(formData.stock),
-                        minStock: parseInt(formData.minStock),
-                        id: product?.id || Date.now().toString()
+                        price: parseFloat(formData.price) || 0,
+                        stock: parseInt(formData.stock) || 0,
+                        minStock: parseInt(formData.minStock) || 0,
+                        active: Boolean(formData.active),
+                        featured: Boolean(formData.featured),
+                        id: product?.id || Date.now().toString(),
+                        
+                        // Auditoría
+                        updatedAt: now,
+                        updatedBy: currentUser,
+                        ...(product ? {} : {
+                            createdAt: now,
+                            createdBy: currentUser
+                        })
                     };
                     onSave(productData);
                 };
@@ -3688,123 +3689,332 @@ Equipo Expertia Medical Solutions"
                         </div>
 
                         <div className="bg-white rounded-lg shadow p-6">
+                            {/* Pestañas de navegación */}
+                            <div className="border-b border-gray-200 mb-6">
+                                <nav className="-mb-px flex space-x-8">
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('basic')}
+                                        className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                                            activeTab === 'basic'
+                                                ? 'border-[#006666] text-[#006666]'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        <InfoIcon width={20} height={20} /> Información Básica
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('inventory')}
+                                        className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                                            activeTab === 'inventory'
+                                                ? 'border-[#006666] text-[#006666]'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        <PackageIcon width={20} height={20} /> Inventario y Precios
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('specs')}
+                                        className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                                            activeTab === 'specs'
+                                                ? 'border-[#006666] text-[#006666]'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        <FileTextIcon /> Especificaciones
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('config')}
+                                        className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                                            activeTab === 'config'
+                                                ? 'border-[#006666] text-[#006666]'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        <SettingsIcon width={20} height={20} /> Configuración
+                                    </button>
+                                </nav>
+                            </div>
+
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Nombre del Producto *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.name}
-                                            onChange={(e) => handleChange('name', e.target.value)}
-                                            required
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
-                                            placeholder="Nombre del producto"
-                                        />
+                                {/* Pestaña: Información Básica */}
+                                {activeTab === 'basic' && (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Nombre del Producto *
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.name}
+                                                    onChange={(e) => handleChange('name', e.target.value)}
+                                                    required
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                    placeholder="Nombre del producto"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Marca
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.brand}
+                                                    onChange={(e) => handleChange('brand', e.target.value)}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                    placeholder="Marca del producto"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Modelo
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.model}
+                                                    onChange={(e) => handleChange('model', e.target.value)}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                    placeholder="Modelo del producto"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Categoría *
+                                                </label>
+                                                <select
+                                                    value={formData.category}
+                                                    onChange={(e) => handleChange('category', e.target.value)}
+                                                    required
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                >
+                                                    <option value="">Seleccionar categoría</option>
+                                                    <option value="Equipos Médicos">Equipos Médicos</option>
+                                                    <option value="Instrumentos">Instrumentos</option>
+                                                    <option value="Consumibles">Consumibles</option>
+                                                    <option value="Software">Software</option>
+                                                    <option value="Servicios">Servicios</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Subcategoría
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.subcategory}
+                                                    onChange={(e) => handleChange('subcategory', e.target.value)}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                    placeholder="Subcategoría específica"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Proveedor
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.supplier}
+                                                    onChange={(e) => handleChange('supplier', e.target.value)}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                    placeholder="Nombre del proveedor"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Descripción
+                                            </label>
+                                            <textarea
+                                                value={formData.description}
+                                                onChange={(e) => handleChange('description', e.target.value)}
+                                                rows={4}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                placeholder="Descripción detallada del producto"
+                                            />
+                                        </div>
                                     </div>
+                                )}
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Código del Producto
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.code}
-                                            onChange={(e) => handleChange('code', e.target.value)}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
-                                            placeholder="Código SKU"
-                                        />
+                                {/* Pestaña: Inventario y Precios */}
+                                {activeTab === 'inventory' && (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Código del Producto
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.code}
+                                                    onChange={(e) => handleChange('code', e.target.value)}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                    placeholder="Código interno"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    SKU
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.sku}
+                                                    onChange={(e) => handleChange('sku', e.target.value)}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                    placeholder="SKU del producto"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Precio (€) *
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={formData.price}
+                                                    onChange={(e) => handleChange('price', e.target.value)}
+                                                    required
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                    placeholder="0.00"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Disponibilidad
+                                                </label>
+                                                <select
+                                                    value={formData.availability}
+                                                    onChange={(e) => handleChange('availability', e.target.value)}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                >
+                                                    <option value="En Stock">En Stock</option>
+                                                    <option value="Bajo Stock">Bajo Stock</option>
+                                                    <option value="Sin Stock">Sin Stock</option>
+                                                    <option value="Descontinuado">Descontinuado</option>
+                                                    <option value="Pedido Especial">Pedido Especial</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Stock Actual
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={formData.stock}
+                                                    onChange={(e) => handleChange('stock', e.target.value)}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Stock Mínimo
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={formData.minStock}
+                                                    onChange={(e) => handleChange('minStock', e.target.value)}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
+                                )}
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Categoría *
-                                        </label>
-                                        <select
-                                            value={formData.category}
-                                            onChange={(e) => handleChange('category', e.target.value)}
-                                            required
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
-                                        >
-                                            <option value="">Seleccionar categoría</option>
-                                            <option value="Equipos Médicos">Equipos Médicos</option>
-                                            <option value="Instrumentos">Instrumentos</option>
-                                            <option value="Consumibles">Consumibles</option>
-                                            <option value="Software">Software</option>
-                                            <option value="Servicios">Servicios</option>
-                                        </select>
+                                {/* Pestaña: Especificaciones */}
+                                {activeTab === 'specs' && (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Especificaciones Técnicas
+                                            </label>
+                                            <textarea
+                                                value={formData.specifications}
+                                                onChange={(e) => handleChange('specifications', e.target.value)}
+                                                rows={6}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                placeholder="Especificaciones técnicas detalladas del producto..."
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Garantía
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={formData.warranty}
+                                                onChange={(e) => handleChange('warranty', e.target.value)}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                                                placeholder="Ej: 2 años, 12 meses, De por vida"
+                                            />
+                                        </div>
                                     </div>
+                                )}
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Proveedor
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.supplier}
-                                            onChange={(e) => handleChange('supplier', e.target.value)}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
-                                            placeholder="Nombre del proveedor"
-                                        />
+                                {/* Pestaña: Configuración */}
+                                {activeTab === 'config' && (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    id="active"
+                                                    checked={formData.active}
+                                                    onChange={(e) => handleChange('active', e.target.checked)}
+                                                    className="h-4 w-4 text-[#006666] focus:ring-[#006666] border-gray-300 rounded"
+                                                />
+                                                <label htmlFor="active" className="ml-2 block text-sm text-gray-900">
+                                                    Producto Activo
+                                                </label>
+                                            </div>
+
+                                            <div className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    id="featured"
+                                                    checked={formData.featured}
+                                                    onChange={(e) => handleChange('featured', e.target.checked)}
+                                                    className="h-4 w-4 text-[#006666] focus:ring-[#006666] border-gray-300 rounded"
+                                                />
+                                                <label htmlFor="featured" className="ml-2 block text-sm text-gray-900">
+                                                    Producto Destacado
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        {product && (
+                                            <div className="bg-gray-50 p-4 rounded-lg">
+                                                <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                                                    <ClockIcon width={20} height={20} /> Información de Auditoría
+                                                </h4>
+                                                <div className="text-sm text-gray-600 space-y-1">
+                                                    <p><strong>Creado:</strong> {product.createdAt ? new Date(product.createdAt).toLocaleString() : 'No disponible'}</p>
+                                                    <p><strong>Creado por:</strong> {product.createdBy || 'No disponible'}</p>
+                                                    <p><strong>Última actualización:</strong> {product.updatedAt ? new Date(product.updatedAt).toLocaleString() : 'No disponible'}</p>
+                                                    <p><strong>Actualizado por:</strong> {product.updatedBy || 'No disponible'}</p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
+                                )}
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Precio (€) *
-                                        </label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            value={formData.price}
-                                            onChange={(e) => handleChange('price', e.target.value)}
-                                            required
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
-                                            placeholder="0.00"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Stock Actual
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={formData.stock}
-                                            onChange={(e) => handleChange('stock', e.target.value)}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
-                                            placeholder="0"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Stock Mínimo
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={formData.minStock}
-                                            onChange={(e) => handleChange('minStock', e.target.value)}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Descripción
-                                    </label>
-                                    <textarea
-                                        value={formData.description}
-                                        onChange={(e) => handleChange('description', e.target.value)}
-                                        rows={4}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
-                                        placeholder="Descripción detallada del producto"
-                                    />
-                                </div>
-
-                                <div className="flex justify-end gap-3 pt-6">
+                                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
                                     <button
                                         type="button"
                                         onClick={onCancel}
