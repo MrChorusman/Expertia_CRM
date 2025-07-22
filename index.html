@@ -1478,6 +1478,7 @@
                                                 <div className="px-4 py-2 border-b border-gray-100">
                                                     <div className="text-xs text-gray-500 mb-1">Sesión activa</div>
                                                     <div className="text-xs text-gray-400">Auto-logout: 30 min inactividad</div>
+                                                    <div className="text-xs text-gray-400 mt-1">Atajo: Ctrl+Shift+L</div>
                                                 </div>
                                                 <button
                                                     onClick={() => {
@@ -5573,8 +5574,18 @@ Equipo Expertia Medical Solutions"
                 document.addEventListener(event, resetInactivityTimer, true);
             });
             
+            // Agregar atajo de teclado para logout (Ctrl+Shift+L)
+            document.addEventListener('keydown', (event) => {
+                if (event.ctrlKey && event.shiftKey && event.key === 'L') {
+                    event.preventDefault();
+                    handleLogout();
+                }
+            });
+            
             // Iniciar timer
             resetInactivityTimer();
+            
+            console.log('⌨️  Atajo de teclado activado: Ctrl+Shift+L para logout rápido');
         }
         
         function removeInactivityDetection() {
