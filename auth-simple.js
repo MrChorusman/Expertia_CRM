@@ -12,7 +12,7 @@ class AuthManager {
         try {
             // Importar Firebase
             const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
-            const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } = 
+            const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } = 
                 await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
 
             // Obtener configuración desde firebase-config.js
@@ -21,6 +21,9 @@ class AuthManager {
             // Inicializar Firebase
             this.app = initializeApp(config);
             this.auth = getAuth(this.app);
+            
+            // Configurar provider de Google
+            this.googleProvider = new GoogleAuthProvider();
             
             // Escuchar cambios de autenticación
             onAuthStateChanged(this.auth, (user) => {
@@ -98,6 +101,25 @@ class AuthManager {
             console.log('✅ Sesión cerrada');
         } catch (error) {
             console.error('❌ Error cerrando sesión:', error);
+            throw error;
+        }
+    }
+
+    // Login con Google
+    async loginWithGoogle() {
+        if (!this.isInitialized) {
+            throw new Error('Firebase no está inicializado');
+        }
+
+        try {
+            const { signInWithPopup } = 
+                await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            
+            const result = await signInWithPopup(this.auth, this.googleProvider);
+            console.log('✅ Usuario logueado con Google:', result.user.email);
+            return result.user;
+        } catch (error) {
+            console.error('❌ Error en login con Google:', error);
             throw error;
         }
     }
