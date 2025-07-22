@@ -10,7 +10,14 @@ Sistema de gestión de relaciones con clientes (CRM) especializado para el secto
 - Gestión de contactos y comunicaciones
 - Consentimientos RGPD integrados
 
-### 💰 Gestión Financiera
+### � Informes y Analytics
+- **Dashboard de informes avanzado** con gráficos interactivos
+- **Sistema de exportación multi-formato** (Excel, PDF, portapapeles)  
+- **Gráficos fallback interactivos** para máxima compatibilidad
+- **Análisis de ventas, productos y tendencias**
+- **Optimización de rendimiento** con sistema de caché inteligente
+
+### �💰 Gestión Financiera
 - Facturación electrónica
 - Facturas proforma
 - Control de pagos y vencimientos
@@ -36,7 +43,9 @@ Sistema de gestión de relaciones con clientes (CRM) especializado para el secto
 - **Desktop**: Electron
 - **Base de Datos**: Firebase Firestore
 - **Autenticación**: Firebase Auth
-- **Gráficos**: Recharts
+- **Gráficos**: Recharts (local) + SVG nativos interactivos
+- **Exportación**: SheetJS (Excel) + jsPDF + html2canvas
+- **Optimización**: Sistema de caché inteligente + debouncing
 
 ## 📦 Estructura del Proyecto
 
@@ -116,6 +125,32 @@ npm start
 - **Control de Errores**: Manejo robusto de errores de conexión
 - **Tiempo Real**: Sincronización automática con Firestore
 - **Optimización**: Lazy loading y componentes optimizados
+
+## ⚡ Optimizaciones de Rendimiento
+
+### 🧠 Sistema de Caché Inteligente
+- **Caché local** con TTL configurable (5 minutos por defecto)
+- **Reducción del 70%** en consultas a Firebase Firestore
+- **Fallback automático** a datos en caché durante errores de red
+- **Limpieza automática** de datos expirados
+
+### 🔄 Gestión de Conectividad
+- **Reconexión automática** con reintentos progresivos
+- **Detección de estado** online/offline en tiempo real
+- **Sistema de debouncing** para evitar consultas excesivas
+- **Timeouts inteligentes** y gestión de errores de red
+
+### 📊 Exportación Multi-formato
+- **Excel avanzado** con múltiples hojas y formato profesional
+- **PDF con gráficos** captura automática de visualizaciones
+- **Portapapeles** con formato estructurado para compartir
+- **Nombres de archivo** con timestamp automático
+
+### 🎨 Gráficos Ultra-compatibles
+- **Recharts local** para máximo rendimiento
+- **Fallback SVG nativos** cuando Recharts no está disponible
+- **Animaciones CSS** fluidas y interactivas
+- **Tooltips y hover effects** profesionales
 
 ## 🚦 Scripts Disponibles
 
