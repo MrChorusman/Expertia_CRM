@@ -39,3 +39,20 @@ firebase-config-real.js
 
 # Electron
 dist_electron/
+# Archivos de respaldo temporales
+index_backup*.html
+index_temp_backup.html
+
+# Herramientas de desarrollo temporal
+admin.html
+database-inspector.html
+database-inspector.js
+cleanup_duplicates.py
+
+# Archivos de configuración y testing de Firebase (temporales)
+firebase-setup-checklist.md
+firebase-storage.js
+firebase-test.js
+
+# Carpeta functions (si es temporal)
+functions/
