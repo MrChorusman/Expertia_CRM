@@ -5064,7 +5064,7 @@ Equipo Expertia Medical Solutions"
                             <p style="color: #718096;">Inicia sesión para continuar</p>
                         </div>
                         
-                        <form id="auth-form" style="space-y: 1rem;">
+                        <form id="auth-form" style="space-y: 1rem;" onsubmit="event.preventDefault(); handleLogin();">
                             <div style="margin-bottom: 1rem;">
                                 <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Email</label>
                                 <input 
@@ -5132,7 +5132,25 @@ Equipo Expertia Medical Solutions"
                 }, 1000);
                 
             } catch (error) {
-                showAuthStatus('❌ Error: ' + error.message, 'error');
+                console.error('Error de login:', error);
+                let friendlyMessage = '';
+                
+                // Convertir errores de Firebase a mensajes amigables
+                if (error.message.includes('auth/invalid-credential')) {
+                    friendlyMessage = 'Email o contraseña incorrectos';
+                } else if (error.message.includes('auth/user-not-found')) {
+                    friendlyMessage = 'No existe una cuenta con este email';
+                } else if (error.message.includes('auth/wrong-password')) {
+                    friendlyMessage = 'Contraseña incorrecta';
+                } else if (error.message.includes('auth/invalid-email')) {
+                    friendlyMessage = 'El formato del email no es válido';
+                } else if (error.message.includes('auth/too-many-requests')) {
+                    friendlyMessage = 'Demasiados intentos fallidos. Intenta más tarde';
+                } else {
+                    friendlyMessage = 'Error de conexión. Verifica tu internet';
+                }
+                
+                showAuthStatus('❌ ' + friendlyMessage, 'error');
             }
         }
         
@@ -5161,7 +5179,23 @@ Equipo Expertia Medical Solutions"
                 }, 1000);
                 
             } catch (error) {
-                showAuthStatus('❌ Error: ' + error.message, 'error');
+                console.error('Error de registro:', error);
+                let friendlyMessage = '';
+                
+                // Convertir errores de Firebase a mensajes amigables
+                if (error.message.includes('auth/email-already-in-use')) {
+                    friendlyMessage = 'Ya existe una cuenta con este email';
+                } else if (error.message.includes('auth/invalid-email')) {
+                    friendlyMessage = 'El formato del email no es válido';
+                } else if (error.message.includes('auth/weak-password')) {
+                    friendlyMessage = 'La contraseña es muy débil';
+                } else if (error.message.includes('auth/operation-not-allowed')) {
+                    friendlyMessage = 'El registro no está habilitado';
+                } else {
+                    friendlyMessage = 'Error de conexión. Verifica tu internet';
+                }
+                
+                showAuthStatus('❌ ' + friendlyMessage, 'error');
             }
         }
         
