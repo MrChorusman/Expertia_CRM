@@ -1,0 +1,121 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules para Expertia CRM
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // =====================
+    // FUNCIONES HELPER
+    // =====================
+    
+    // Función para verificar autenticación
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Función para obtener rol del usuario desde Firestore
+    function getUserRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    // Verificar si es admin o superadmin
+    function isAdmin() {
+      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'superadmin');
+    }
+    
+    // Verificar si es comercial, admin o superadmin
+    function isCommercialOrAdmin() {
+      return isAuthenticated() && getUserRole() in ['comercial', 'admin', 'superadmin'];
+    }
+    
+    // Validar tipo de archivo por extensión
+    function isValidImageType() {
+      return resource.contentType.matches('image/.*') &&
+             resource.name.matches('.*\\.(jpg|jpeg|png|gif|webp)$');
+    }
+    
+    function isValidDocumentType() {
+      return resource.contentType.matches('(application/pdf|application/msword|application/vnd\\.openxmlformats-officedocument\\.wordprocessingml\\.document|text/plain)') &&
+             resource.name.matches('.*\\.(pdf|doc|docx|txt)$');
+    }
+    
+    // Validar tamaño de archivo (5MB para imágenes, 10MB para documentos)
+    function isValidImageSize() {
+      return resource.size <= 5 * 1024 * 1024; // 5MB
+    }
+    
+    function isValidDocumentSize() {
+      return resource.size <= 10 * 1024 * 1024; // 10MB
+    }
+    
+    // =====================
+    // REGLAS POR DIRECTORIO
+    // =====================
+    
+    // PRODUCTOS - Imágenes y documentos de productos
+    match /productos/{productId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && 
+        ((isValidImageType() && isValidImageSize()) || 
+         (isValidDocumentType() && isValidDocumentSize()));
+      allow delete: if isAdmin();
+    }
+    
+    // ACTIVIDADES - Archivos adjuntos de actividades
+    match /actividades/{activityId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isCommercialOrAdmin() && 
+        isValidDocumentType() && isValidDocumentSize();
+      allow delete: if isCommercialOrAdmin();
+    }
+    
+    // CONFIGURACIÓN - Logos y archivos de configuración
+    match /configuracion/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && 
+        isValidImageType() && isValidImageSize();
+      allow delete: if isAdmin();
+    }
+    
+    // USUARIOS - Avatares de usuario
+    match /usuarios/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+        (request.auth.uid == userId || isAdmin()) &&
+        isValidImageType() && 
+        resource.size <= 2 * 1024 * 1024; // 2MB para avatares
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+    
+    // FACTURAS - Archivos de facturas (PDFs generados)
+    match /facturas/{invoiceId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isCommercialOrAdmin() && 
+        resource.contentType == 'application/pdf' &&
+        resource.size <= 5 * 1024 * 1024; // 5MB
+      allow delete: if isAdmin();
+    }
+    
+    // OFERTAS - Archivos de ofertas (PDFs generados)
+    match /ofertas/{offerId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isCommercialOrAdmin() && 
+        resource.contentType == 'application/pdf' &&
+        resource.size <= 5 * 1024 * 1024; // 5MB
+      allow delete: if isCommercialOrAdmin();
+    }
+    
+    // BACKUP - Archivos de respaldo (solo superadmin)
+    match /backup/{allPaths=**} {
+      allow read, write: if isAuthenticated() && getUserRole() == 'superadmin';
+    }
+    
+    // TEMP - Archivos temporales (acceso limitado por tiempo)
+    match /temp/{userId}/{allPaths=**} {
+      allow read, write: if isAuthenticated() && 
+        request.auth.uid == userId &&
+        resource.size <= 20 * 1024 * 1024; // 20MB para archivos temporales
+      // Los archivos temporales se eliminan automáticamente por Cloud Functions
+    }
+  }
+}
