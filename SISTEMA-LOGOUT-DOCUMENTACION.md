@@ -47,6 +47,20 @@ const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchst
 - **Extender Sesión**: Reinicio manual del timer
 - **Cerrar Sesión**: Logout con confirmación
 
+### **Modal de Confirmación Personalizado:**
+- **Diseño profesional**: Reemplaza el `confirm()` nativo del navegador
+- **Estilo consistente**: Mantiene la estética y branding de la aplicación
+- **Elementos visuales**:
+  - Icono de logout con fondo circular colorizado
+  - Título y descripción clara del proceso
+  - Información adicional (datos guardados, re-inicio disponible)
+  - Botones estilizados con hover effects y transiciones
+- **Interacciones**:
+  - Animaciones suaves de entrada y salida (fadeIn/slideIn/fadeOut)
+  - Backdrop blur para mejor enfoque visual
+  - Cierre con tecla ESC o clic fuera del modal
+  - Prevención de scroll del body mientras está activo
+
 ### **Atajos de Teclado:**
 - `Ctrl+Shift+L`: Logout rápido desde cualquier parte
 

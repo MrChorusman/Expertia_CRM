@@ -5471,13 +5471,202 @@ Equipo Expertia Medical Solutions"
         
         // Función para manejar el logout
         async function handleLogout() {
-            // Mostrar confirmación
-            const confirmLogout = confirm('¿Estás seguro de que quieres cerrar sesión?');
+            // Mostrar modal de confirmación personalizado
+            showLogoutConfirmModal();
+        }
+        
+        // Función para mostrar modal de confirmación de logout
+        function showLogoutConfirmModal() {
+            // Crear overlay del modal
+            const modalOverlay = document.createElement('div');
+            modalOverlay.id = 'logout-modal-overlay';
+            modalOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                backdrop-filter: blur(4px);
+                animation: fadeIn 0.2s ease-out;
+            `;
             
-            if (!confirmLogout) {
-                return; // Usuario canceló
+            // Crear contenido del modal
+            modalOverlay.innerHTML = `
+                <div id="logout-modal" style="
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                    max-width: 400px;
+                    width: 90%;
+                    margin: 1rem;
+                    overflow: hidden;
+                    animation: slideIn 0.3s ease-out;
+                    font-family: 'Inter', sans-serif;
+                ">
+                    <div style="padding: 1.5rem;">
+                        <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                            <div style="
+                                width: 48px;
+                                height: 48px;
+                                background: #fef2f2;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                margin-right: 1rem;
+                            ">
+                                <svg width="24" height="24" fill="none" stroke="#dc2626" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 style="
+                                    font-size: 1.125rem;
+                                    font-weight: 600;
+                                    color: #1f2937;
+                                    margin: 0 0 0.25rem 0;
+                                ">Cerrar Sesión</h3>
+                                <p style="
+                                    font-size: 0.875rem;
+                                    color: #6b7280;
+                                    margin: 0;
+                                ">¿Estás seguro de que quieres salir?</p>
+                            </div>
+                        </div>
+                        
+                        <div style="
+                            background: #f9fafb;
+                            border-radius: 8px;
+                            padding: 1rem;
+                            margin-bottom: 1.5rem;
+                        ">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <svg width="16" height="16" fill="none" stroke="#059669" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                <span style="font-size: 0.875rem; color: #374151; font-weight: 500;">
+                                    Todos los datos se guardarán automáticamente
+                                </span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <svg width="16" height="16" fill="none" stroke="#0891b2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span style="font-size: 0.875rem; color: #374151;">
+                                    Puedes volver a iniciar sesión en cualquier momento
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                            <button 
+                                onclick="closeLogoutModal()"
+                                style="
+                                    background: #f9fafb;
+                                    color: #374151;
+                                    border: 1px solid #d1d5db;
+                                    padding: 0.625rem 1rem;
+                                    border-radius: 6px;
+                                    font-weight: 500;
+                                    font-size: 0.875rem;
+                                    cursor: pointer;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='#f3f4f6'"
+                                onmouseout="this.style.background='#f9fafb'"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onclick="confirmLogout()"
+                                style="
+                                    background: #dc2626;
+                                    color: white;
+                                    border: none;
+                                    padding: 0.625rem 1rem;
+                                    border-radius: 6px;
+                                    font-weight: 500;
+                                    font-size: 0.875rem;
+                                    cursor: pointer;
+                                    transition: all 0.2s;
+                                    min-width: 100px;
+                                "
+                                onmouseover="this.style.background='#b91c1c'"
+                                onmouseout="this.style.background='#dc2626'"
+                            >
+                                Cerrar Sesión
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <style>
+                    @keyframes fadeIn {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
+                    }
+                    
+                    @keyframes fadeOut {
+                        from { opacity: 1; }
+                        to { opacity: 0; }
+                    }
+                    
+                    @keyframes slideIn {
+                        from { 
+                            opacity: 0;
+                            transform: translateY(-20px) scale(0.95);
+                        }
+                        to { 
+                            opacity: 1;
+                            transform: translateY(0) scale(1);
+                        }
+                    }
+                </style>
+            `;
+            
+            // Agregar al DOM
+            document.body.appendChild(modalOverlay);
+            
+            // Prevenir scroll del body
+            document.body.style.overflow = 'hidden';
+            
+            // Cerrar con ESC
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    closeLogoutModal();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+            
+            // Cerrar al hacer clic fuera
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    closeLogoutModal();
+                }
+            });
+        }
+        
+        // Función para cerrar el modal de logout
+        function closeLogoutModal() {
+            const modal = document.getElementById('logout-modal-overlay');
+            if (modal) {
+                modal.style.animation = 'fadeOut 0.2s ease-out';
+                setTimeout(() => {
+                    document.body.removeChild(modal);
+                    document.body.style.overflow = '';
+                }, 200);
             }
-            
+        }
+        
+        // Función para confirmar logout
+        async function confirmLogout() {
+            closeLogoutModal();
             await performLogout();
         }
         
