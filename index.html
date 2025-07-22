@@ -5039,7 +5039,19 @@ Equipo Expertia Medical Solutions"
                 const currentUser = window.authManager.getCurrentUser();
                 
                 if (currentUser) {
-                    console.log('✅ Usuario autenticado, iniciando aplicación principal');
+                    console.log('✅ Usuario autenticado, obteniendo perfil...');
+                    
+                    // Obtener perfil completo del usuario
+                    const userProfile = await window.authManager.getUserProfile();
+                    if (userProfile) {
+                        console.log('👤 Perfil cargado:', userProfile.name, '- Rol:', userProfile.role);
+                        
+                        // Mostrar mensaje de bienvenida específico según el rol
+                        if (userProfile.isFirstUser) {
+                            console.log('🎉 ¡Bienvenido, administrador! Eres el primer usuario del sistema.');
+                        }
+                    }
+                    
                     startApp();
                 } else {
                     console.log('❌ Usuario no autenticado, mostrando pantalla de login');
@@ -5298,13 +5310,24 @@ Equipo Expertia Medical Solutions"
             
             try {
                 showAuthStatus('Registrando usuario...', 'info');
-                await window.authManager.register(email, password);
-                showAuthStatus('✅ Usuario registrado, cargando aplicación...', 'success');
+                const user = await window.authManager.register(email, password);
+                
+                // Obtener perfil para mostrar información del rol
+                const userProfile = await window.authManager.getUserProfile();
+                if (userProfile) {
+                    if (userProfile.isFirstUser) {
+                        showAuthStatus('✅ ¡Cuenta creada como ADMINISTRADOR! Cargando aplicación...', 'success');
+                    } else {
+                        showAuthStatus('✅ Cuenta creada como USUARIO. Cargando aplicación...', 'success');
+                    }
+                } else {
+                    showAuthStatus('✅ Usuario registrado, cargando aplicación...', 'success');
+                }
                 
                 // Esperar un momento y luego cargar la aplicación
                 setTimeout(() => {
                     startApp();
-                }, 1000);
+                }, 1500); // Un poco más de tiempo para leer el mensaje
                 
             } catch (error) {
                 console.error('Error de registro:', error);
@@ -5331,13 +5354,24 @@ Equipo Expertia Medical Solutions"
         async function handleGoogleLogin() {
             try {
                 showAuthStatus('Iniciando sesión con Google...', 'info');
-                await window.authManager.loginWithGoogle();
-                showAuthStatus('✅ Sesión iniciada con Google, cargando aplicación...', 'success');
+                const user = await window.authManager.loginWithGoogle();
+                
+                // Obtener perfil para mostrar información del rol
+                const userProfile = await window.authManager.getUserProfile();
+                if (userProfile) {
+                    if (userProfile.isFirstUser) {
+                        showAuthStatus('✅ ¡Bienvenido ADMINISTRADOR! Cargando aplicación...', 'success');
+                    } else {
+                        showAuthStatus('✅ Sesión iniciada con Google, cargando aplicación...', 'success');
+                    }
+                } else {
+                    showAuthStatus('✅ Sesión iniciada con Google, cargando aplicación...', 'success');
+                }
                 
                 // Esperar un momento y luego cargar la aplicación
                 setTimeout(() => {
                     startApp();
-                }, 1000);
+                }, 1500);
                 
             } catch (error) {
                 console.error('Error de login con Google:', error);
