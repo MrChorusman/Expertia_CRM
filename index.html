@@ -32,12 +32,24 @@
     <script src="./firebase-config.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword,
+            signInWithPopup,
+            GoogleAuthProvider,
+            sendPasswordResetEmail,
+            signOut,
+            updateProfile
+        } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
         
         window.firebase = {
-            initializeApp, getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken,
-            getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc
+            initializeApp, getAuth, onAuthStateChanged, 
+            signInWithEmailAndPassword, createUserWithEmailAndPassword,
+            signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail, signOut, updateProfile,
+            getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc, getDocs, where
         };
     </script>
 
@@ -64,9 +76,9 @@
             }
             
             // Hacer Firebase opcional para el arranque inicial
-            let initializeApp, getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken, getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc;
+            let initializeApp, getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail, signOut, updateProfile, getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc, getDocs, where;
             if (typeof window.firebase !== 'undefined') {
-                ({ initializeApp, getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken, getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc } = window.firebase);
+                ({ initializeApp, getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail, signOut, updateProfile, getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc, getDocs, where } = window.firebase);
             }
 
             // --- Íconos (SVG) ---
@@ -92,6 +104,14 @@
             const ChevronDownIcon = ({ width = 16, height = 16 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
             const SearchIcon = ({ width = 20, height = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>;
             const FilterIcon = ({ width = 20, height = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>;
+            
+            // Íconos adicionales para autenticación
+            const LockIcon = ({ width = 20, height = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><circle cx="12" cy="16" r="1"></circle><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>;
+            const EyeIcon = ({ width = 20, height = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>;
+            const EyeOffIcon = ({ width = 20, height = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>;
+            const GoogleIcon = ({ width = 20, height = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>;
+            const LogOutIcon = ({ width = 20, height = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>;
+            const ShieldIcon = ({ width = 20, height = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>;
 
             // --- Funciones Utilitarias ---
             const formatAddress = (address) => {
@@ -102,6 +122,34 @@
                     return [street, city, postalCode, country].filter(Boolean).join(', ');
                 }
                 return 'No especificada';
+            };
+
+            // Validación de contraseña segura
+            const validatePassword = (password) => {
+                const minLength = password.length >= 8;
+                const hasUppercase = /[A-Z]/.test(password);
+                const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+                
+                return {
+                    isValid: minLength && hasUppercase && hasSpecialChar,
+                    errors: {
+                        length: !minLength,
+                        uppercase: !hasUppercase,
+                        special: !hasSpecialChar
+                    }
+                };
+            };
+
+            // CAPTCHA simple con operación matemática
+            const generateCaptcha = () => {
+                const num1 = Math.floor(Math.random() * 10) + 1;
+                const num2 = Math.floor(Math.random() * 10) + 1;
+                const operation = Math.random() > 0.5 ? '+' : '-';
+                
+                const question = operation === '+' ? `${num1} + ${num2}` : `${Math.max(num1, num2)} - ${Math.min(num1, num2)}`;
+                const answer = operation === '+' ? num1 + num2 : Math.max(num1, num2) - Math.min(num1, num2);
+                
+                return { question, answer };
             };
 
             // --- Componente de Confirmación Personalizado ---
@@ -359,6 +407,406 @@
             };
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'expertia-crm-demo';
 
+            // --- Componente de Login/Registro ---
+            function AuthScreen({ onAuthenticated }) {
+                const [isLogin, setIsLogin] = useState(true);
+                const [formData, setFormData] = useState({
+                    email: '',
+                    password: '',
+                    confirmPassword: '',
+                    name: '',
+                    captchaAnswer: ''
+                });
+                const [showPassword, setShowPassword] = useState(false);
+                const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+                const [captcha, setCaptcha] = useState(generateCaptcha());
+                const [errors, setErrors] = useState({});
+                const [isLoading, setIsLoading] = useState(false);
+                const [authError, setAuthError] = useState('');
+
+                // Regenerar CAPTCHA
+                const regenerateCaptcha = () => {
+                    setCaptcha(generateCaptcha());
+                    setFormData(prev => ({ ...prev, captchaAnswer: '' }));
+                };
+
+                // Validar formulario
+                const validateForm = () => {
+                    const newErrors = {};
+
+                    if (!formData.email) {
+                        newErrors.email = 'El email es requerido';
+                    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+                        newErrors.email = 'El email no es válido';
+                    }
+
+                    if (!formData.password) {
+                        newErrors.password = 'La contraseña es requerida';
+                    } else if (!isLogin) {
+                        const passwordValidation = validatePassword(formData.password);
+                        if (!passwordValidation.isValid) {
+                            const errorMessages = [];
+                            if (passwordValidation.errors.length) errorMessages.push('mínimo 8 caracteres');
+                            if (passwordValidation.errors.uppercase) errorMessages.push('una mayúscula');
+                            if (passwordValidation.errors.special) errorMessages.push('un carácter especial');
+                            newErrors.password = `La contraseña debe tener: ${errorMessages.join(', ')}`;
+                        }
+                    }
+
+                    if (!isLogin) {
+                        if (!formData.name) {
+                            newErrors.name = 'El nombre es requerido';
+                        }
+                        if (formData.password !== formData.confirmPassword) {
+                            newErrors.confirmPassword = 'Las contraseñas no coinciden';
+                        }
+                        if (parseInt(formData.captchaAnswer) !== captcha.answer) {
+                            newErrors.captcha = 'La respuesta del CAPTCHA es incorrecta';
+                        }
+                    }
+
+                    setErrors(newErrors);
+                    return Object.keys(newErrors).length === 0;
+                };
+
+                // Manejar envío del formulario
+                const handleSubmit = async (e) => {
+                    e.preventDefault();
+                    if (!validateForm()) return;
+
+                    setIsLoading(true);
+                    setAuthError('');
+
+                    try {
+                        if (isLogin) {
+                            // Intentar login
+                            if (typeof signInWithEmailAndPassword !== 'undefined') {
+                                const app = initializeApp(firebaseConfig);
+                                const auth = getAuth(app);
+                                const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+                                onAuthenticated(userCredential.user);
+                            } else {
+                                // Modo demo
+                                onAuthenticated({ uid: "demo-user", email: formData.email });
+                            }
+                        } else {
+                            // Registro
+                            if (typeof createUserWithEmailAndPassword !== 'undefined') {
+                                const app = initializeApp(firebaseConfig);
+                                const auth = getAuth(app);
+                                const db = getFirestore(app);
+                                
+                                // Verificar si es el primer usuario
+                                const usersQuery = query(collection(db, 'users'));
+                                const usersSnapshot = await getDocs(usersQuery);
+                                const isFirstUser = usersSnapshot.empty;
+                                
+                                // Crear usuario
+                                const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+                                
+                                // Actualizar perfil
+                                await updateProfile(userCredential.user, {
+                                    displayName: formData.name
+                                });
+                                
+                                // Crear documento del usuario en Firestore
+                                const userProfile = {
+                                    email: formData.email,
+                                    name: formData.name,
+                                    role: isFirstUser ? 'admin' : 'comercial', // Primer usuario es admin
+                                    createdAt: new Date().toISOString(),
+                                    isActive: true
+                                };
+                                
+                                await setDoc(doc(db, 'users', userCredential.user.uid), userProfile);
+                                onAuthenticated(userCredential.user);
+                            } else {
+                                // Modo demo
+                                onAuthenticated({ uid: "demo-user", email: formData.email });
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error de autenticación:', error);
+                        setAuthError(error.message || 'Error de autenticación');
+                        if (!isLogin) regenerateCaptcha();
+                    }
+
+                    setIsLoading(false);
+                };
+
+                // Login con Google
+                const handleGoogleLogin = async () => {
+                    if (typeof signInWithPopup === 'undefined') {
+                        onAuthenticated({ uid: "demo-google-user", email: "demo@google.com" });
+                        return;
+                    }
+
+                    setIsLoading(true);
+                    setAuthError('');
+
+                    try {
+                        const app = initializeApp(firebaseConfig);
+                        const auth = getAuth(app);
+                        const db = getFirestore(app);
+                        const provider = new GoogleAuthProvider();
+                        
+                        const result = await signInWithPopup(auth, provider);
+                        
+                        // Verificar si el usuario ya existe en Firestore
+                        const userDoc = doc(db, 'users', result.user.uid);
+                        const userSnapshot = await userDoc.get();
+                        
+                        if (!userSnapshot.exists()) {
+                            // Verificar si es el primer usuario
+                            const usersQuery = query(collection(db, 'users'));
+                            const usersSnapshot = await getDocs(usersQuery);
+                            const isFirstUser = usersSnapshot.empty;
+                            
+                            // Crear perfil para nuevo usuario de Google
+                            const userProfile = {
+                                email: result.user.email,
+                                name: result.user.displayName || 'Usuario Google',
+                                role: isFirstUser ? 'admin' : 'comercial',
+                                createdAt: new Date().toISOString(),
+                                isActive: true,
+                                provider: 'google'
+                            };
+                            
+                            await setDoc(userDoc, userProfile);
+                        }
+                        
+                        onAuthenticated(result.user);
+                    } catch (error) {
+                        console.error('Error con Google login:', error);
+                        setAuthError(error.message || 'Error al iniciar sesión con Google');
+                    }
+
+                    setIsLoading(false);
+                };
+
+                // Recuperar contraseña
+                const handleForgotPassword = async () => {
+                    if (!formData.email) {
+                        setAuthError('Ingresa tu email para recuperar la contraseña');
+                        return;
+                    }
+
+                    if (typeof sendPasswordResetEmail === 'undefined') {
+                        alert('Función de recuperación de contraseña enviada (modo demo)');
+                        return;
+                    }
+
+                    setIsLoading(true);
+                    try {
+                        const app = initializeApp(firebaseConfig);
+                        const auth = getAuth(app);
+                        await sendPasswordResetEmail(auth, formData.email);
+                        alert('Email de recuperación enviado. Revisa tu bandeja de entrada.');
+                    } catch (error) {
+                        setAuthError(error.message || 'Error al enviar email de recuperación');
+                    }
+                    setIsLoading(false);
+                };
+
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-[#006666] to-[#004444] flex items-center justify-center p-4">
+                        <div className="max-w-md w-full">
+                            {/* Logo y título */}
+                            <div className="text-center mb-8">
+                                <img src="./LOGO_EXPERTIA.jpg" alt="Expertia Medical Solutions" className="h-16 mx-auto mb-4" />
+                                <h1 className="text-3xl font-bold text-white mb-2">Expertia CRM</h1>
+                                <p className="text-gray-200">Sistema de gestión médica</p>
+                            </div>
+
+                            {/* Formulario */}
+                            <div className="bg-white rounded-lg shadow-xl p-8">
+                                <div className="flex mb-6">
+                                    <button
+                                        className={`flex-1 py-2 text-center font-medium ${isLogin ? 'text-[#006666] border-b-2 border-[#006666]' : 'text-gray-500'}`}
+                                        onClick={() => setIsLogin(true)}
+                                    >
+                                        Iniciar Sesión
+                                    </button>
+                                    <button
+                                        className={`flex-1 py-2 text-center font-medium ${!isLogin ? 'text-[#006666] border-b-2 border-[#006666]' : 'text-gray-500'}`}
+                                        onClick={() => setIsLogin(false)}
+                                    >
+                                        Registrarse
+                                    </button>
+                                </div>
+
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    {/* Nombre (solo registro) */}
+                                    {!isLogin && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Nombre completo
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={formData.name}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#006666] ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
+                                                placeholder="Tu nombre completo"
+                                            />
+                                            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+                                        </div>
+                                    )}
+
+                                    {/* Email */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Email
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={formData.email}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#006666] ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
+                                            placeholder="tu@email.com"
+                                        />
+                                        {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                                    </div>
+
+                                    {/* Contraseña */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Contraseña
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type={showPassword ? 'text' : 'password'}
+                                                value={formData.password}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                                                className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#006666] ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
+                                                placeholder="••••••••"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                                            >
+                                                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                                            </button>
+                                        </div>
+                                        {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+                                    </div>
+
+                                    {/* Confirmar contraseña (solo registro) */}
+                                    {!isLogin && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Confirmar contraseña
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type={showConfirmPassword ? 'text' : 'password'}
+                                                    value={formData.confirmPassword}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                                    className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#006666] ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'}`}
+                                                    placeholder="••••••••"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                                                >
+                                                    {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+                                                </button>
+                                            </div>
+                                            {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
+                                        </div>
+                                    )}
+
+                                    {/* CAPTCHA (solo registro) */}
+                                    {!isLogin && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Verificación de seguridad
+                                            </label>
+                                            <div className="flex items-center space-x-2">
+                                                <div className="flex-1 bg-gray-100 p-3 rounded-md text-center font-mono text-lg">
+                                                    {captcha.question} = ?
+                                                </div>
+                                                <input
+                                                    type="number"
+                                                    value={formData.captchaAnswer}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, captchaAnswer: e.target.value }))}
+                                                    className={`w-20 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#006666] ${errors.captcha ? 'border-red-500' : 'border-gray-300'}`}
+                                                    placeholder="?"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={regenerateCaptcha}
+                                                    className="p-2 text-gray-500 hover:text-gray-700"
+                                                    title="Regenerar CAPTCHA"
+                                                >
+                                                    🔄
+                                                </button>
+                                            </div>
+                                            {errors.captcha && <p className="text-red-500 text-xs mt-1">{errors.captcha}</p>}
+                                        </div>
+                                    )}
+
+                                    {/* Error de autenticación */}
+                                    {authError && (
+                                        <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                                            <p className="text-red-700 text-sm">{authError}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Botón principal */}
+                                    <button
+                                        type="submit"
+                                        disabled={isLoading}
+                                        className="w-full bg-[#006666] text-white py-3 rounded-md hover:bg-[#005555] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                    >
+                                        {isLoading ? (
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                        ) : (
+                                            <>
+                                                <LockIcon className="mr-2" />
+                                                {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {/* Login con Google */}
+                                    <button
+                                        type="button"
+                                        onClick={handleGoogleLogin}
+                                        disabled={isLoading}
+                                        className="w-full bg-white border border-gray-300 text-gray-700 py-3 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                    >
+                                        <GoogleIcon className="mr-2" />
+                                        Continuar con Google
+                                    </button>
+
+                                    {/* ¿Olvidaste tu contraseña? */}
+                                    {isLogin && (
+                                        <div className="text-center">
+                                            <button
+                                                type="button"
+                                                onClick={handleForgotPassword}
+                                                className="text-sm text-[#006666] hover:underline"
+                                            >
+                                                ¿Olvidaste tu contraseña?
+                                            </button>
+                                        </div>
+                                    )}
+                                </form>
+                            </div>
+
+                            {/* Información adicional */}
+                            <div className="text-center mt-6 text-gray-200 text-sm">
+                                <p>© 2025 Expertia Medical Solutions</p>
+                                <p>Sistema CRM para equipos médicos</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
             // --- Componente Principal: App ---
             function App() {
                 const [db, setDb] = useState(null);
@@ -371,6 +819,7 @@
                 const [invoices, setInvoices] = useState([]);
                 const [products, setProducts] = useState([]);
                 const [offers, setOffers] = useState([]);
+                const [users, setUsers] = useState([]);
                 const [activeView, setActiveView] = useState('welcome');
                 const [selectedItem, setSelectedItem] = useState(null);
                 const [isLoading, setIsLoading] = useState(true);
@@ -435,19 +884,8 @@
                     
                     if (typeof initializeApp === 'undefined') {
                         console.log("Firebase no disponible, ejecutando en modo demo");
-                        // Modo demo con datos de ejemplo
-                        setUser({ uid: "demo-user-123", email: "demo@expertia.com" });
-                        setUserProfile({ 
-                            id: "demo-user-123", 
-                            email: "demo@expertia.com", 
-                            name: "Usuario Demo", 
-                            role: "admin" 
-                        });
                         setIsAuthReady(true);
                         setIsLoading(false);
-                        
-                        // Cargar datos demo
-                        loadDemoData();
                         return;
                     }
 
@@ -464,32 +902,20 @@
                             if (firebaseUser) {
                                 setUser(firebaseUser);
                                 // Cargar perfil del usuario desde Firestore
-                                const userDoc = await doc(firestoreDb, 'users', firebaseUser.uid);
+                                const userDoc = doc(firestoreDb, 'users', firebaseUser.uid);
                                 onSnapshot(userDoc, (snapshot) => {
                                     if (snapshot.exists()) {
                                         setUserProfile({ id: firebaseUser.uid, ...snapshot.data() });
                                     } else {
-                                        // Usuario nuevo, crear perfil básico
-                                        const newProfile = {
-                                            email: firebaseUser.email,
-                                            name: firebaseUser.displayName || 'Usuario',
-                                            role: 'comercial', // Por defecto comercial
-                                            createdAt: new Date().toISOString()
-                                        };
-                                        setDoc(userDoc, newProfile);
-                                        setUserProfile({ id: firebaseUser.uid, ...newProfile });
+                                        // Usuario no existe en Firestore, limpiar estado
+                                        setUser(null);
+                                        setUserProfile(null);
                                     }
                                 });
                             } else {
-                                // Sin autenticación, modo demo
-                                setUser({ uid: "demo-user-123", email: "demo@expertia.com" });
-                                setUserProfile({ 
-                                    id: "demo-user-123", 
-                                    email: "demo@expertia.com", 
-                                    name: "Usuario Demo", 
-                                    role: "admin" 
-                                });
-                                loadDemoData();
+                                // Sin autenticación
+                                setUser(null);
+                                setUserProfile(null);
                             }
                             setIsAuthReady(true);
                             setIsLoading(false);
@@ -498,19 +924,36 @@
                         return () => unsubscribe();
                     } catch (error) {
                         console.error("Error al inicializar Firebase:", error);
-                        // Fallback a modo demo
-                        setUser({ uid: "demo-user-123", email: "demo@expertia.com" });
-                        setUserProfile({ 
-                            id: "demo-user-123", 
-                            email: "demo@expertia.com", 
-                            name: "Usuario Demo", 
-                            role: "admin" 
-                        });
                         setIsAuthReady(true);
                         setIsLoading(false);
-                        loadDemoData();
                     }
                 }, []);
+
+                // Manejar autenticación exitosa
+                const handleAuthenticated = (authenticatedUser) => {
+                    setUser(authenticatedUser);
+                    setIsLoading(false);
+                };
+
+                // Función para logout
+                const handleLogout = async () => {
+                    try {
+                        if (auth && typeof signOut !== 'undefined') {
+                            await signOut(auth);
+                        }
+                        setUser(null);
+                        setUserProfile(null);
+                    } catch (error) {
+                        console.error('Error al cerrar sesión:', error);
+                    }
+                };
+                        }
+                        setUser(null);
+                        setUserProfile(null);
+                    } catch (error) {
+                        console.error('Error al cerrar sesión:', error);
+                    }
+                };
 
                 // Función para cargar datos demo
                 const loadDemoData = () => {
@@ -749,6 +1192,19 @@
                         })
                     );
 
+                    // Listener para usuarios (solo admin)
+                    if (isAdmin()) {
+                        const usersCollection = collection(db, 'users');
+                        unsubscribers.push(
+                            onSnapshot(usersCollection, (snapshot) => {
+                                const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                                setUsers(usersData);
+                            }, (error) => {
+                                console.error("Error loading users:", error);
+                            })
+                        );
+                    }
+
                     setIsLoading(false);
 
                     return () => {
@@ -841,6 +1297,60 @@
                     }
                     await handleSave('productos', productData, productData.id);
                     setActiveView('products');
+                };
+
+                // Función para manejar usuarios
+                const handleSaveUser = async (userData) => {
+                    if (!isAdmin()) {
+                        showNotification('Acceso denegado', 'Solo los administradores pueden gestionar usuarios', 'error');
+                        return;
+                    }
+
+                    try {
+                        if (userData.id) {
+                            // Actualizar usuario existente
+                            await updateDoc(doc(db, 'users', userData.id), {
+                                name: userData.name,
+                                role: userData.role,
+                                isActive: userData.isActive,
+                                updatedAt: new Date().toISOString()
+                            });
+                            showNotification('Usuario actualizado', 'Los datos del usuario han sido actualizados correctamente', 'success');
+                        } else {
+                            // Crear nuevo usuario (esto debería manejarse principalmente en el registro)
+                            showNotification('Información', 'Para crear nuevos usuarios, utiliza el sistema de registro', 'info');
+                        }
+                    } catch (error) {
+                        console.error('Error al guardar usuario:', error);
+                        showNotification('Error', 'No se pudo guardar el usuario', 'error');
+                    }
+                };
+
+                const handleDeleteUser = async (userId) => {
+                    if (!isAdmin()) {
+                        showNotification('Acceso denegado', 'Solo los administradores pueden eliminar usuarios', 'error');
+                        return;
+                    }
+
+                    if (userId === user?.uid) {
+                        showNotification('Error', 'No puedes eliminar tu propio usuario', 'error');
+                        return;
+                    }
+
+                    showConfirm(
+                        'Eliminar Usuario',
+                        '¿Estás seguro de que quieres eliminar este usuario? Esta acción no se puede deshacer.',
+                        async () => {
+                            try {
+                                await deleteDoc(doc(db, 'users', userId));
+                                showNotification('Usuario eliminado', 'El usuario ha sido eliminado correctamente', 'success');
+                            } catch (error) {
+                                console.error('Error al eliminar usuario:', error);
+                                showNotification('Error', 'No se pudo eliminar el usuario', 'error');
+                            }
+                        },
+                        'danger'
+                    );
                 };
 
                 const getNextInvoiceNumber = async (type) => {
@@ -1216,10 +1726,9 @@
                                 );
                             }
                             return <AdminPanel 
-                                users={[]} 
-                                products={products}
-                                onSaveProduct={handleSaveProduct}
-                                onDeleteProduct={(id) => handleDelete('productos', id)}
+                                users={users} 
+                                onSaveUser={handleSaveUser}
+                                onDeleteUser={handleDeleteUser}
                             />;
                         default: 
                             return <Dashboard 
@@ -1248,29 +1757,48 @@
                 };
 
                 return (
-                    <div className="bg-gray-50 min-h-screen font-sans">
-                        <Header userProfile={userProfile} activeView={activeView} setActiveView={setActiveView} />
-                        <main className="p-4 sm:p-6 md:p-8">{renderView()}</main>
-                        
-                        {/* Modal de confirmación personalizado */}
-                        <CustomConfirm 
-                            isOpen={confirmModal.isOpen}
-                            title={confirmModal.title}
-                            message={confirmModal.message}
-                            type={confirmModal.type}
-                            onConfirm={confirmModal.onConfirm}
-                            onCancel={confirmModal.onCancel}
-                        />
-                        
-                        {/* Modal de notificación personalizado */}
-                        <CustomNotification 
-                            isOpen={notificationModal.isOpen}
-                            title={notificationModal.title}
-                            message={notificationModal.message}
-                            type={notificationModal.type}
-                            onClose={() => setNotificationModal({ ...notificationModal, isOpen: false })}
-                        />
-                    </div>
+                    <>
+                        {!isAuthReady ? (
+                            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                                <div className="text-center">
+                                    <img src="./LOGO_EXPERTIA.jpg" alt="Expertia Medical Solutions" className="h-16 mx-auto mb-4" />
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#006666] mx-auto"></div>
+                                    <p className="text-gray-600 mt-4">Cargando...</p>
+                                </div>
+                            </div>
+                        ) : !user || !userProfile ? (
+                            <AuthScreen onAuthenticated={handleAuthenticated} />
+                        ) : (
+                            <div className="bg-gray-50 min-h-screen font-sans">
+                                <Header 
+                                    userProfile={userProfile} 
+                                    activeView={activeView} 
+                                    setActiveView={setActiveView}
+                                    onLogout={handleLogout}
+                                />
+                                <main className="p-4 sm:p-6 md:p-8">{renderView()}</main>
+                                
+                                {/* Modal de confirmación personalizado */}
+                                <CustomConfirm 
+                                    isOpen={confirmModal.isOpen}
+                                    title={confirmModal.title}
+                                    message={confirmModal.message}
+                                    type={confirmModal.type}
+                                    onConfirm={confirmModal.onConfirm}
+                                    onCancel={confirmModal.onCancel}
+                                />
+                                
+                                {/* Modal de notificación personalizado */}
+                                <CustomNotification 
+                                    isOpen={notificationModal.isOpen}
+                                    title={notificationModal.title}
+                                    message={notificationModal.message}
+                                    type={notificationModal.type}
+                                    onClose={() => setNotificationModal({ ...notificationModal, isOpen: false })}
+                                />
+                            </div>
+                        )}
+                    </>
                 );
             }
 
@@ -1400,7 +1928,7 @@
                 );
             }
             
-            function Header({ userProfile, activeView, setActiveView }) {
+            function Header({ userProfile, activeView, setActiveView, onLogout }) {
                 const navItemClass = (viewName) => `cursor-pointer py-2 px-3 rounded-md text-sm font-medium flex items-center gap-2 ${activeView.startsWith(viewName) ? 'bg-[#006666] text-white' : 'text-gray-600 hover:bg-gray-200'}`;
                 const isAdmin = userProfile?.role === 'admin';
                 
@@ -1443,12 +1971,23 @@
                                         </span>
                                     )}
                                 </nav>
-                                <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveView('profile')}>
-                                    <div className="flex flex-col text-right">
-                                        <div className="text-sm text-gray-600">{userProfile?.name || 'Usuario'}</div>
-                                        <div className="text-xs text-gray-500 capitalize">{userProfile?.role || 'comercial'}</div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveView('profile')}>
+                                        <div className="flex flex-col text-right">
+                                            <div className="text-sm text-gray-600">{userProfile?.name || 'Usuario'}</div>
+                                            <div className="text-xs text-gray-500 capitalize">{userProfile?.role || 'comercial'}</div>
+                                        </div>
+                                        <img src={userProfile?.photoURL || 'https://placehold.co/40x40/008080/FFFFFF?text=U'} alt="Perfil" className="h-10 w-10 rounded-full object-cover" />
                                     </div>
-                                    <img src={userProfile?.photoURL || 'https://placehold.co/40x40/008080/FFFFFF?text=U'} alt="Perfil" className="h-10 w-10 rounded-full object-cover" />
+                                    {onLogout && (
+                                        <button
+                                            onClick={onLogout}
+                                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                            title="Cerrar sesión"
+                                        >
+                                            <LogOutIcon width={20} height={20} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -4843,39 +5382,315 @@ Equipo Expertia Medical Solutions"
             }
             
             // Panel de Administración
-            function AdminPanel({ products, onSaveProduct, onDeleteProduct }) {
-                const [activeTab, setActiveTab] = useState('products');
-                const [showProductForm, setShowProductForm] = useState(false);
-                const [editingProduct, setEditingProduct] = useState(null);
+            function AdminPanel({ users, onSaveUser, onDeleteUser }) {
+                const [showUserForm, setShowUserForm] = useState(false);
+                const [editingUser, setEditingUser] = useState(null);
                 
-                const handleAddProduct = () => {
-                    setEditingProduct(null);
-                    setShowProductForm(true);
+                const handleAddUser = () => {
+                    setEditingUser(null);
+                    setShowUserForm(true);
                 };
                 
-                const handleEditProduct = (product) => {
-                    setEditingProduct(product);
-                    setShowProductForm(true);
+                const handleEditUser = (user) => {
+                    setEditingUser(user);
+                    setShowUserForm(true);
                 };
                 
-                const handleSaveProduct = (productData) => {
-                    onSaveProduct(productData);
-                    setShowProductForm(false);
-                    setEditingProduct(null);
+                const handleSaveUser = (userData) => {
+                    onSaveUser(userData);
+                    setShowUserForm(false);
+                    setEditingUser(null);
                 };
                 
-                if (showProductForm) {
+                if (showUserForm) {
                     return (
-                        <ProductForm 
-                            product={editingProduct}
-                            onSave={handleSaveProduct}
+                        <UserForm 
+                            user={editingUser}
+                            onSave={handleSaveUser}
                             onCancel={() => {
-                                setShowProductForm(false);
-                                setEditingProduct(null);
+                                setShowUserForm(false);
+                                setEditingUser(null);
                             }}
                         />
                     );
                 }
+
+                return (
+                    <div className="max-w-7xl mx-auto">
+                        <div className="mb-8">
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Panel de Administración</h1>
+                            <p className="text-gray-600">Gestiona los usuarios del sistema</p>
+                        </div>
+
+                        {/* Gestión de Usuarios */}
+                        <div className="bg-white rounded-lg shadow-md">
+                            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                                        <UserIcon width={24} height={24} className="text-[#006666]" />
+                                        Gestión de Usuarios
+                                    </h2>
+                                    <p className="text-sm text-gray-600 mt-1">Administra los usuarios y sus permisos</p>
+                                </div>
+                                <button
+                                    onClick={handleAddUser}
+                                    className="bg-[#006666] text-white px-4 py-2 rounded-md hover:bg-[#005555] flex items-center gap-2"
+                                >
+                                    <PlusIcon width={20} height={20} />
+                                    Agregar Usuario
+                                </button>
+                            </div>
+                            
+                            <div className="p-6">
+                                {users.length === 0 ? (
+                                    <div className="text-center py-12">
+                                        <UserIcon width={48} height={48} className="mx-auto mb-4 text-gray-400" />
+                                        <h3 className="text-lg font-medium text-gray-900 mb-2">No hay usuarios</h3>
+                                        <p className="text-gray-600 mb-4">Comienza agregando el primer usuario del sistema</p>
+                                        <button
+                                            onClick={handleAddUser}
+                                            className="bg-[#006666] text-white px-4 py-2 rounded-md hover:bg-[#005555]"
+                                        >
+                                            Agregar Primer Usuario
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Usuario
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Rol
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Estado
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Fecha de Registro
+                                                    </th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Acciones
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {users.map((user) => (
+                                                    <tr key={user.id} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="flex items-center">
+                                                                <img 
+                                                                    src={user.photoURL || 'https://placehold.co/40x40/008080/FFFFFF?text=U'} 
+                                                                    alt={user.name} 
+                                                                    className="h-10 w-10 rounded-full object-cover mr-3"
+                                                                />
+                                                                <div>
+                                                                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                                                                    <div className="text-sm text-gray-500">{user.email}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                                user.role === 'admin' 
+                                                                    ? 'bg-red-100 text-red-800' 
+                                                                    : 'bg-blue-100 text-blue-800'
+                                                            }`}>
+                                                                {user.role === 'admin' ? 'Administrador' : 'Comercial'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                                user.isActive 
+                                                                    ? 'bg-green-100 text-green-800' 
+                                                                    : 'bg-gray-100 text-gray-800'
+                                                            }`}>
+                                                                {user.isActive ? 'Activo' : 'Inactivo'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString('es-ES') : '-'}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                            <div className="flex justify-end space-x-2">
+                                                                <button
+                                                                    onClick={() => handleEditUser(user)}
+                                                                    className="text-[#006666] hover:text-[#005555] p-1"
+                                                                    title="Editar usuario"
+                                                                >
+                                                                    <EditIcon width={16} height={16} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => onDeleteUser(user.id)}
+                                                                    className="text-red-600 hover:text-red-900 p-1"
+                                                                    title="Eliminar usuario"
+                                                                >
+                                                                    <TrashIcon />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Formulario de Usuario
+            function UserForm({ user, onSave, onCancel }) {
+                const [formData, setFormData] = useState({
+                    name: user?.name || '',
+                    email: user?.email || '',
+                    role: user?.role || 'comercial',
+                    isActive: user?.isActive !== undefined ? user.isActive : true
+                });
+                const [errors, setErrors] = useState({});
+
+                const validateForm = () => {
+                    const newErrors = {};
+
+                    if (!formData.name.trim()) {
+                        newErrors.name = 'El nombre es requerido';
+                    }
+
+                    if (!formData.email.trim()) {
+                        newErrors.email = 'El email es requerido';
+                    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+                        newErrors.email = 'El email no es válido';
+                    }
+
+                    setErrors(newErrors);
+                    return Object.keys(newErrors).length === 0;
+                };
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    if (validateForm()) {
+                        onSave({
+                            ...user,
+                            ...formData,
+                            updatedAt: new Date().toISOString()
+                        });
+                    }
+                };
+
+                return (
+                    <div className="max-w-2xl mx-auto">
+                        <div className="bg-white rounded-lg shadow-md">
+                            <div className="px-6 py-4 border-b border-gray-200">
+                                <h2 className="text-xl font-semibold text-gray-900">
+                                    {user ? 'Editar Usuario' : 'Nuevo Usuario'}
+                                </h2>
+                                <p className="text-sm text-gray-600 mt-1">
+                                    {user ? 'Modifica los datos del usuario' : 'Introduce los datos del nuevo usuario'}
+                                </p>
+                            </div>
+
+                            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                                {/* Nombre */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Nombre completo *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#006666] ${
+                                            errors.name ? 'border-red-500' : 'border-gray-300'
+                                        }`}
+                                        placeholder="Nombre del usuario"
+                                    />
+                                    {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+                                </div>
+
+                                {/* Email */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Email *
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#006666] ${
+                                            errors.email ? 'border-red-500' : 'border-gray-300'
+                                        }`}
+                                        placeholder="email@ejemplo.com"
+                                        disabled={!!user} // No permitir cambiar email si es edición
+                                    />
+                                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                                    {user && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            El email no se puede modificar una vez creado el usuario
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Rol */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Rol *
+                                    </label>
+                                    <select
+                                        value={formData.role}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006666]"
+                                    >
+                                        <option value="comercial">Comercial</option>
+                                        <option value="admin">Administrador</option>
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Los administradores tienen acceso completo al sistema
+                                    </p>
+                                </div>
+
+                                {/* Estado */}
+                                <div>
+                                    <label className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.isActive}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+                                            className="rounded border-gray-300 text-[#006666] focus:ring-[#006666]"
+                                        />
+                                        <span className="ml-2 text-sm font-medium text-gray-700">
+                                            Usuario activo
+                                        </span>
+                                    </label>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Los usuarios inactivos no pueden acceder al sistema
+                                    </p>
+                                </div>
+
+                                {/* Botones */}
+                                <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                                    <button
+                                        type="button"
+                                        onClick={onCancel}
+                                        className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-[#006666] text-white rounded-md hover:bg-[#005555]"
+                                    >
+                                        {user ? 'Actualizar Usuario' : 'Crear Usuario'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
                 
                 return (
                     <div className="space-y-6">
