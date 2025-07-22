@@ -1208,7 +1208,7 @@
                                 showNotification={showNotification}
                             />;
                         case 'reports': 
-                            return <ReportsDashboard allInvoices={invoices} />;
+                            return <ReportsDashboard allInvoices={invoices} userProfile={userProfile} />;
                         case 'admin':
                             if (!isAdmin()) {
                                 return (
@@ -3827,7 +3827,7 @@ Email: info@expertiamedical.com`;
             }
 
             // === DASHBOARD DE INFORMES Y ESTADÍSTICAS ===
-            function ReportsDashboard({ allInvoices }) {
+            function ReportsDashboard({ allInvoices, userProfile }) {
                 const [productFilter, setProductFilter] = useState('all');
                 const [salespersonFilter, setSalespersonFilter] = useState('all');
                 const [dateFilter, setDateFilter] = useState('all');
@@ -3854,7 +3854,10 @@ Email: info@expertiamedical.com`;
                     paidInvoices.forEach(inv => { 
                         if(inv.createdBy) {
                             // Intentar obtener el nombre del usuario, o usar UID como fallback
-                            const userName = inv.createdByName || userProfile?.name || inv.createdBy;
+                            const userName = inv.createdByName || 
+                                           (userProfile?.name) || 
+                                           (userProfile?.email) || 
+                                           inv.createdBy;
                             salespersons.add(userName);
                         }
                     });
@@ -3868,7 +3871,9 @@ Email: info@expertiamedical.com`;
                         
                         const salespersonMatch = salespersonFilter === 'all' || 
                             inv.createdBy === salespersonFilter || 
-                            (inv.createdByName || userProfile?.name) === salespersonFilter;
+                            (inv.createdByName && inv.createdByName === salespersonFilter) ||
+                            (userProfile?.name && userProfile.name === salespersonFilter) ||
+                            (userProfile?.email && userProfile.email === salespersonFilter);
                         
                         let dateMatch = true;
                         if (dateFilter !== 'all') {
