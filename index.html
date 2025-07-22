@@ -9,6 +9,12 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="./recharts.min.js"></script>
+    
+    <!-- 🚀 MEJORA 3/4: Librerías para exportación Excel/PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    
     <link rel="icon" href="https://storage.googleapis.com/gemini-generative-ai-api/f55a1dda-6560-4321-aidb-53f36780a82f" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3835,6 +3841,207 @@ Email: info@expertiamedical.com`;
                 );
             }
 
+            // 🚀 MEJORA 3/4: Utilidades de exportación Excel/PDF
+            const ExportUtils = {
+                // Exportar datos a Excel
+                exportToExcel: (data, filename = 'datos_expertia') => {
+                    try {
+                        const wb = XLSX.utils.book_new();
+                        
+                        // Hoja principal con datos de ventas
+                        const salesData = data.invoices.map(inv => ({
+                            'Fecha': new Date(inv.createdAt?.seconds * 1000 || inv.createdAt).toLocaleDateString('es-ES'),
+                            'Nº Factura': inv.invoiceNumber,
+                            'Cliente': inv.clientName,
+                            'Comercial': inv.createdBy || 'N/A',
+                            'Total (€)': parseFloat(inv.total || 0).toFixed(2),
+                            'IVA (€)': parseFloat(inv.vat || 0).toFixed(2),
+                            'Estado': inv.status,
+                            'Productos': inv.items?.map(item => item.description).join(', ') || 'N/A'
+                        }));
+                        
+                        const ws1 = XLSX.utils.json_to_sheet(salesData);
+                        XLSX.utils.book_append_sheet(wb, ws1, "Ventas Detalladas");
+                        
+                        // Hoja de resumen estadístico
+                        const statsData = [
+                            { 'Métrica': 'Ventas Totales', 'Valor': `${data.totalSales.toFixed(2)} €` },
+                            { 'Métrica': 'Número de Facturas', 'Valor': data.totalInvoices },
+                            { 'Métrica': 'Ticket Medio', 'Valor': `${data.averageTicket.toFixed(2)} €` },
+                            { 'Métrica': 'IVA Total', 'Valor': `${data.totalVat.toFixed(2)} €` },
+                            { 'Métrica': 'Fecha Generación', 'Valor': new Date().toLocaleDateString('es-ES') }
+                        ];
+                        
+                        const ws2 = XLSX.utils.json_to_sheet(statsData);
+                        XLSX.utils.book_append_sheet(wb, ws2, "Resumen Estadístico");
+                        
+                        // Hoja de top productos
+                        if (data.topProducts && data.topProducts.length > 0) {
+                            const productsData = data.topProducts.map((product, index) => ({
+                                'Posición': index + 1,
+                                'Producto': product.name,
+                                'Ingresos (€)': product.revenue.toFixed(2),
+                                'Unidades Vendidas': product.quantity,
+                                'Precio Medio (€)': (product.revenue / product.quantity).toFixed(2)
+                            }));
+                            
+                            const ws3 = XLSX.utils.json_to_sheet(productsData);
+                            XLSX.utils.book_append_sheet(wb, ws3, "Top Productos");
+                        }
+                        
+                        // Guardar archivo
+                        XLSX.writeFile(wb, `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                        return true;
+                    } catch (error) {
+                        console.error('Error exportando Excel:', error);
+                        return false;
+                    }
+                },
+                
+                // Exportar a PDF con gráficos
+                exportToPDF: async (data, filename = 'informe_expertia') => {
+                    try {
+                        const { jsPDF } = window.jspdf;
+                        const pdf = new jsPDF('p', 'mm', 'a4');
+                        
+                        // Configuración de colores
+                        const primaryColor = [0, 128, 128]; // #008080
+                        const secondaryColor = [102, 102, 102];
+                        
+                        // Función para añadir encabezado
+                        const addHeader = (pageNum) => {
+                            pdf.setFillColor(...primaryColor);
+                            pdf.rect(0, 0, 210, 25, 'F');
+                            
+                            pdf.setTextColor(255, 255, 255);
+                            pdf.setFontSize(20);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text('EXPERTIA CRM - Informe de Ventas', 15, 16);
+                            
+                            pdf.setFontSize(10);
+                            pdf.setFont('helvetica', 'normal');
+                            pdf.text(`Página ${pageNum}`, 170, 20);
+                            pdf.text(new Date().toLocaleDateString('es-ES'), 15, 20);
+                        };
+                        
+                        // Página 1: Resumen ejecutivo
+                        addHeader(1);
+                        pdf.setTextColor(...secondaryColor);
+                        
+                        // Estadísticas principales
+                        pdf.setFontSize(14);
+                        pdf.setFont('helvetica', 'bold');
+                        pdf.text('📊 RESUMEN EJECUTIVO', 15, 40);
+                        
+                        pdf.setFontSize(11);
+                        pdf.setFont('helvetica', 'normal');
+                        
+                        const stats = [
+                            `💰 Ventas Totales: ${data.totalSales.toFixed(2)} €`,
+                            `📋 Número de Facturas: ${data.totalInvoices}`,
+                            `🎯 Ticket Medio: ${data.averageTicket.toFixed(2)} €`,
+                            `💼 IVA Recaudado: ${data.totalVat.toFixed(2)} €`,
+                            `📅 Período Analizado: ${data.dateFilter === 'all' ? 'Todo el tiempo' : data.dateFilter}`
+                        ];
+                        
+                        stats.forEach((stat, index) => {
+                            pdf.text(stat, 15, 55 + (index * 8));
+                        });
+                        
+                        // Top productos
+                        if (data.topProducts && data.topProducts.length > 0) {
+                            pdf.setFontSize(14);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text('🏆 TOP PRODUCTOS', 15, 105);
+                            
+                            pdf.setFontSize(10);
+                            pdf.setFont('helvetica', 'normal');
+                            
+                            data.topProducts.slice(0, 5).forEach((product, index) => {
+                                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+                                pdf.text(`${medal} ${product.name}: ${product.revenue.toFixed(2)} € (${product.quantity} uds)`, 15, 120 + (index * 6));
+                            });
+                        }
+                        
+                        // Capturar gráficos si existen
+                        const chartElements = document.querySelectorAll('.bg-white.p-6.rounded-lg.shadow-lg, .bg-white.p-6.rounded-lg.shadow');
+                        if (chartElements.length > 0) {
+                            pdf.addPage();
+                            addHeader(2);
+                            
+                            pdf.setFontSize(14);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text('📈 GRÁFICOS Y ANÁLISIS', 15, 40);
+                            
+                            let yPosition = 60;
+                            for (let i = 0; i < Math.min(chartElements.length, 2); i++) {
+                                try {
+                                    const canvas = await html2canvas(chartElements[i], {
+                                        scale: 2,
+                                        backgroundColor: '#ffffff',
+                                        width: 800,
+                                        height: 400
+                                    });
+                                    
+                                    const imgData = canvas.toDataURL('image/png');
+                                    pdf.addImage(imgData, 'PNG', 15, yPosition, 180, 90);
+                                    yPosition += 100;
+                                    
+                                    if (i === 0 && chartElements.length > 1) {
+                                        pdf.addPage();
+                                        addHeader(i + 3);
+                                        yPosition = 40;
+                                    }
+                                } catch (error) {
+                                    console.warn('Error capturando gráfico:', error);
+                                }
+                            }
+                        }
+                        
+                        // Pie de página en todas las páginas
+                        const totalPages = pdf.internal.getNumberOfPages();
+                        for (let i = 1; i <= totalPages; i++) {
+                            pdf.setPage(i);
+                            pdf.setFontSize(8);
+                            pdf.setTextColor(...secondaryColor);
+                            pdf.text('Generado por Expertia CRM - Todos los derechos reservados', 15, 290);
+                        }
+                        
+                        // Guardar PDF
+                        pdf.save(`${filename}_${new Date().toISOString().split('T')[0]}.pdf`);
+                        return true;
+                    } catch (error) {
+                        console.error('Error exportando PDF:', error);
+                        return false;
+                    }
+                },
+                
+                // Copiar datos al portapapeles
+                copyToClipboard: (data) => {
+                    try {
+                        const text = `EXPERTIA CRM - Resumen de Ventas
+📅 ${new Date().toLocaleDateString('es-ES')}
+
+📊 ESTADÍSTICAS:
+💰 Ventas Totales: ${data.totalSales.toFixed(2)} €
+📋 Facturas: ${data.totalInvoices}
+🎯 Ticket Medio: ${data.averageTicket.toFixed(2)} €
+💼 IVA: ${data.totalVat.toFixed(2)} €
+
+🏆 TOP PRODUCTOS:
+${data.topProducts.slice(0, 5).map((p, i) => 
+    `${i + 1}. ${p.name}: ${p.revenue.toFixed(2)} € (${p.quantity} uds)`
+).join('\n')}`;
+                        
+                        navigator.clipboard.writeText(text);
+                        return true;
+                    } catch (error) {
+                        console.error('Error copiando al portapapeles:', error);
+                        return false;
+                    }
+                }
+            };
+
             // === DASHBOARD DE INFORMES Y ESTADÍSTICAS ===
             function ReportsDashboard({ allInvoices, userProfile }) {
                 const [productFilter, setProductFilter] = useState('all');
@@ -4312,8 +4519,92 @@ Email: info@expertiamedical.com`;
                             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                                 <BarChartIcon width={32} height={32} className="text-[#008080]" /> Informes de Ventas
                             </h1>
-                            <div className="text-sm text-gray-500">
-                                Actualizado: {new Date().toLocaleDateString('es-ES')}
+                            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                                <div className="text-sm text-gray-500">
+                                    Actualizado: {new Date().toLocaleDateString('es-ES')}
+                                </div>
+                                
+                                {/* 🚀 MEJORA 3/4: Botones de exportación */}
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={async () => {
+                                            const exportData = {
+                                                invoices: filteredInvoices,
+                                                totalSales,
+                                                totalInvoices,
+                                                averageTicket,
+                                                totalVat,
+                                                topProducts,
+                                                dateFilter
+                                            };
+                                            const success = ExportUtils.exportToExcel(exportData);
+                                            if (success) {
+                                                alert('📊 ¡Datos exportados a Excel exitosamente!');
+                                            } else {
+                                                alert('❌ Error al exportar a Excel');
+                                            }
+                                        }}
+                                        className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
+                                        title="Exportar datos a Excel"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        Excel
+                                    </button>
+                                    
+                                    <button
+                                        onClick={async () => {
+                                            const exportData = {
+                                                invoices: filteredInvoices,
+                                                totalSales,
+                                                totalInvoices,
+                                                averageTicket,
+                                                totalVat,
+                                                topProducts,
+                                                dateFilter
+                                            };
+                                            const success = await ExportUtils.exportToPDF(exportData);
+                                            if (success) {
+                                                alert('📄 ¡Informe PDF generado exitosamente!');
+                                            } else {
+                                                alert('❌ Error al generar PDF');
+                                            }
+                                        }}
+                                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center gap-2"
+                                        title="Exportar informe completo a PDF"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                        </svg>
+                                        PDF
+                                    </button>
+                                    
+                                    <button
+                                        onClick={() => {
+                                            const exportData = {
+                                                totalSales,
+                                                totalInvoices,
+                                                averageTicket,
+                                                totalVat,
+                                                topProducts
+                                            };
+                                            const success = ExportUtils.copyToClipboard(exportData);
+                                            if (success) {
+                                                alert('📋 ¡Datos copiados al portapapeles!');
+                                            } else {
+                                                alert('❌ Error al copiar datos');
+                                            }
+                                        }}
+                                        className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+                                        title="Copiar resumen al portapapeles"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                        </svg>
+                                        Copiar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         
@@ -4376,6 +4667,165 @@ Email: info@expertiamedical.com`;
                                     { value: 'lastYear', label: 'Año pasado' }
                                 ]} 
                             />
+                        </div>
+
+                        {/* 🚀 MEJORA 3/4: Panel avanzado de exportación */}
+                        <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl shadow-sm border border-blue-200">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-2">
+                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path>
+                                        </svg>
+                                        📊 Centro de Exportación Avanzada
+                                    </h3>
+                                    <p className="text-sm text-gray-600">
+                                        Exporta tus datos de ventas en múltiples formatos profesionales
+                                    </p>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-3">
+                                    {/* Exportación Excel Avanzada */}
+                                    <div className="group relative">
+                                        <button
+                                            onClick={async () => {
+                                                const exportData = {
+                                                    invoices: filteredInvoices,
+                                                    totalSales,
+                                                    totalInvoices,
+                                                    averageTicket,
+                                                    totalVat,
+                                                    topProducts,
+                                                    dateFilter,
+                                                    salesByMonth,
+                                                    salesByQuarter
+                                                };
+                                                const success = ExportUtils.exportToExcel(exportData, 'informe_completo_expertia');
+                                                if (success) {
+                                                    // Animación de éxito
+                                                    const btn = event.target.closest('button');
+                                                    btn.classList.add('animate-pulse');
+                                                    setTimeout(() => btn.classList.remove('animate-pulse'), 1000);
+                                                    alert('📊 ¡Excel generado con 3 hojas: Ventas, Estadísticas y Top Productos!');
+                                                } else {
+                                                    alert('❌ Error al exportar a Excel');
+                                                }
+                                            }}
+                                            className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transform hover:scale-105 transition-all duration-300 font-medium flex items-center gap-2 shadow-lg hover:shadow-xl"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                            </svg>
+                                            📈 Excel Completo
+                                        </button>
+                                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                            Incluye datos detallados, estadísticas y gráficos
+                                        </div>
+                                    </div>
+                                    
+                                    {/* PDF Profesional */}
+                                    <div className="group relative">
+                                        <button
+                                            onClick={async () => {
+                                                const exportData = {
+                                                    invoices: filteredInvoices,
+                                                    totalSales,
+                                                    totalInvoices,
+                                                    averageTicket,
+                                                    totalVat,
+                                                    topProducts,
+                                                    dateFilter
+                                                };
+                                                const success = await ExportUtils.exportToPDF(exportData, 'informe_profesional_expertia');
+                                                if (success) {
+                                                    const btn = event.target.closest('button');
+                                                    btn.classList.add('animate-bounce');
+                                                    setTimeout(() => btn.classList.remove('animate-bounce'), 1000);
+                                                    alert('📄 ¡PDF profesional generado con gráficos incluidos!');
+                                                } else {
+                                                    alert('❌ Error al generar PDF');
+                                                }
+                                            }}
+                                            className="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transform hover:scale-105 transition-all duration-300 font-medium flex items-center gap-2 shadow-lg hover:shadow-xl"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                            </svg>
+                                            📊 PDF Profesional
+                                        </button>
+                                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                            Informe ejecutivo con gráficos capturados
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Compartir Datos */}
+                                    <div className="group relative">
+                                        <button
+                                            onClick={() => {
+                                                const exportData = {
+                                                    totalSales,
+                                                    totalInvoices,
+                                                    averageTicket,
+                                                    totalVat,
+                                                    topProducts,
+                                                    filteredInvoices: filteredInvoices.length
+                                                };
+                                                const success = ExportUtils.copyToClipboard(exportData);
+                                                if (success) {
+                                                    const btn = event.target.closest('button');
+                                                    btn.innerHTML = `
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                        ✅ ¡Copiado!
+                                                    `;
+                                                    setTimeout(() => {
+                                                        btn.innerHTML = `
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                                            </svg>
+                                                            📋 Compartir
+                                                        `;
+                                                    }, 2000);
+                                                } else {
+                                                    alert('❌ Error al copiar datos');
+                                                }
+                                            }}
+                                            className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transform hover:scale-105 transition-all duration-300 font-medium flex items-center gap-2 shadow-lg hover:shadow-xl"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                            </svg>
+                                            📋 Compartir
+                                        </button>
+                                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                            Copia resumen al portapapeles
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Estadísticas de exportación */}
+                            <div className="mt-4 pt-4 border-t border-blue-200">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                    <div className="text-center">
+                                        <div className="text-blue-600 font-bold">{filteredInvoices.length}</div>
+                                        <div className="text-gray-600">Facturas a exportar</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-blue-600 font-bold">{totalSales.toFixed(0)} €</div>
+                                        <div className="text-gray-600">Valor total</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-blue-600 font-bold">{topProducts.length}</div>
+                                        <div className="text-gray-600">Productos únicos</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-blue-600 font-bold">{new Set(filteredInvoices.map(inv => inv.createdBy)).size}</div>
+                                        <div className="text-gray-600">Comerciales</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Métricas principales */}
