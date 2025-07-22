@@ -770,10 +770,12 @@
                     // Agregar metadatos
                     dataToSave.updatedAt = new Date().toISOString();
                     dataToSave.updatedBy = user.uid;
+                    dataToSave.updatedByName = userProfile?.name || user.email || 'Usuario';
                     
                     if (!finalDocId) {
                         dataToSave.createdAt = new Date().toISOString();
                         dataToSave.createdBy = user.uid;
+                        dataToSave.createdByName = userProfile?.name || user.email || 'Usuario';
                     }
                     
                     try {
@@ -1626,9 +1628,9 @@
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-sm font-medium text-gray-600">{title}</h3>
-                                <p className="text-2xl font-bold mt-1 text-gray-900">{value}</p>
+                                <p className="text-2xl font-bold mt-1">{value}</p>
                             </div>
-                            <div className="text-gray-700">
+                            <div className="text-gray-600">
                                 {icon}
                             </div>
                         </div>
@@ -3850,17 +3852,23 @@ Email: info@expertiamedical.com`;
                 const salespersonOptions = useMemo(() => {
                     const salespersons = new Set();
                     paidInvoices.forEach(inv => { 
-                        if(inv.createdBy) salespersons.add(inv.createdBy);
+                        if(inv.createdBy) {
+                            // Intentar obtener el nombre del usuario, o usar UID como fallback
+                            const userName = inv.createdByName || userProfile?.name || inv.createdBy;
+                            salespersons.add(userName);
+                        }
                     });
                     return ['all', ...Array.from(salespersons)];
-                }, [paidInvoices]);
+                }, [paidInvoices, userProfile]);
 
                 const filteredInvoices = useMemo(() => {
                     return paidInvoices.filter(inv => {
                         const productMatch = productFilter === 'all' || 
                             (inv.items && inv.items.some(item => item.description === productFilter));
                         
-                        const salespersonMatch = salespersonFilter === 'all' || inv.createdBy === salespersonFilter;
+                        const salespersonMatch = salespersonFilter === 'all' || 
+                            inv.createdBy === salespersonFilter || 
+                            (inv.createdByName || userProfile?.name) === salespersonFilter;
                         
                         let dateMatch = true;
                         if (dateFilter !== 'all') {
@@ -4080,25 +4088,25 @@ Email: info@expertiamedical.com`;
                                 title="Ventas Totales" 
                                 value={`${totalSales.toFixed(2)} €`} 
                                 icon={<DollarSignIcon />}
-                                className="bg-gradient-to-r from-green-500 to-green-600 text-white"
+                                className="bg-white border-2 border-green-200 text-gray-900"
                             />
                             <StatCard 
                                 title="Nº Facturas Pagadas" 
                                 value={totalInvoices} 
                                 icon={<CheckSquareIcon />}
-                                className="bg-gradient-to-r from-blue-500 to-blue-600 text-white"
+                                className="bg-white border-2 border-green-200 text-gray-900"
                             />
                             <StatCard 
                                 title="Ticket Medio" 
                                 value={`${averageTicket.toFixed(2)} €`} 
                                 icon={<UserIcon />}
-                                className="bg-gradient-to-r from-purple-500 to-purple-600 text-white"
+                                className="bg-white border-2 border-green-200 text-gray-900"
                             />
                             <StatCard 
                                 title="IVA Recaudado" 
                                 value={`${totalVat.toFixed(2)} €`} 
                                 icon={<TrendingUpIcon />}
-                                className="bg-gradient-to-r from-orange-500 to-orange-600 text-white"
+                                className="bg-white border-2 border-green-200 text-gray-900"
                             />
                         </div>
 
