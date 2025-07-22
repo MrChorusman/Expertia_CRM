@@ -88,6 +88,10 @@
             const BellIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>;
             const MessageSquareIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>;
             const XIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+            const ChevronUpIcon = ({ width = 16, height = 16 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>;
+            const ChevronDownIcon = ({ width = 16, height = 16 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
+            const SearchIcon = ({ width = 20, height = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>;
+            const FilterIcon = ({ width = 20, height = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>;
 
             // --- Funciones Utilitarias ---
             const formatAddress = (address) => {
@@ -161,7 +165,112 @@
                     </div>
                 );
             }
+
+            // --- Componente de Notificación Personalizado ---
+            function CustomNotification({ isOpen, title, message, onClose, type = 'success', autoClose = true, duration = 3000 }) {
+                const [isVisible, setIsVisible] = useState(false);
+
+                useEffect(() => {
+                    if (isOpen) {
+                        setIsVisible(true);
+                        if (autoClose) {
+                            const timer = setTimeout(() => {
+                                setIsVisible(false);
+                                setTimeout(onClose, 300); // Esperar a que termine la animación
+                            }, duration);
+                            return () => clearTimeout(timer);
+                        }
+                    }
+                }, [isOpen, autoClose, duration, onClose]);
+
+                const typeConfig = {
+                    success: {
+                        icon: <CheckIcon width={24} height={24} />,
+                        iconColor: 'text-green-600',
+                        bgColor: 'bg-green-50',
+                        borderColor: 'border-green-200',
+                        progressColor: 'bg-green-500'
+                    },
+                    info: {
+                        icon: <InfoIcon width={24} height={24} />,
+                        iconColor: 'text-blue-600',
+                        bgColor: 'bg-blue-50',
+                        borderColor: 'border-blue-200',
+                        progressColor: 'bg-blue-500'
+                    },
+                    warning: {
+                        icon: <AlertTriangleIcon width={24} height={24} />,
+                        iconColor: 'text-orange-600',
+                        bgColor: 'bg-orange-50',
+                        borderColor: 'border-orange-200',
+                        progressColor: 'bg-orange-500'
+                    }
+                };
+
+                const config = typeConfig[type] || typeConfig.success;
+
+                if (!isOpen) return null;
+
+                return (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                        <div className={`bg-white rounded-lg shadow-xl max-w-md w-full mx-4 transform transition-all duration-300 ${
+                            isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+                        }`}>
+                            <div className={`flex items-center gap-3 p-6 ${config.bgColor} ${config.borderColor} border-b rounded-t-lg relative overflow-hidden`}>
+                                <div className={config.iconColor}>
+                                    {config.icon}
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+                                    {message && <p className="text-sm text-gray-600 mt-1">{message}</p>}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setIsVisible(false);
+                                        setTimeout(onClose, 300);
+                                    }}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <XIcon width={20} height={20} />
+                                </button>
+                                {autoClose && (
+                                    <div className="absolute bottom-0 left-0 h-1 bg-gray-200 w-full">
+                                        <div 
+                                            className={`h-full ${config.progressColor} transition-all ease-linear`}
+                                            style={{
+                                                width: isVisible ? '0%' : '100%',
+                                                transitionDuration: `${duration}ms`
+                                            }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-6">
+                                <div className="flex items-center gap-3">
+                                    <DownloadIcon width={20} height={20} className="text-gray-500" />
+                                    <span className="text-sm text-gray-600">El archivo se ha descargado correctamente</span>
+                                </div>
+                                {!autoClose && (
+                                    <div className="flex justify-end mt-4">
+                                        <button
+                                            onClick={() => {
+                                                setIsVisible(false);
+                                                setTimeout(onClose, 300);
+                                            }}
+                                            className="px-4 py-2 bg-[#006666] hover:bg-[#005555] text-white rounded-md transition-colors"
+                                        >
+                                            Cerrar
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
             const SendIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>;
+            const PrinterIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>;
             const FileTextIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
             const BriefcaseIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>;
             const BarChartIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>;
@@ -186,7 +295,7 @@
             const VAT_RATE = 0.21;
 
             // --- Función de Exportación a Excel ---
-            function exportInvoicesToExcel(invoices, clients) {
+            function exportInvoicesToExcel(invoices, clients, showNotification) {
                 const getClientName = (clientId) => clients.find(c => c.id === clientId)?.name || 'N/A';
                 const getClientClinic = (clientId) => clients.find(c => c.id === clientId)?.clinic || 'N/A';
                 
@@ -233,8 +342,8 @@
                 link.click();
                 document.body.removeChild(link);
                 
-                // Mostrar mensaje de confirmación
-                alert('Facturación exportada correctamente a Excel/CSV');
+                // Mostrar notificación de éxito personalizada
+                showNotification('Exportación Completada', `Se han exportado ${invoices.length} facturas correctamente`, 'success');
             }
 
             // --- Configuración de Firebase ---
@@ -277,6 +386,14 @@
                     onCancel: () => {}
                 });
 
+                // Estado para modal de notificación personalizado
+                const [notificationModal, setNotificationModal] = useState({
+                    isOpen: false,
+                    title: '',
+                    message: '',
+                    type: 'success'
+                });
+
                 // Función para mostrar confirmación personalizada
                 const showConfirm = (title, message, onConfirm, type = 'warning') => {
                     return new Promise((resolve) => {
@@ -295,6 +412,16 @@
                                 resolve(false);
                             }
                         });
+                    });
+                };
+
+                // Función para mostrar notificación personalizada
+                const showNotification = (title, message = '', type = 'success') => {
+                    setNotificationModal({
+                        isOpen: true,
+                        title,
+                        message,
+                        type
                     });
                 };
 
@@ -708,7 +835,7 @@
 
                 const handleSaveProduct = async (productData) => {
                     if (!isAdmin()) {
-                        alert('Solo los administradores pueden gestionar productos');
+                        showNotification('Acceso denegado', 'Solo los administradores pueden gestionar productos', 'error');
                         return;
                     }
                     await handleSave('productos', productData, productData.id);
@@ -904,7 +1031,7 @@
 
                 const handleConvertOfferToInvoice = async (offer) => {
                     if (offer.status !== 'Aceptada') {
-                        alert('Solo se pueden convertir ofertas aceptadas en facturas');
+                        showNotification('Error de conversión', 'Solo se pueden convertir ofertas aceptadas en facturas', 'error');
                         return;
                     }
 
@@ -929,7 +1056,7 @@
                     // const updatedOffer = { ...offer, status: 'Convertida' };
                     // await handleSave('ofertas', updatedOffer, offer.id);
                     
-                    alert('La oferta ha sido convertida exitosamente en factura');
+                    showNotification('Conversión exitosa', 'La oferta ha sido convertida exitosamente en factura', 'success');
                 };
 
                 const filteredClients = useMemo(() => clients.filter(client =>
@@ -954,9 +1081,9 @@
                         case 'bulkCommunication': 
                             return <BulkCommunication clients={clients} onBack={() => setActiveView('dashboard')} />;
                         case 'addClient': 
-                            return <ClientForm onSave={handleSaveClient} onCancel={() => setActiveView('dashboard')} />;
+                            return <ClientForm onSave={handleSaveClient} onCancel={() => setActiveView('dashboard')} showNotification={showNotification} />;
                         case 'editClient': 
-                            return <ClientForm client={selectedItem} onSave={handleSaveClient} onCancel={() => setActiveView('dashboard')} />;
+                            return <ClientForm client={selectedItem} onSave={handleSaveClient} onCancel={() => setActiveView('dashboard')} showNotification={showNotification} />;
                         case 'detailClient': 
                             return <ClientDetail 
                                 client={selectedItem} 
@@ -1045,6 +1172,7 @@
                                 onViewInvoice={(invoice) => { setSelectedItem(invoice); setActiveView('viewInvoice'); }} 
                                 onDeleteInvoice={(id) => handleDelete('facturas', id)}
                                 showConfirm={showConfirm}
+                                showNotification={showNotification}
                             />;
                         case 'createInvoice': 
                             return <InvoiceForm 
@@ -1064,6 +1192,8 @@
                                 user={user} 
                                 onConvertToInvoice={handleConvertToInvoice} 
                                 onCreateRectificativa={handleCreateRectificativa}
+                                showConfirm={showConfirm}
+                                showNotification={showNotification}
                             />;
                         case 'reports': 
                             return <ReportsDashboard allInvoices={invoices} />;
@@ -1121,6 +1251,15 @@
                             type={confirmModal.type}
                             onConfirm={confirmModal.onConfirm}
                             onCancel={confirmModal.onCancel}
+                        />
+                        
+                        {/* Modal de notificación personalizado */}
+                        <CustomNotification 
+                            isOpen={notificationModal.isOpen}
+                            title={notificationModal.title}
+                            message={notificationModal.message}
+                            type={notificationModal.type}
+                            onClose={() => setNotificationModal({ ...notificationModal, isOpen: false })}
                         />
                     </div>
                 );
@@ -1284,7 +1423,7 @@
             }
             
             // Formulario de Cliente
-            function ClientForm({ client = {}, onSave, onCancel }) {
+            function ClientForm({ client = {}, onSave, onCancel, showNotification }) {
                 const [formData, setFormData] = useState({
                     id: client.id || null, 
                     name: client.name || '', 
@@ -1318,7 +1457,7 @@
                 const handleSubmit = (e) => {
                     e.preventDefault();
                     if (!formData.consentGiven) {
-                        alert('Debe obtener el consentimiento del cliente para guardar sus datos según el RGPD.');
+                        showNotification('Consentimiento requerido', 'Debe obtener el consentimiento del cliente para guardar sus datos según el RGPD.', 'error');
                         return;
                     }
                     onSave(formData);
@@ -2065,9 +2204,116 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
             }
             
             // === SISTEMA DE CONTABILIDAD COMPLETO ===
-            function AccountingDashboard({ invoices, clients, onCreateInvoice, onViewInvoice, onDeleteInvoice, showConfirm }) {
-                const [activeTab, setActiveTab] = useState('invoices');
+            function AccountingDashboard({ invoices, clients, onCreateInvoice, onViewInvoice, onDeleteInvoice, showConfirm, showNotification }) {
+                // Estados para filtros y ordenación
+                const [searchTerm, setSearchTerm] = useState('');
+                const [selectedSeries, setSelectedSeries] = useState('all');
+                const [sortField, setSortField] = useState('invoiceDate');
+                const [sortDirection, setSortDirection] = useState('desc');
+                
                 const getClientName = (clientId) => clients.find(c => c.id === clientId)?.name || 'N/A';
+
+                // Obtener series únicas para el filtro
+                const uniqueSeries = useMemo(() => {
+                    const series = [...new Set(invoices.map(inv => inv.invoiceSeries).filter(Boolean))];
+                    return series.sort();
+                }, [invoices]);
+
+                // Función de ordenación
+                const handleSort = (field) => {
+                    if (sortField === field) {
+                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                        setSortField(field);
+                        setSortDirection('asc');
+                    }
+                };
+
+                // Función para renderizar el icono de ordenación
+                const renderSortIcon = (field) => {
+                    if (sortField !== field) {
+                        return <ChevronUpIcon width={12} height={12} className="text-gray-400" />;
+                    }
+                    return sortDirection === 'asc' 
+                        ? <ChevronUpIcon width={12} height={12} className="text-[#006666]" />
+                        : <ChevronDownIcon width={12} height={12} className="text-[#006666]" />;
+                };
+
+                // Filtrar y ordenar facturas
+                const filteredAndSortedInvoices = useMemo(() => {
+                    let filtered = invoices.filter(invoice => {
+                        // Filtro por búsqueda
+                        const searchLower = searchTerm.toLowerCase();
+                        const matchesSearch = !searchTerm || 
+                            invoice.invoiceNumber?.toLowerCase().includes(searchLower) ||
+                            getClientName(invoice.clientId).toLowerCase().includes(searchLower) ||
+                            invoice.status?.toLowerCase().includes(searchLower) ||
+                            invoice.invoiceSeries?.toLowerCase().includes(searchLower);
+
+                        // Filtro por serie
+                        const matchesSeries = selectedSeries === 'all' || invoice.invoiceSeries === selectedSeries;
+
+                        return matchesSearch && matchesSeries;
+                    });
+
+                    // Ordenar
+                    filtered.sort((a, b) => {
+                        let aValue, bValue;
+                        
+                        switch (sortField) {
+                            case 'invoiceNumber':
+                                aValue = a.invoiceNumber || '';
+                                bValue = b.invoiceNumber || '';
+                                break;
+                            case 'invoiceSeries':
+                                aValue = a.invoiceSeries || '';
+                                bValue = b.invoiceSeries || '';
+                                break;
+                            case 'clientName':
+                                aValue = getClientName(a.clientId);
+                                bValue = getClientName(b.clientId);
+                                break;
+                            case 'invoiceDate':
+                                aValue = new Date(a.invoiceDate || '1970-01-01');
+                                bValue = new Date(b.invoiceDate || '1970-01-01');
+                                break;
+                            case 'dueDate':
+                                aValue = new Date(a.dueDate || '1970-01-01');
+                                bValue = new Date(b.dueDate || '1970-01-01');
+                                break;
+                            case 'total':
+                                aValue = a.total || 0;
+                                bValue = b.total || 0;
+                                break;
+                            case 'status':
+                                aValue = a.status || '';
+                                bValue = b.status || '';
+                                break;
+                            default:
+                                return 0;
+                        }
+
+                        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+                        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+                        return 0;
+                    });
+
+                    return filtered;
+                }, [invoices, searchTerm, selectedSeries, sortField, sortDirection, clients]);
+
+                // Estadísticas resumidas
+                const stats = useMemo(() => {
+                    const total = filteredAndSortedInvoices.reduce((acc, inv) => acc + (inv.total || 0), 0);
+                    const paid = filteredAndSortedInvoices.reduce((acc, inv) => acc + (inv.totalPaid || 0), 0);
+                    const pending = total - paid;
+                    
+                    return {
+                        count: filteredAndSortedInvoices.length,
+                        total: total,
+                        paid: paid,
+                        pending: pending
+                    };
+                }, [filteredAndSortedInvoices]);
 
                 return (
                     <div className="space-y-6">
@@ -2075,43 +2321,212 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                             <h1 className="text-3xl font-bold text-gray-900">Contabilidad</h1>
                         </div>
                         
-                        <div className="bg-white p-6 rounded-lg shadow">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                                    <FileTextIcon /> Gestión de Facturas
-                                </h3>
-                                <div className="flex gap-3">
-                                    <button 
-                                        onClick={() => exportInvoicesToExcel(invoices, clients)}
-                                        className="flex items-center gap-2 bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-green-700"
-                                    >
-                                        <DownloadIcon width={20} height={20} />Exportar Excel
-                                    </button>
-                                    <button 
-                                        onClick={onCreateInvoice} 
-                                        className="flex items-center gap-2 bg-[#008080] text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-[#006666]"
-                                    >
-                                        <PlusIcon />Crear Factura
-                                    </button>
+                        {/* Estadísticas Resumidas */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                                <div className="flex items-center">
+                                    <FileTextIcon />
+                                    <div className="ml-3">
+                                        <p className="text-sm font-medium text-gray-600">Total Facturas</p>
+                                        <p className="text-lg font-semibold text-gray-900">{stats.count}</p>
+                                    </div>
                                 </div>
                             </div>
+                            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+                                <div className="flex items-center">
+                                    <CheckIcon width={24} height={24} />
+                                    <div className="ml-3">
+                                        <p className="text-sm font-medium text-gray-600">Total Facturado</p>
+                                        <p className="text-lg font-semibold text-gray-900">{stats.total.toFixed(2)} €</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-emerald-500">
+                                <div className="flex items-center">
+                                    <DollarSignIcon />
+                                    <div className="ml-3">
+                                        <p className="text-sm font-medium text-gray-600">Total Cobrado</p>
+                                        <p className="text-lg font-semibold text-gray-900">{stats.paid.toFixed(2)} €</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-orange-500">
+                                <div className="flex items-center">
+                                    <ClockIcon />
+                                    <div className="ml-3">
+                                        <p className="text-sm font-medium text-gray-600">Pendiente Cobro</p>
+                                        <p className="text-lg font-semibold text-gray-900">{stats.pending.toFixed(2)} €</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            {/* Título */}
+                            <div className="mb-4">
+                                <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                                    <FileTextIcon /> Gestión de Facturas
+                                </h3>
+                                
+                                {/* Barra de herramientas en una sola línea */}
+                                <div className="flex justify-between gap-6 mb-4">
+                                    {/* Controles de filtrado y búsqueda - cada uno independiente */}
+                                    <div className="flex gap-4">
+                                        {/* Icono de búsqueda - elemento completamente separado */}
+                                        <div className="flex items-center">
+                                            <SearchIcon className="text-gray-400" width={16} height={16} />
+                                        </div>
+
+                                        {/* Campo de búsqueda - elemento completamente separado */}
+                                        <div>
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar facturas..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                className="w-80 px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-[#006666]"
+                                            />
+                                        </div>
+
+                                        {/* Filtro por Serie - elemento separado */}
+                                        <div>
+                                            <select
+                                                value={selectedSeries}
+                                                onChange={(e) => setSelectedSeries(e.target.value)}
+                                                className="w-48 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-[#006666]"
+                                            >
+                                                <option value="all">Todas las series</option>
+                                                {uniqueSeries.map(series => (
+                                                    <option key={series} value={series}>{series}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Botón Reset - elemento separado */}
+                                        {(searchTerm || selectedSeries !== 'all') && (
+                                            <div>
+                                                <button
+                                                    onClick={() => {
+                                                        setSearchTerm('');
+                                                        setSelectedSeries('all');
+                                                    }}
+                                                    className="px-3 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
+                                                >
+                                                    <XIcon width={14} height={14} />
+                                                    Limpiar
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Botones de acción - elementos separados */}
+                                    <div className="flex items-center gap-4">
+                                        <div>
+                                            <button 
+                                                onClick={() => exportInvoicesToExcel(filteredAndSortedInvoices, clients, showNotification)}
+                                                className="flex items-center gap-2 bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-green-700 transition-colors"
+                                            >
+                                                <DownloadIcon width={16} height={16} />
+                                                Exportar Excel
+                                            </button>
+                                        </div>
+                                        <div>
+                                            <button 
+                                                onClick={onCreateInvoice} 
+                                                className="flex items-center gap-2 bg-[#008080] text-white font-medium py-2 px-4 rounded-lg shadow-sm hover:bg-[#006666] transition-colors"
+                                            >
+                                                <PlusIcon width={16} height={16} />
+                                                Crear Factura
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Información de resultados */}
+                            <div className="mb-4 text-sm text-gray-600">
+                                Mostrando {filteredAndSortedInvoices.length} de {invoices.length} facturas
+                                {(searchTerm || selectedSeries !== 'all') && (
+                                    <span className="ml-2 text-[#006666] font-medium">
+                                        (filtrado{searchTerm ? ` por "${searchTerm}"` : ''}
+                                        {selectedSeries !== 'all' ? ` - serie ${selectedSeries}` : ''})
+                                    </span>
+                                )}
+                            </div>
+
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left">
                                     <thead className="bg-gray-100">
                                         <tr>
-                                            <th className="p-3">Nº Factura</th>
-                                            <th className="p-3">Serie</th>
-                                            <th className="p-3">Cliente</th>
-                                            <th className="p-3">Fecha</th>
-                                            <th className="p-3">Vencimiento</th>
-                                            <th className="p-3">Total</th>
-                                            <th className="p-3">Estado</th>
+                                            <th 
+                                                className="p-3 cursor-pointer hover:bg-gray-200 select-none"
+                                                onClick={() => handleSort('invoiceNumber')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    Nº Factura
+                                                    {renderSortIcon('invoiceNumber')}
+                                                </div>
+                                            </th>
+                                            <th 
+                                                className="p-3 cursor-pointer hover:bg-gray-200 select-none"
+                                                onClick={() => handleSort('invoiceSeries')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    Serie
+                                                    {renderSortIcon('invoiceSeries')}
+                                                </div>
+                                            </th>
+                                            <th 
+                                                className="p-3 cursor-pointer hover:bg-gray-200 select-none"
+                                                onClick={() => handleSort('clientName')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    Cliente
+                                                    {renderSortIcon('clientName')}
+                                                </div>
+                                            </th>
+                                            <th 
+                                                className="p-3 cursor-pointer hover:bg-gray-200 select-none"
+                                                onClick={() => handleSort('invoiceDate')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    Fecha
+                                                    {renderSortIcon('invoiceDate')}
+                                                </div>
+                                            </th>
+                                            <th 
+                                                className="p-3 cursor-pointer hover:bg-gray-200 select-none"
+                                                onClick={() => handleSort('dueDate')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    Vencimiento
+                                                    {renderSortIcon('dueDate')}
+                                                </div>
+                                            </th>
+                                            <th 
+                                                className="p-3 cursor-pointer hover:bg-gray-200 select-none"
+                                                onClick={() => handleSort('total')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    Total
+                                                    {renderSortIcon('total')}
+                                                </div>
+                                            </th>
+                                            <th 
+                                                className="p-3 cursor-pointer hover:bg-gray-200 select-none"
+                                                onClick={() => handleSort('status')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    Estado
+                                                    {renderSortIcon('status')}
+                                                </div>
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {invoices.length > 0 ? invoices.map(inv => (
+                                        {filteredAndSortedInvoices.length > 0 ? filteredAndSortedInvoices.map(inv => (
                                             <tr key={inv.id} className="border-b hover:bg-gray-50">
-                                                <td className="p-3 font-mono text-sm cursor-pointer" onClick={() => onViewInvoice(inv)}>
+                                                <td className="p-3 font-mono text-sm cursor-pointer text-[#006666] hover:text-[#004444] font-medium" onClick={() => onViewInvoice(inv)}>
                                                     {inv.invoiceNumber}
                                                 </td>
                                                 <td className="p-3">
@@ -2134,10 +2549,27 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                         )) : (
                                             <tr>
                                                 <td colSpan="7" className="text-center p-6 text-gray-500">
-                                                    No hay facturas. 
-                                                    <button onClick={onCreateInvoice} className="text-[#008080] ml-2 underline">
-                                                        Crear primera factura
-                                                    </button>
+                                                    {invoices.length === 0 ? (
+                                                        <>
+                                                            No hay facturas. 
+                                                            <button onClick={onCreateInvoice} className="text-[#008080] ml-2 underline">
+                                                                Crear primera factura
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            No se encontraron facturas que coincidan con los filtros aplicados.
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setSearchTerm('');
+                                                                    setSelectedSeries('all');
+                                                                }}
+                                                                className="text-[#008080] ml-2 underline"
+                                                            >
+                                                                Limpiar filtros
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </td>
                                             </tr>
                                         )}
@@ -2561,7 +2993,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
             }
 
             // === DETALLE DE FACTURA ===
-            function InvoiceDetail({ invoice, clients, onBack, onRegisterPayment, db, userId, onConvertToInvoice, onCreateRectificativa }) {
+            function InvoiceDetail({ invoice, clients, onBack, onRegisterPayment, db, userId, onConvertToInvoice, onCreateRectificativa, showConfirm, showNotification }) {
                 if (!invoice) return null;
                 
                 const client = clients.find(c => c.id === invoice.clientId);
@@ -2587,8 +3019,224 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                         onRegisterPayment(invoice, amount); 
                         setPaymentAmount(0); 
                     } else { 
-                        alert("El importe del pago no es válido."); 
+                        showNotification('Error de pago', 'El importe del pago no es válido. Debe ser mayor que 0 y no superior al importe pendiente.', 'error');
                     } 
+                };
+
+                // Función para imprimir la factura
+                const handlePrintInvoice = () => {
+                    const printContent = generateInvoicePrintHTML(invoice, client);
+                    const printWindow = window.open('', '_blank', 'width=800,height=600');
+                    printWindow.document.open();
+                    printWindow.document.write(printContent);
+                    printWindow.document.close();
+                    printWindow.focus();
+                    setTimeout(() => {
+                        printWindow.print();
+                        printWindow.close();
+                    }, 250);
+                };
+
+                // Función para generar el HTML de impresión
+                const generateInvoicePrintHTML = (invoice, client) => {
+                    return `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <meta charset="utf-8">
+                            <title>Factura ${invoice.invoiceNumber}</title>
+                            <style>
+                                * { margin: 0; padding: 0; box-sizing: border-box; }
+                                body { font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #333; }
+                                .invoice-container { max-width: 800px; margin: 0 auto; padding: 20px; }
+                                .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #006666; padding-bottom: 20px; }
+                                .logo-section h1 { color: #006666; font-size: 24px; margin-bottom: 5px; }
+                                .logo-section h2 { color: #333; font-size: 18px; font-weight: normal; }
+                                .company-info { text-align: right; }
+                                .company-info h3 { color: #006666; font-size: 16px; margin-bottom: 5px; }
+                                .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+                                .invoice-details, .client-details { flex: 1; }
+                                .client-details { margin-left: 30px; background: #f8f9fa; padding: 15px; border-radius: 5px; }
+                                .invoice-details h4, .client-details h4 { color: #006666; font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+                                .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                                .items-table th { background: #006666; color: white; padding: 10px; text-align: left; font-size: 11px; }
+                                .items-table td { padding: 8px 10px; border-bottom: 1px solid #ddd; }
+                                .items-table tr:nth-child(even) { background: #f8f9fa; }
+                                .totals { float: right; width: 300px; }
+                                .totals table { width: 100%; border-collapse: collapse; }
+                                .totals td { padding: 5px 10px; }
+                                .totals .total-row { background: #006666; color: white; font-weight: bold; }
+                                .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 10px; color: #666; }
+                                @media print { 
+                                    body { print-color-adjust: exact; } 
+                                    .invoice-container { padding: 0; }
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="invoice-container">
+                                <div class="header">
+                                    <div class="logo-section">
+                                        <img src="./LOGO_EXPERTIA.jpg" alt="Expertia Medical Solutions" style="height: 60px; margin-bottom: 10px;">
+                                        <p style="margin-top: 10px; font-weight: bold; font-size: 16px;">${invoice.type.toUpperCase()}</p>
+                                        <p style="color: #666;">Nº: ${invoice.invoiceNumber || 'N/A'}</p>
+                                    </div>
+                                    <div class="company-info">
+                                        <h3>Expertia Medical Solutions SL</h3>
+                                        <p>Calle Ficticia 123</p>
+                                        <p>28080 Madrid, España</p>
+                                        <p>CIF: B12345678</p>
+                                        <p>Tel: +34 912 345 678</p>
+                                        <p>Email: info@expertiamedical.com</p>
+                                    </div>
+                                </div>
+
+                                <div class="invoice-info">
+                                    <div class="invoice-details">
+                                        <h4>Detalles de la Factura</h4>
+                                        <p><strong>Fecha de Factura:</strong> ${invoice.invoiceDate || 'N/A'}</p>
+                                        <p><strong>Fecha de Vencimiento:</strong> ${invoice.dueDate || 'N/A'}</p>
+                                        <p><strong>Serie:</strong> ${invoice.invoiceSeries || 'N/A'}</p>
+                                        <p><strong>Estado:</strong> ${invoice.status || 'N/A'}</p>
+                                    </div>
+                                    <div class="client-details">
+                                        <h4>Facturar a:</h4>
+                                        ${client ? `
+                                            <p><strong>${client.clinic || client.name}</strong></p>
+                                            <p>${client.address || 'Dirección no especificada'}</p>
+                                            <p>${client.postalCode || ''} ${client.city || ''}</p>
+                                            <p>Att: ${client.name}</p>
+                                            ${client.email ? `<p>Email: ${client.email}</p>` : ''}
+                                            ${client.phone ? `<p>Tel: ${client.phone}</p>` : ''}
+                                        ` : '<p>Cliente no encontrado</p>'}
+                                    </div>
+                                </div>
+
+                                <table class="items-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Descripción</th>
+                                            <th style="width: 80px;">Cantidad</th>
+                                            <th style="width: 100px;">Precio Unit.</th>
+                                            <th style="width: 100px;">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${(invoice.items || []).map(item => `
+                                            <tr>
+                                                <td>${item.description || 'N/A'}</td>
+                                                <td style="text-align: center;">${item.quantity || 0}</td>
+                                                <td style="text-align: right;">${(item.price || 0).toFixed(2)} €</td>
+                                                <td style="text-align: right;">${((item.quantity || 0) * (item.price || 0)).toFixed(2)} €</td>
+                                            </tr>
+                                        `).join('')}
+                                        ${(invoice.items || []).length === 0 ? '<tr><td colspan="4" style="text-align: center; color: #666;">No hay elementos en esta factura</td></tr>' : ''}
+                                    </tbody>
+                                </table>
+
+                                <div class="totals">
+                                    <table>
+                                        <tr>
+                                            <td style="text-align: right;"><strong>Subtotal:</strong></td>
+                                            <td style="text-align: right;">${(invoice.subtotal || 0).toFixed(2)} €</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: right;"><strong>IVA (21%):</strong></td>
+                                            <td style="text-align: right;">${(invoice.vat || 0).toFixed(2)} €</td>
+                                        </tr>
+                                        <tr class="total-row">
+                                            <td style="text-align: right;"><strong>TOTAL:</strong></td>
+                                            <td style="text-align: right;"><strong>${(invoice.total || 0).toFixed(2)} €</strong></td>
+                                        </tr>
+                                    </table>
+                                </div>
+
+                                <div style="clear: both;"></div>
+
+                                <div class="footer">
+                                    <p><strong>Forma de pago:</strong> Transferencia bancaria</p>
+                                    <p><strong>Cuenta bancaria:</strong> ES21 1234 5678 9012 3456 7890</p>
+                                    <p><strong>Notas:</strong> ${invoice.notes || 'Gracias por confiar en Expertia Medical Solutions.'}</p>
+                                    <br>
+                                    <p style="text-align: center;">
+                                        Expertia Medical Solutions SL | CIF: B12345678 | 
+                                        Calle Ficticia 123, 28080 Madrid | 
+                                        Tel: +34 912 345 678 | www.expertiamedical.com
+                                    </p>
+                                </div>
+                            </div>
+                        </body>
+                        </html>
+                    `;
+                };
+
+                // Función para generar y descargar PDF de la factura
+                const handleDownloadPDF = () => {
+                    const printContent = generateInvoicePrintHTML(invoice, client);
+                    const printWindow = window.open('', '_blank', 'width=800,height=600');
+                    printWindow.document.open();
+                    printWindow.document.write(printContent);
+                    printWindow.document.close();
+                    printWindow.focus();
+                    
+                    // Abrir directamente el diálogo de impresión
+                    setTimeout(() => {
+                        printWindow.print();
+                    }, 250);
+                };
+
+                // Función para enviar por correo
+                const handleSendByEmail = async () => {
+                    if (!client || !client.email) {
+                        showNotification('Error de email', 'No se encontró el email del cliente. Por favor, verifica que el cliente tenga un email registrado.', 'error');
+                        return;
+                    }
+
+                    // Preguntar si quiere generar PDF primero usando el modal personalizado
+                    const userWantsPDF = await showConfirm(
+                        'Generar PDF',
+                        '¿Deseas generar primero el PDF de la factura para adjuntarlo al email?',
+                        () => {}, // onConfirm vacío porque manejamos la Promise
+                        'info'
+                    );
+                    
+                    if (userWantsPDF) {
+                        // Usuario confirmó - generar PDF primero
+                        handleDownloadPDF();
+                        
+                        // Esperar un momento y luego mostrar el email
+                        setTimeout(() => {
+                            openEmailCompose();
+                            showNotification('PDF generado', 'No olvides adjuntar el PDF descargado al email antes de enviarlo.', 'info');
+                        }, 1000);
+                    } else {
+                        // Usuario canceló o no quiere PDF - ir directo al email
+                        openEmailCompose();
+                    }
+                };
+
+                const openEmailCompose = () => {
+                    const subject = `Factura ${invoice.invoiceNumber} - Expertia Medical Solutions`;
+                    const body = `Estimado/a ${client.name},
+
+Adjunto encontrará la factura ${invoice.invoiceNumber} correspondiente a los servicios prestados.
+
+Detalles de la factura:
+- Número: ${invoice.invoiceNumber}
+- Fecha: ${invoice.invoiceDate}
+- Importe: ${(invoice.total || 0).toFixed(2)} €
+- Estado: ${invoice.status}
+
+Si tiene alguna pregunta sobre esta factura, no dude en contactarnos.
+
+Atentamente,
+Expertia Medical Solutions
+Tel: +34 912 345 678
+Email: info@expertiamedical.com`;
+
+                    const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                    // Abrir en nueva ventana/pestaña
+                    window.open(mailtoLink, '_blank');
                 };
                 
                 return (
@@ -2733,10 +3381,25 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                 </button>
                             )}
                             <button 
-                                onClick={() => window.print()} 
-                                className="bg-[#008080] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#006666]"
+                                onClick={handlePrintInvoice}
+                                className="bg-[#008080] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#006666] flex items-center gap-2"
                             >
-                                Imprimir / PDF
+                                <PrinterIcon width={16} height={16} />
+                                Imprimir
+                            </button>
+                            <button 
+                                onClick={handleDownloadPDF}
+                                className="bg-[#006666] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#005555] flex items-center gap-2"
+                            >
+                                <DownloadIcon width={16} height={16} />
+                                Descargar PDF
+                            </button>
+                            <button 
+                                onClick={handleSendByEmail}
+                                className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                            >
+                                <SendIcon width={16} height={16} />
+                                Enviar por Email
                             </button>
                             {invoice.type !== 'Factura Rectificativa' && (
                                 <button 
