@@ -71,7 +71,7 @@
 
             // --- Íconos (SVG) ---
             const PlusIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-            const UserIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
+            const UserIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
             const EditIcon = ({ width = 16, height = 16 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>;
             const DollarSignIcon = ({ width = 16, height = 16 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>;
             const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
@@ -271,7 +271,7 @@
 
             const SendIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>;
             const PrinterIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>;
-            const FileTextIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
+            const FileTextIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
             const BriefcaseIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>;
             const BarChartIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>;
             const AwardIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>;
@@ -286,6 +286,7 @@
             const TagIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>;
             const SettingsIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V6a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
             const InfoIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
+            const ArrowRightIcon = ({ width = 20, height = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>;
 
             // --- Constantes de la aplicación ---
             const FUNNEL_TAGS = { 'Lead': 'bg-gray-200 text-gray-800', 'Primer Contacto': 'bg-blue-200 text-blue-800', 'Interesado': 'bg-cyan-200 text-cyan-800', 'Demo Realizada': 'bg-indigo-200 text-indigo-800', 'Negociación': 'bg-purple-200 text-purple-800', 'En Cierre': 'bg-orange-200 text-orange-800', 'Ganado': 'bg-green-200 text-green-800', 'Perdido': 'bg-red-200 text-red-800' };
@@ -370,7 +371,7 @@
                 const [invoices, setInvoices] = useState([]);
                 const [products, setProducts] = useState([]);
                 const [offers, setOffers] = useState([]);
-                const [activeView, setActiveView] = useState('dashboard');
+                const [activeView, setActiveView] = useState('welcome');
                 const [selectedItem, setSelectedItem] = useState(null);
                 const [isLoading, setIsLoading] = useState(true);
                 const [searchTerm, setSearchTerm] = useState('');
@@ -1065,7 +1066,7 @@
                 ), [clients, searchTerm, filterTag]);
 
                 const renderView = () => {
-                    if (!isCommercialOrAdmin() && activeView !== 'profile') {
+                    if (!isCommercialOrAdmin() && activeView !== 'profile' && activeView !== 'welcome') {
                         return (
                             <div className="p-6 text-center">
                                 <h2 className="text-xl font-semibold text-gray-800 mb-4">Acceso Restringido</h2>
@@ -1076,6 +1077,14 @@
                     }
 
                     switch (activeView) {
+                        case 'welcome':
+                            return <WelcomeScreen 
+                                userProfile={userProfile}
+                                clients={clients}
+                                invoices={invoices}
+                                offers={offers}
+                                onNavigate={setActiveView}
+                            />;
                         case 'profile': 
                             return <ProfileForm userProfile={userProfile} onSave={handleSaveProfile} onBack={() => setActiveView('dashboard')} />;
                         case 'bulkCommunication': 
@@ -1266,6 +1275,131 @@
             }
 
             // --- Componentes ---
+            // Componente de Pantalla de Bienvenida
+            function WelcomeScreen({ userProfile, clients, invoices, offers, onNavigate }) {
+                const totalClients = clients.length;
+                const totalInvoices = invoices.length;
+                const totalOffers = offers.length;
+                
+                // Calcular métricas
+                const clientsGanados = clients.filter(c => c.funnelStage === 'Ganado').length;
+                const invoicesPagadas = invoices.filter(i => i.status === 'Pagada').length;
+                const offersAceptadas = offers.filter(o => o.status === 'Aceptada').length;
+                
+                const totalRevenue = invoices
+                    .filter(i => i.status === 'Pagada')
+                    .reduce((sum, i) => sum + (i.total || 0), 0);
+                
+                const currentDate = new Date().toLocaleDateString('es-ES', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                            {/* Saludo de bienvenida */}
+                            <div className="text-center mb-8">
+                                <h1 className="text-3xl font-bold text-gray-900 mb-2">¡Bienvenido, {userProfile?.name}!</h1>
+                                <p className="text-lg text-gray-600">{currentDate}</p>
+                                <p className="text-sm text-gray-500 mt-2">Sistema CRM - Expertia Medical Solutions</p>
+                            </div>
+                            
+                            {/* Métricas principales */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                                <StatCard 
+                                    title="Total Clientes" 
+                                    value={totalClients}
+                                    icon={<UserIcon width={32} height={32} />}
+                                    className="bg-white border-2 border-green-200 text-gray-900"
+                                />
+                                <StatCard 
+                                    title="Clientes Ganados" 
+                                    value={clientsGanados}
+                                    icon={<AwardIcon width={32} height={32} />}
+                                    className="bg-white border-2 border-green-200 text-gray-900"
+                                />
+                                <StatCard 
+                                    title="Facturas Pagadas" 
+                                    value={invoicesPagadas}
+                                    icon={<FileTextIcon width={32} height={32} />}
+                                    className="bg-white border-2 border-green-200 text-gray-900"
+                                />
+                                <StatCard 
+                                    title="Ingresos Totales" 
+                                    value={`€${totalRevenue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`}
+                                    icon={<DollarSignIcon width={32} height={32} />}
+                                    className="bg-white border-2 border-green-200 text-gray-900"
+                                />
+                            </div>
+                            
+                            {/* Resumen de actividad reciente */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                                {/* Resumen de ofertas */}
+                                <div className="bg-white rounded-lg shadow-lg p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-semibold text-gray-900">Estado de Ofertas</h3>
+                                        <PackageIcon width={24} height={24} className="text-gray-400" />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-gray-600">Total ofertas</span>
+                                            <span className="font-medium text-gray-900">{totalOffers}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-gray-600">Aceptadas</span>
+                                            <span className="font-medium text-green-600">{offersAceptadas}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-gray-600">Pendientes</span>
+                                            <span className="font-medium text-orange-600">{offers.filter(o => o.status === 'Enviada').length}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Resumen de facturas */}
+                                <div className="bg-white rounded-lg shadow-lg p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-semibold text-gray-900">Estado de Facturas</h3>
+                                        <FileTextIcon width={24} height={24} className="text-gray-400" />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-gray-600">Total facturas</span>
+                                            <span className="font-medium text-gray-900">{totalInvoices}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-gray-600">Pagadas</span>
+                                            <span className="font-medium text-green-600">{invoicesPagadas}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-gray-600">Pendientes</span>
+                                            <span className="font-medium text-orange-600">{invoices.filter(i => i.status === 'Finalizada').length}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Pie de la pantalla de bienvenida */}
+                            <div className="text-center mt-8 py-6">
+                                <p className="text-sm text-gray-500">
+                                    Expertia Medical Solutions - Sistema CRM para equipos médicos
+                                </p>
+                                <button 
+                                    onClick={() => onNavigate('dashboard')}
+                                    className="mt-4 inline-flex items-center px-6 py-2 bg-[#006666] text-white rounded-md hover:bg-[#005555] transition-colors"
+                                >
+                                    <BarChartIcon width={20} height={20} className="mr-2" />
+                                    Ir al Dashboard Principal
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+            
             function Header({ userProfile, activeView, setActiveView }) {
                 const navItemClass = (viewName) => `cursor-pointer py-2 px-3 rounded-md text-sm font-medium flex items-center gap-2 ${activeView.startsWith(viewName) ? 'bg-[#006666] text-white' : 'text-gray-600 hover:bg-gray-200'}`;
                 const isAdmin = userProfile?.role === 'admin';
@@ -1275,7 +1409,17 @@
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                             <div className="flex justify-between items-center h-20">
                                 <div className="flex items-center">
-                                    <img src="./LOGO_EXPERTIA.jpg" alt="Expertia Medical Solutions Logo" className="h-12 w-auto" />
+                                    {activeView === 'welcome' ? (
+                                        <img src="./LOGO_EXPERTIA.jpg" alt="Expertia Medical Solutions Logo" className="h-12 w-auto" />
+                                    ) : (
+                                        <button 
+                                            onClick={() => setActiveView('welcome')}
+                                            className="hover:opacity-80 transition-opacity"
+                                            title="Volver al inicio"
+                                        >
+                                            <img src="./LOGO_EXPERTIA.jpg" alt="Expertia Medical Solutions Logo" className="h-12 w-auto" />
+                                        </button>
+                                    )}
                                 </div>
                                 <nav className="flex items-center gap-4">
                                     <span onClick={() => setActiveView('dashboard')} className={navItemClass('dashboard')}>
@@ -1411,10 +1555,10 @@
                     <div className={`p-6 rounded-lg shadow ${className}`}>
                         <div className="flex items-center justify-between">
                             <div>
-                                <h3 className="text-sm font-medium opacity-90">{title}</h3>
-                                <p className="text-2xl font-bold mt-1">{value}</p>
+                                <h3 className="text-sm font-medium text-gray-600">{title}</h3>
+                                <p className="text-2xl font-bold mt-1 text-gray-900">{value}</p>
                             </div>
-                            <div className="text-2xl opacity-75">
+                            <div className="text-gray-700">
                                 {icon}
                             </div>
                         </div>
