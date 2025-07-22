@@ -4006,35 +4006,305 @@ Email: info@expertiamedical.com`;
                     [filteredInvoices]
                 );
 
-                // Componente de gráfico simple como fallback
-                const SimpleBarChart = ({ data, title }) => (
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <h3 className="text-xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                            <BarChartIcon width={20} height={20} /> {title}
-                        </h3>
-                        <div className="space-y-2">
-                            {data.slice(0, 6).map((item, index) => {
-                                const maxValue = Math.max(...data.map(d => d.Ventas));
-                                const percentage = (item.Ventas / maxValue) * 100;
-                                return (
-                                    <div key={item.name} className="flex items-center gap-3">
-                                        <div className="w-20 text-sm text-gray-600 truncate">{item.name}</div>
-                                        <div className="flex-1 bg-gray-200 rounded-full h-6 relative">
-                                            <div 
-                                                className="bg-[#008080] h-6 rounded-full flex items-center justify-end pr-2"
-                                                style={{ width: `${percentage}%` }}
-                                            >
-                                                <span className="text-white text-xs font-semibold">
-                                                    {item.Ventas.toFixed(0)} €
-                                                </span>
+                // 🚀 MEJORA 2/4: Componente de gráfico interactivo como fallback
+                const SimpleBarChart = ({ data, title }) => {
+                    const [hoveredIndex, setHoveredIndex] = React.useState(null);
+                    const [isVisible, setIsVisible] = React.useState(false);
+                    
+                    React.useEffect(() => {
+                        // Animación de entrada
+                        const timer = setTimeout(() => setIsVisible(true), 100);
+                        return () => clearTimeout(timer);
+                    }, []);
+
+                    const maxValue = Math.max(...data.map(d => d.Ventas));
+                    const totalValue = data.reduce((sum, item) => sum + item.Ventas, 0);
+                    
+                    return (
+                        <div className={`bg-white p-6 rounded-lg shadow-lg transition-all duration-500 transform ${
+                            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                        }`}>
+                            <h3 className="text-xl font-semibold mb-4 text-gray-800 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <BarChartIcon width={20} height={20} className="text-[#008080]" />
+                                    {title}
+                                </div>
+                                <div className="text-sm text-gray-500 font-normal">
+                                    Total: <span className="font-bold text-[#008080]">{totalValue.toFixed(0)} €</span>
+                                </div>
+                            </h3>
+                            
+                            <div className="space-y-3">
+                                {data.slice(0, 6).map((item, index) => {
+                                    const percentage = (item.Ventas / maxValue) * 100;
+                                    const isHovered = hoveredIndex === index;
+                                    const marketShare = ((item.Ventas / totalValue) * 100).toFixed(1);
+                                    
+                                    return (
+                                        <div 
+                                            key={item.name} 
+                                            className="relative group"
+                                            onMouseEnter={() => setHoveredIndex(index)}
+                                            onMouseLeave={() => setHoveredIndex(null)}
+                                        >
+                                            <div className={`flex items-center gap-3 p-2 rounded-lg transition-all duration-300 ${
+                                                isHovered ? 'bg-[#008080]/5 shadow-md transform scale-105' : 'hover:bg-gray-50'
+                                            }`}>
+                                                <div className="w-24 text-sm text-gray-700 font-medium truncate" title={item.name}>
+                                                    {item.name}
+                                                </div>
+                                                <div className="flex-1 bg-gray-200 rounded-full h-8 relative overflow-hidden shadow-inner">
+                                                    <div 
+                                                        className={`h-8 rounded-full flex items-center justify-end pr-3 transition-all duration-1000 ease-out ${
+                                                            isHovered 
+                                                                ? 'bg-gradient-to-r from-[#008080] to-[#00a6a6] shadow-lg'
+                                                                : 'bg-gradient-to-r from-[#008080] to-[#006666]'
+                                                        }`}
+                                                        style={{ 
+                                                            width: isVisible ? `${percentage}%` : '0%',
+                                                            animation: isVisible ? `growBar-${index} 1s ease-out ${index * 0.1}s both` : 'none'
+                                                        }}
+                                                    >
+                                                        <span className="text-white text-xs font-bold">
+                                                            {item.Ventas.toFixed(0)} €
+                                                        </span>
+                                                        
+                                                        {/* Brillo animado */}
+                                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+                                                    </div>
+                                                    
+                                                    {/* Tooltip interactivo */}
+                                                    {isHovered && (
+                                                        <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg text-xs font-medium shadow-xl z-10 animate-bounce">
+                                                            <div className="text-center">
+                                                                <div>{item.Ventas.toFixed(2)} €</div>
+                                                                <div className="text-gray-300">{marketShare}% del total</div>
+                                                            </div>
+                                                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                
+                                                {/* Indicador de posición */}
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                                                    index === 0 ? 'bg-yellow-100 text-yellow-700' :
+                                                    index === 1 ? 'bg-gray-100 text-gray-700' :
+                                                    index === 2 ? 'bg-orange-100 text-orange-700' :
+                                                    'bg-blue-100 text-blue-700'
+                                                } ${isHovered ? 'transform scale-110 shadow-lg' : ''}`}>
+                                                    #{index + 1}
+                                                </div>
                                             </div>
                                         </div>
+                                    );
+                                })}
+                            </div>
+                            
+                            {/* Leyenda estadística */}
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="text-center">
+                                        <div className="text-gray-500">Promedio</div>
+                                        <div className="font-bold text-[#008080]">
+                                            {(totalValue / data.length).toFixed(0)} €
+                                        </div>
                                     </div>
-                                );
-                            })}
+                                    <div className="text-center">
+                                        <div className="text-gray-500">Máximo</div>
+                                        <div className="font-bold text-green-600">
+                                            {maxValue.toFixed(0)} €
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Añadir estilos de animación */}
+                            <style jsx>{`
+                                ${data.map((_, index) => `
+                                    @keyframes growBar-${index} {
+                                        from { width: 0%; }
+                                        to { width: ${(data[index].Ventas / maxValue) * 100}%; }
+                                    }
+                                `).join('')}
+                            `}</style>
                         </div>
-                    </div>
-                );
+                    );
+                };
+
+                // 🚀 MEJORA 2/4: Componente de gráfico circular interactivo como fallback
+                const SimplePieChart = ({ data, title }) => {
+                    const [selectedSegment, setSelectedSegment] = React.useState(null);
+                    const [isVisible, setIsVisible] = React.useState(false);
+                    
+                    React.useEffect(() => {
+                        const timer = setTimeout(() => setIsVisible(true), 200);
+                        return () => clearTimeout(timer);
+                    }, []);
+
+                    const total = data.reduce((sum, item) => sum + item.Ventas, 0);
+                    const colors = ['#008080', '#00a6a6', '#20b2aa', '#4fb3b3', '#7dcccc', '#aadddd'];
+                    
+                    let currentAngle = 0;
+                    const segments = data.slice(0, 6).map((item, index) => {
+                        const percentage = (item.Ventas / total) * 100;
+                        const angle = (item.Ventas / total) * 360;
+                        const startAngle = currentAngle;
+                        currentAngle += angle;
+                        
+                        return {
+                            ...item,
+                            percentage,
+                            angle,
+                            startAngle,
+                            color: colors[index % colors.length]
+                        };
+                    });
+
+                    const createPath = (centerX, centerY, radius, startAngle, endAngle) => {
+                        const start = polarToCartesian(centerX, centerY, radius, endAngle);
+                        const end = polarToCartesian(centerX, centerY, radius, startAngle);
+                        const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+                        return [
+                            "M", centerX, centerY, 
+                            "L", start.x, start.y, 
+                            "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y,
+                            "Z"
+                        ].join(" ");
+                    };
+
+                    const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+                        const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+                        return {
+                            x: centerX + (radius * Math.cos(angleInRadians)),
+                            y: centerY + (radius * Math.sin(angleInRadians))
+                        };
+                    };
+
+                    return (
+                        <div className={`bg-white p-6 rounded-lg shadow-lg transition-all duration-500 transform ${
+                            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                        }`}>
+                            <h3 className="text-xl font-semibold mb-6 text-gray-800 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-[#008080]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
+                                    </svg>
+                                    {title}
+                                </div>
+                                <div className="text-sm text-gray-500 font-normal">
+                                    Total: <span className="font-bold text-[#008080]">{total.toFixed(0)} €</span>
+                                </div>
+                            </h3>
+                            
+                            <div className="flex flex-col lg:flex-row gap-6">
+                                {/* Gráfico circular SVG */}
+                                <div className="flex-shrink-0 flex justify-center">
+                                    <div className="relative">
+                                        <svg width="200" height="200" className="transform -rotate-90">
+                                            {segments.map((segment, index) => {
+                                                const isSelected = selectedSegment === index;
+                                                const radius = isSelected ? 85 : 80;
+                                                const path = createPath(100, 100, radius, segment.startAngle, segment.startAngle + segment.angle);
+                                                
+                                                return (
+                                                    <g key={index}>
+                                                        <path
+                                                            d={path}
+                                                            fill={segment.color}
+                                                            stroke="white"
+                                                            strokeWidth="2"
+                                                            className={`cursor-pointer transition-all duration-300 ${
+                                                                isSelected ? 'drop-shadow-lg' : 'hover:brightness-110'
+                                                            }`}
+                                                            style={{
+                                                                opacity: isVisible ? 1 : 0,
+                                                                transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                                                                transformOrigin: '100px 100px',
+                                                                animation: isVisible ? `fadeInSegment 0.8s ease-out ${index * 0.1}s both` : 'none'
+                                                            }}
+                                                            onMouseEnter={() => setSelectedSegment(index)}
+                                                            onMouseLeave={() => setSelectedSegment(null)}
+                                                        />
+                                                        {isSelected && (
+                                                            <circle
+                                                                cx="100"
+                                                                cy="100"
+                                                                r="3"
+                                                                fill={segment.color}
+                                                                className="animate-ping"
+                                                            />
+                                                        )}
+                                                    </g>
+                                                );
+                                            })}
+                                            
+                                            {/* Centro del gráfico */}
+                                            <circle cx="100" cy="100" r="35" fill="white" stroke="#e5e7eb" strokeWidth="2"/>
+                                            <text x="100" y="95" textAnchor="middle" className="text-xs font-bold fill-gray-700 rotate-90" transform="rotate(90 100 95)">
+                                                Total
+                                            </text>
+                                            <text x="100" y="110" textAnchor="middle" className="text-xs font-bold fill-[#008080] rotate-90" transform="rotate(90 100 110)">
+                                                {total.toFixed(0)}€
+                                            </text>
+                                        </svg>
+                                        
+                                        {/* Tooltip flotante */}
+                                        {selectedSegment !== null && (
+                                            <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-xl z-10 animate-bounce">
+                                                <div className="text-center">
+                                                    <div className="font-bold">{segments[selectedSegment].name}</div>
+                                                    <div>{segments[selectedSegment].Ventas.toFixed(2)} €</div>
+                                                    <div className="text-gray-300">{segments[selectedSegment].percentage.toFixed(1)}%</div>
+                                                </div>
+                                                <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                {/* Leyenda interactiva */}
+                                <div className="flex-1 space-y-2">
+                                    {segments.map((segment, index) => (
+                                        <div
+                                            key={index}
+                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-300 ${
+                                                selectedSegment === index 
+                                                    ? 'bg-gray-100 shadow-md transform scale-105' 
+                                                    : 'hover:bg-gray-50'
+                                            }`}
+                                            onMouseEnter={() => setSelectedSegment(index)}
+                                            onMouseLeave={() => setSelectedSegment(null)}
+                                        >
+                                            <div 
+                                                className="w-4 h-4 rounded-full shadow-sm"
+                                                style={{ backgroundColor: segment.color }}
+                                            ></div>
+                                            <div className="flex-1">
+                                                <div className="font-medium text-gray-900">{segment.name}</div>
+                                                <div className="text-sm text-gray-500">
+                                                    {segment.percentage.toFixed(1)}% del total
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="font-bold text-[#008080]">
+                                                    {segment.Ventas.toFixed(0)} €
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            <style jsx>{`
+                                @keyframes fadeInSegment {
+                                    from { opacity: 0; transform: scale(0.8); }
+                                    to { opacity: 1; transform: scale(1); }
+                                }
+                            `}</style>
+                        </div>
+                    );
+                };
 
                 return (
                     <div className="space-y-6">
@@ -4192,13 +4462,23 @@ Email: info@expertiamedical.com`;
                                     )}
                                 </>
                             ) : (
-                                // Gráficos fallback sin Recharts
+                                // 🚀 MEJORA 2/4: Gráficos fallback interactivos y atractivos
                                 <>
-                                    {salesByMonth.length > 0 && (
-                                        <SimpleBarChart data={salesByMonth} title="Ventas por Mes" />
-                                    )}
-                                    {salesByQuarter.length > 0 && (
-                                        <SimpleBarChart data={salesByQuarter} title="Ventas por Trimestre" />
+                                    <div className="xl:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {salesByMonth.length > 0 && (
+                                            <SimpleBarChart data={salesByMonth} title="Ventas por Mes" />
+                                        )}
+                                        {salesByQuarter.length > 0 && (
+                                            <SimplePieChart data={salesByQuarter} title="Distribución por Trimestre" />
+                                        )}
+                                    </div>
+                                    
+                                    {/* Gráfico adicional: Top productos como circular */}
+                                    {topProducts.length > 0 && (
+                                        <SimplePieChart 
+                                            data={topProducts.map(p => ({ name: p.name, Ventas: p.revenue }))} 
+                                            title="Top Productos por Ingresos" 
+                                        />
                                     )}
                                 </>
                             )}
@@ -4241,28 +4521,46 @@ Email: info@expertiamedical.com`;
                             </div>
                         )}
 
-                        {/* Mensaje cuando no hay datos */}
+                        {/* 🚀 MEJORA 2/4: Mensaje mejorado cuando no hay datos */}
                         {filteredInvoices.length === 0 && (
-                            <div className="bg-white p-8 rounded-lg shadow text-center">
-                                <div className="text-gray-400 text-6xl mb-4 flex justify-center">
-                                    <BarChartIcon width={72} height={72} />
+                            <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-12 rounded-xl shadow-lg text-center border-2 border-dashed border-gray-300 hover:border-[#008080] transition-all duration-300">
+                                <div className="text-gray-400 text-6xl mb-6 flex justify-center animate-pulse">
+                                    <BarChartIcon width={72} height={72} className="transform hover:scale-110 transition-transform duration-300" />
                                 </div>
-                                <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                                    No hay datos para mostrar
+                                <h3 className="text-2xl font-bold text-gray-700 mb-3">
+                                    📊 No hay datos para mostrar
                                 </h3>
-                                <p className="text-gray-500">
+                                <p className="text-gray-600 mb-2 max-w-md mx-auto">
                                     No se encontraron facturas pagadas que coincidan con los filtros seleccionados.
                                 </p>
-                                <button 
-                                    onClick={() => {
-                                        setProductFilter('all');
-                                        setSalespersonFilter('all');
-                                        setDateFilter('all');
-                                    }}
-                                    className="mt-4 px-4 py-2 bg-[#008080] text-white rounded-lg hover:bg-[#006666]"
-                                >
-                                    Limpiar filtros
-                                </button>
+                                <p className="text-sm text-gray-500 mb-6">
+                                    💡 Intenta ajustar los filtros o limpiarlos para ver más datos
+                                </p>
+                                <div className="flex gap-3 justify-center">
+                                    <button 
+                                        onClick={() => {
+                                            setProductFilter('all');
+                                            setSalespersonFilter('all');
+                                            setDateFilter('all');
+                                        }}
+                                        className="px-6 py-3 bg-gradient-to-r from-[#008080] to-[#00a6a6] text-white rounded-lg hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 font-medium"
+                                    >
+                                        🔄 Limpiar todos los filtros
+                                    </button>
+                                    <button 
+                                        onClick={() => setDateFilter('thisYear')}
+                                        className="px-6 py-3 bg-white text-[#008080] border-2 border-[#008080] rounded-lg hover:bg-[#008080] hover:text-white transform hover:-translate-y-1 transition-all duration-300 font-medium"
+                                    >
+                                        📅 Ver este año
+                                    </button>
+                                </div>
+                                
+                                {/* Elemento decorativo animado */}
+                                <div className="mt-8 flex justify-center space-x-2">
+                                    <div className="w-3 h-3 bg-[#008080] rounded-full animate-bounce"></div>
+                                    <div className="w-3 h-3 bg-[#00a6a6] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                                    <div className="w-3 h-3 bg-[#20b2aa] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                                </div>
                             </div>
                         )}
                     </div>
