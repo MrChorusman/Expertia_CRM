@@ -7151,12 +7151,13 @@ Equipo Expertia Medical Solutions"
                         }
                         
                         // Usar las funciones globales de Firebase
-                        const { getFirestore, doc, getDoc } = window.firebase;
+                        const { doc, getDoc } = window.firebase;
                         if (!doc || !getDoc) {
                             throw new Error('Funciones de Firebase no disponibles');
                         }
                         
-                        const db = getFirestore(window.authManager.app);
+                        // Usar la instancia db global que ya está disponible
+                        const db = window.firebaseDb;
                         const settingsRef = doc(db, 'system_settings', 'main');
                         const settingsDoc = await getDoc(settingsRef);
                         
