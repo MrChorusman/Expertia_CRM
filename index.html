@@ -434,7 +434,8 @@
                     try {
                         console.log('� Creando referencia a system_settings/main usando instancia global...');
                         
-                        // Usar las funciones de Firebase correctamente
+                        // Importar las funciones de Firebase dinámicamente
+                        const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
                         const settingsRef = doc(db, 'system_settings', 'main');
                         
                         console.log('🔍 Obteniendo documento...');
@@ -444,8 +445,6 @@
                             const config = settingsDoc.data();
                             setAppConfig(config);
                             console.log('🔧 Configuración de sistema cargada:', Object.keys(config));
-                            console.log('🔧 Categories en config:', config.products?.categories);
-                            console.log('🔧 Suppliers en config:', config.products?.suppliers);
                         } else {
                             console.log('⚠️ No se encontró configuración del sistema, usando valores por defecto');
                             const defaultConfig = {
@@ -492,9 +491,7 @@
                 
                 // Función para obtener valores de configuración con fallback
                 const getConfigValue = (section, key, defaultValue) => {
-                    const value = appConfig?.[section]?.[key] || defaultValue;
-                    console.log(`🔧 getConfigValue(${section}, ${key}):`, value);
-                    return value;
+                    return appConfig?.[section]?.[key] || defaultValue;
                 };
 
                 // Función para mostrar confirmación personalizada
@@ -1815,15 +1812,7 @@
                     'Storz Medical', 'Zamar Medical', 'Phillips Healthcare', 'GE Healthcare', 'Siemens Healthineers'
                 ]) : ['Storz Medical', 'Zamar Medical', 'Phillips Healthcare', 'GE Healthcare', 'Siemens Healthineers'];
 
-                // Debug: Vamos a ver qué está devolviendo getConfigValue
-                useEffect(() => {
-                    if (getConfigValue) {
-                        console.log('🔧 Debug getConfigValue - Categories:', getConfigValue('products', 'categories', []));
-                        console.log('🔧 Debug getConfigValue - Suppliers:', getConfigValue('products', 'suppliers', []));
-                    } else {
-                        console.log('⚠️ getConfigValue no está disponible');
-                    }
-                }, [getConfigValue]);
+
 
                 // Cargar usuarios comerciales al montar el componente
                 useEffect(() => {
@@ -1832,6 +1821,8 @@
                         try {
                             // Obtener usuarios con rol comercial desde Firebase
                             if (db) {
+                                // Importar las funciones de Firebase dinámicamente
+                                const { collection, query, where, getDocs } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
                                 const usersRef = collection(db, 'users');
                                 const q = query(usersRef, where('role', 'in', ['comercial', 'admin']));
                                 const querySnapshot = await getDocs(q);
