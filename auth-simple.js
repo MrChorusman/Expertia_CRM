@@ -136,46 +136,80 @@ class AuthManager {
         }
 
         try {
+            console.log('🔄 Iniciando login con Google...');
+            
             const { signInWithPopup } = 
                 await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
             const { getFirestore, doc, setDoc, getDoc, collection, getDocs } = 
                 await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
             
+            console.log('🔓 Ejecutando signInWithPopup...');
             const result = await signInWithPopup(this.auth, this.googleProvider);
             const user = result.user;
+            console.log('✅ Autenticación exitosa para:', user.email);
             
-            // Verificar si el usuario ya existe en Firestore
+            // Inicializar Firestore
+            console.log('🔥 Inicializando Firestore...');
             const db = getFirestore(this.app);
-            const userDoc = await getDoc(doc(db, 'users', user.uid));
             
-            if (!userDoc.exists()) {
-                // Es un usuario nuevo, verificar si es el primer usuario
-                const usersCollection = collection(db, 'users');
-                const usersSnapshot = await getDocs(usersCollection);
-                const isFirstUser = usersSnapshot.empty;
+            try {
+                // Verificar si el usuario ya existe en Firestore
+                console.log('🔍 Verificando si existe perfil para UID:', user.uid);
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
                 
-                // Crear perfil de usuario en Firestore
-                const userProfile = {
-                    uid: user.uid,
-                    email: user.email,
-                    role: isFirstUser ? 'admin' : 'comercial', // Cambiar 'user' a 'comercial'
-                    name: user.displayName || user.email.split('@')[0],
-                    photoURL: user.photoURL || null,
-                    createdAt: new Date().toISOString(),
-                    isFirstUser: isFirstUser,
-                    provider: 'google',
-                    active: true
-                };
+                if (!userDoc.exists()) {
+                    console.log('👤 Usuario no encontrado, creando perfil...');
+                    
+                    // Es un usuario nuevo, verificar si es el primer usuario
+                    console.log('📊 Verificando si es el primer usuario...');
+                    const usersCollection = collection(db, 'users');
+                    const usersSnapshot = await getDocs(usersCollection);
+                    const isFirstUser = usersSnapshot.empty;
+                    console.log('🏆 ¿Es primer usuario?', isFirstUser);
+                    
+                    // Crear perfil de usuario en Firestore
+                    const userProfile = {
+                        uid: user.uid,
+                        email: user.email,
+                        role: isFirstUser ? 'admin' : 'comercial',
+                        name: user.displayName || user.email.split('@')[0],
+                        photoURL: user.photoURL || null,
+                        createdAt: new Date().toISOString(),
+                        isFirstUser: isFirstUser,
+                        provider: 'google',
+                        active: true
+                    };
+                    
+                    console.log('💾 Creando perfil:', userProfile);
+                    await setDoc(doc(db, 'users', user.uid), userProfile);
+                    console.log('✅ Nuevo usuario Google creado:', user.email, 'Rol:', userProfile.role);
+                } else {
+                    console.log('✅ Usuario Google existente encontrado:', user.email);
+                    console.log('📄 Perfil existente:', userDoc.data());
+                }
                 
-                await setDoc(doc(db, 'users', user.uid), userProfile);
-                console.log('✅ Nuevo usuario Google creado:', user.email, 'Rol:', userProfile.role);
-            } else {
-                console.log('✅ Usuario Google existente:', user.email);
+            } catch (firestoreError) {
+                console.error('❌ Error específico de Firestore:', firestoreError);
+                console.log('⚠️ Continuando sin crear perfil - se intentará crear después');
+                // No lanzar error aquí, permitir que el usuario se autentique
+                // El perfil se creará después en la aplicación principal
             }
             
             return user;
         } catch (error) {
             console.error('❌ Error en login con Google:', error);
+            
+            // Logging detallado del error
+            if (error.code) {
+                console.log('🔍 Código de error:', error.code);
+            }
+            if (error.message) {
+                console.log('📝 Mensaje de error:', error.message);
+            }
+            if (error.stack) {
+                console.log('📚 Stack trace:', error.stack);
+            }
+            
             throw error;
         }
     }
