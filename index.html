@@ -444,6 +444,8 @@
                             const config = settingsDoc.data();
                             setAppConfig(config);
                             console.log('🔧 Configuración de sistema cargada:', Object.keys(config));
+                            console.log('🔧 Categories en config:', config.products?.categories);
+                            console.log('🔧 Suppliers en config:', config.products?.suppliers);
                         } else {
                             console.log('⚠️ No se encontró configuración del sistema, usando valores por defecto');
                             const defaultConfig = {
@@ -490,7 +492,9 @@
                 
                 // Función para obtener valores de configuración con fallback
                 const getConfigValue = (section, key, defaultValue) => {
-                    return appConfig?.[section]?.[key] || defaultValue;
+                    const value = appConfig?.[section]?.[key] || defaultValue;
+                    console.log(`🔧 getConfigValue(${section}, ${key}):`, value);
+                    return value;
                 };
 
                 // Función para mostrar confirmación personalizada
@@ -1795,18 +1799,31 @@
                 const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
                 // Obtener configuración dinámicamente para ventas
-                const funnelStages = getConfigValue('sales', 'funnelStages', [
+                const funnelStages = getConfigValue ? getConfigValue('sales', 'funnelStages', [
                     'Lead', 'Primer Contacto', 'Interesado', 'Demo Realizada', 'Negociación', 'En Cierre', 'Ganado', 'Perdido'
-                ]);
-                const contactPreferences = getConfigValue('sales', 'contactPreferences', [
+                ]) : ['Lead', 'Primer Contacto', 'Interesado', 'Demo Realizada', 'Negociación', 'En Cierre', 'Ganado', 'Perdido'];
+                
+                const contactPreferences = getConfigValue ? getConfigValue('sales', 'contactPreferences', [
                     'Email', 'Teléfono', 'WhatsApp', 'Visita Comercial'
-                ]);
-                const productCategories = getConfigValue('products', 'categories', [
-                    'Diagnóstico', 'Monitorización', 'Emergencias', 'Laboratorio', 'Software Médico', 'Equipos Especializados'
-                ]);
-                const suppliers = getConfigValue('products', 'suppliers', [
-                    'Storz Medical', 'Zamar Medical', 'Phillips Healthcare', 'GE Healthcare', 'Siemens', 'Mindray'
-                ]);
+                ]) : ['Email', 'Teléfono', 'WhatsApp', 'Visita Comercial'];
+                
+                const productCategories = getConfigValue ? getConfigValue('products', 'categories', [
+                    'Diagnóstico por Imagen', 'Cardiología', 'Laboratorio', 'Quirófano', 'UCI', 'Emergencias', 'Rehabilitación', 'Servicios'
+                ]) : ['Diagnóstico por Imagen', 'Cardiología', 'Laboratorio', 'Quirófano', 'UCI', 'Emergencias', 'Rehabilitación', 'Servicios'];
+                
+                const suppliers = getConfigValue ? getConfigValue('products', 'suppliers', [
+                    'Storz Medical', 'Zamar Medical', 'Phillips Healthcare', 'GE Healthcare', 'Siemens Healthineers'
+                ]) : ['Storz Medical', 'Zamar Medical', 'Phillips Healthcare', 'GE Healthcare', 'Siemens Healthineers'];
+
+                // Debug: Vamos a ver qué está devolviendo getConfigValue
+                useEffect(() => {
+                    if (getConfigValue) {
+                        console.log('🔧 Debug getConfigValue - Categories:', getConfigValue('products', 'categories', []));
+                        console.log('🔧 Debug getConfigValue - Suppliers:', getConfigValue('products', 'suppliers', []));
+                    } else {
+                        console.log('⚠️ getConfigValue no está disponible');
+                    }
+                }, [getConfigValue]);
 
                 // Cargar usuarios comerciales al montar el componente
                 useEffect(() => {
