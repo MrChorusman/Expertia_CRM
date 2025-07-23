@@ -499,6 +499,7 @@
 
                 // Hacer loadAppConfig disponible globalmente para AdminPanel
                 window.loadAppConfig = loadAppConfig;
+                window.getConfigValue = getConfigValue;
 
                 // Función para mostrar confirmación personalizada
                 const showConfirm = (title, message, onConfirm, type = 'warning') => {
@@ -7201,7 +7202,7 @@ Equipo Expertia Medical Solutions"
                     try {
                         setLoading(true);
                         
-                        console.log('💾 Guardando configuraciones en Firebase:', settings);
+                        console.log('💾 [DEBUG] Intentando guardar configuraciones en Firebase:', JSON.stringify(settings, null, 2));
                         
                         if (!window.authManager || !window.authManager.app) {
                             throw new Error('Sistema de autenticación no disponible');
@@ -7213,7 +7214,8 @@ Equipo Expertia Medical Solutions"
                             throw new Error('Funciones de Firebase no disponibles');
                         }
                         
-                        const db = getFirestore(window.authManager.app);
+                        // Usar la instancia db global que ya está disponible
+                        const db = window.firebaseDb;
                         const settingsRef = doc(db, 'system_settings', 'main');
                         
                         // Preparar datos para guardar
@@ -7224,10 +7226,11 @@ Equipo Expertia Medical Solutions"
                             version: Date.now() // Para control de versiones
                         };
                         
+                        console.log('💾 [DEBUG] settingsData final que se enviará a setDoc:', JSON.stringify(settingsData, null, 2));
                         // Guardar en Firebase usando setDoc para crear o actualizar
                         await setDoc(settingsRef, settingsData, { merge: true });
                         
-                        console.log('✅ Configuraciones guardadas exitosamente en Firebase');
+                        console.log('✅ [DEBUG] Configuraciones guardadas exitosamente en Firebase');
                         
                         // IMPORTANTE: Recargar la configuración global de la aplicación
                         if (window.loadAppConfig && typeof window.loadAppConfig === 'function') {
@@ -7247,7 +7250,7 @@ Equipo Expertia Medical Solutions"
                         );
                         
                     } catch (error) {
-                        console.error('❌ Error guardando configuraciones en Firebase:', error);
+                        console.error('❌ [DEBUG] Error guardando configuraciones en Firebase:', error);
                         showNotification(
                             'Error al Guardar',
                             'No se pudieron guardar las configuraciones: ' + error.message,
