@@ -497,6 +497,9 @@
                     return appConfig?.[section]?.[key] || defaultValue;
                 };
 
+                // Hacer loadAppConfig disponible globalmente para AdminPanel
+                window.loadAppConfig = loadAppConfig;
+
                 // Función para mostrar confirmación personalizada
                 const showConfirm = (title, message, onConfirm, type = 'warning') => {
                     return new Promise((resolve) => {
@@ -7147,9 +7150,11 @@ Equipo Expertia Medical Solutions"
                             return;
                         }
                         
-                        // Importar Firestore
-                        const { getFirestore, doc, getDoc } = 
-                            await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                        // Usar las funciones globales de Firebase
+                        const { getFirestore, doc, getDoc } = window.firebase;
+                        if (!doc || !getDoc) {
+                            throw new Error('Funciones de Firebase no disponibles');
+                        }
                         
                         const db = getFirestore(window.authManager.app);
                         const settingsRef = doc(db, 'system_settings', 'main');
@@ -7196,9 +7201,11 @@ Equipo Expertia Medical Solutions"
                             throw new Error('Sistema de autenticación no disponible');
                         }
                         
-                        // Importar Firestore
-                        const { getFirestore, doc, setDoc, getDoc } = 
-                            await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                        // Usar las funciones globales de Firebase
+                        const { doc, setDoc, getDoc } = window.firebase;
+                        if (!doc || !setDoc || !getDoc) {
+                            throw new Error('Funciones de Firebase no disponibles');
+                        }
                         
                         const db = getFirestore(window.authManager.app);
                         const settingsRef = doc(db, 'system_settings', 'main');
@@ -7215,6 +7222,12 @@ Equipo Expertia Medical Solutions"
                         await setDoc(settingsRef, settingsData, { merge: true });
                         
                         console.log('✅ Configuraciones guardadas exitosamente en Firebase');
+                        
+                        // IMPORTANTE: Recargar la configuración global de la aplicación
+                        if (window.loadAppConfig && typeof window.loadAppConfig === 'function') {
+                            await window.loadAppConfig();
+                            console.log('🔄 Configuración global recargada');
+                        }
                         
                         setSaved(true);
                         setTimeout(() => setSaved(false), 3000);
