@@ -9,7 +9,7 @@
   },
   "author": "Expertia Medical Solutions SL",
   "dependencies": {
-    "firebase": "^10.14.1",
+    "firebase": "^12.0.0",
     "firebase-admin": "^13.4.0"
   },
   "devDependencies": {
