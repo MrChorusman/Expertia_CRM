@@ -10228,6 +10228,46 @@ Equipo Expertia Medical Solutions"
             }, 2000);
         }
         
+        // Función para crear perfil de usuario faltante
+        async function createMissingUserProfile(currentUser) {
+            console.log('🛠️ Creando perfil para usuario:', currentUser.email);
+            
+            try {
+                const { getFirestore, doc, setDoc, collection, getDocs } = 
+                    await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                
+                const db = getFirestore(window.authManager.app);
+                
+                // Verificar si es el primer usuario (aunque es poco probable en este punto)
+                const usersCollection = collection(db, 'users');
+                const usersSnapshot = await getDocs(usersCollection);
+                const isFirstUser = usersSnapshot.empty;
+                
+                // Crear perfil básico
+                const userProfile = {
+                    uid: currentUser.uid,
+                    email: currentUser.email,
+                    role: isFirstUser ? 'admin' : 'comercial', // Por defecto comercial para nuevos usuarios
+                    name: currentUser.displayName || currentUser.email.split('@')[0],
+                    photoURL: currentUser.photoURL || null,
+                    createdAt: new Date().toISOString(),
+                    isFirstUser: isFirstUser,
+                    provider: currentUser.providerData[0]?.providerId || 'email',
+                    active: true
+                };
+                
+                // Intentar crear el documento
+                await setDoc(doc(db, 'users', currentUser.uid), userProfile);
+                
+                console.log('✅ Perfil de usuario creado exitosamente:', userProfile);
+                return userProfile;
+                
+            } catch (error) {
+                console.error('❌ Error creando perfil de usuario:', error);
+                throw error;
+            }
+        }
+
         // Sistema de autenticación integrado
         async function initAuthAndApp() {
             // Primero cargar nuestro sistema de autenticación
@@ -10301,18 +10341,57 @@ Equipo Expertia Medical Solutions"
                 if (currentUser) {
                     console.log('✅ Usuario autenticado, obteniendo perfil...');
                     
-                    // Obtener perfil completo del usuario
-                    const userProfile = await window.authManager.getUserProfile();
-                    if (userProfile) {
-                        console.log('👤 Perfil cargado:', userProfile.name, '- Rol:', userProfile.role);
+                    // Obtener perfil completo del usuario con manejo de errores mejorado
+                    try {
+                        const userProfile = await window.authManager.getUserProfile();
+                        if (userProfile) {
+                            console.log('👤 Perfil cargado:', userProfile.name, '- Rol:', userProfile.role);
+                            
+                            // Mostrar mensaje de bienvenida específico según el rol
+                            if (userProfile.isFirstUser) {
+                                console.log('🎉 ¡Bienvenido, administrador! Eres el primer usuario del sistema.');
+                            }
+                            
+                            startApp();
+                        } else {
+                            console.log('⚠️ Perfil no encontrado, intentando crear...');
+                            await createMissingUserProfile(currentUser);
+                            
+                            // Reintentar obtener perfil
+                            const newProfile = await window.authManager.getUserProfile();
+                            if (newProfile) {
+                                console.log('✅ Perfil creado y cargado:', newProfile.name, '- Rol:', newProfile.role);
+                                startApp();
+                            } else {
+                                console.error('❌ No se pudo crear el perfil del usuario');
+                                showAuthScreen();
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ Error obteniendo perfil del usuario:', error);
                         
-                        // Mostrar mensaje de bienvenida específico según el rol
-                        if (userProfile.isFirstUser) {
-                            console.log('🎉 ¡Bienvenido, administrador! Eres el primer usuario del sistema.');
+                        // Si es error de permisos, intentar crear perfil
+                        if (error.message.includes('permissions') || error.message.includes('Missing or insufficient permissions')) {
+                            console.log('🛠️ Detectado error de permisos, intentando crear perfil...');
+                            try {
+                                await createMissingUserProfile(currentUser);
+                                
+                                // Reintentar obtener perfil
+                                const newProfile = await window.authManager.getUserProfile();
+                                if (newProfile) {
+                                    console.log('✅ Perfil creado exitosamente:', newProfile.name, '- Rol:', newProfile.role);
+                                    startApp();
+                                } else {
+                                    throw new Error('No se pudo obtener el perfil después de crearlo');
+                                }
+                            } catch (createError) {
+                                console.error('❌ Error creando perfil de usuario:', createError);
+                                showAuthScreen();
+                            }
+                        } else {
+                            showAuthScreen();
                         }
                     }
-                    
-                    startApp();
                 } else {
                     console.log('❌ Usuario no autenticado, mostrando pantalla de login');
                     showAuthScreen();

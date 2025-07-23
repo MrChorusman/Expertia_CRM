@@ -75,10 +75,11 @@ class AuthManager {
             const userProfile = {
                 uid: user.uid,
                 email: user.email,
-                role: isFirstUser ? 'admin' : 'user', // Primer usuario = admin, resto = user
+                role: isFirstUser ? 'admin' : 'comercial', // Primer usuario = admin, resto = comercial
                 name: user.displayName || email.split('@')[0],
                 createdAt: new Date().toISOString(),
-                isFirstUser: isFirstUser
+                isFirstUser: isFirstUser,
+                active: true
             };
             
             await setDoc(doc(db, 'users', user.uid), userProfile);
@@ -157,12 +158,13 @@ class AuthManager {
                 const userProfile = {
                     uid: user.uid,
                     email: user.email,
-                    role: isFirstUser ? 'admin' : 'user',
+                    role: isFirstUser ? 'admin' : 'comercial', // Cambiar 'user' a 'comercial'
                     name: user.displayName || user.email.split('@')[0],
                     photoURL: user.photoURL || null,
                     createdAt: new Date().toISOString(),
                     isFirstUser: isFirstUser,
-                    provider: 'google'
+                    provider: 'google',
+                    active: true
                 };
                 
                 await setDoc(doc(db, 'users', user.uid), userProfile);

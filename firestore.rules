@@ -27,6 +27,12 @@ service cloud.firestore {
       allow write: if isAdmin();
       allow list: if request.auth != null && isAdmin();
       
+      // Permitir creación de perfil inicial para usuarios autenticados
+      allow create: if request.auth != null && 
+                       request.auth.uid == userId &&
+                       request.resource.data.keys().hasAll(['email', 'role', 'name', 'createdAt']) &&
+                       request.resource.data.email == request.auth.token.email;
+      
       // Recordatorios de usuarios - subcolección
       match /recordatorios/{recordatorioId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
