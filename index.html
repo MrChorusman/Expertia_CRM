@@ -434,8 +434,7 @@
                     try {
                         console.log('� Creando referencia a system_settings/main usando instancia global...');
                         
-                        // Usar las funciones globales de Firebase ya importadas
-                        const { doc, getDoc } = window.firebase;
+                        // Usar las funciones de Firebase correctamente
                         const settingsRef = doc(db, 'system_settings', 'main');
                         
                         console.log('🔍 Obteniendo documento...');
@@ -1183,10 +1182,22 @@
                     showNotification('Conversión exitosa', 'La oferta ha sido convertida exitosamente en factura', 'success');
                 };
 
-                const filteredClients = useMemo(() => clients.filter(client =>
-                    (searchTerm === '' || client.name.toLowerCase().includes(searchTerm.toLowerCase()) || client.clinic.toLowerCase().includes(searchTerm.toLowerCase())) &&
-                    (filterTag === 'all' || client.tag === filterTag)
-                ), [clients, searchTerm, filterTag]);
+                const filteredClients = useMemo(() => clients.filter(client => {
+                    // Búsqueda por texto
+                    const searchLower = searchTerm.toLowerCase();
+                    const matchesSearch = searchTerm === '' || 
+                        client.name?.toLowerCase().includes(searchLower) || 
+                        client.company?.toLowerCase().includes(searchLower) ||
+                        client.email?.toLowerCase().includes(searchLower) ||
+                        client.phone?.toLowerCase().includes(searchLower) ||
+                        client.notes?.toLowerCase().includes(searchLower) ||
+                        client.sector?.toLowerCase().includes(searchLower);
+                    
+                    // Filtro por etapa del embudo
+                    const matchesTag = filterTag === 'all' || client.funnelStage === filterTag;
+                    
+                    return matchesSearch && matchesTag;
+                }), [clients, searchTerm, filterTag]);
 
                 const renderView = () => {
                     if (!isCommercialOrAdmin() && activeView !== 'profile' && activeView !== 'welcome') {
@@ -1213,9 +1224,9 @@
                         case 'bulkCommunication': 
                             return <BulkCommunication clients={clients} onBack={() => setActiveView('dashboard')} />;
                         case 'addClient': 
-                            return <ClientForm onSave={handleSaveClient} onCancel={() => setActiveView('dashboard')} showNotification={showNotification} />;
+                            return <ClientForm onSave={handleSaveClient} onCancel={() => setActiveView('dashboard')} showNotification={showNotification} getConfigValue={getConfigValue} />;
                         case 'editClient': 
-                            return <ClientForm client={selectedItem} onSave={handleSaveClient} onCancel={() => setActiveView('dashboard')} showNotification={showNotification} />;
+                            return <ClientForm client={selectedItem} onSave={handleSaveClient} onCancel={() => setActiveView('dashboard')} showNotification={showNotification} getConfigValue={getConfigValue} />;
                         case 'detailClient': 
                             return <ClientDetail 
                                 client={selectedItem} 
@@ -1754,7 +1765,7 @@
             }
             
             // Formulario de Cliente
-            function ClientForm({ client = {}, onSave, onCancel, showNotification }) {
+            function ClientForm({ client = {}, onSave, onCancel, showNotification, getConfigValue }) {
                 const [formData, setFormData] = useState({
                     id: client.id || null, 
                     name: client.name || '', 
@@ -1762,13 +1773,19 @@
                     email: client.email || '', 
                     phone: client.phone || '', 
                     address: client.address || '',
-                    funnelStage: client.funnelStage || 'Lead', 
+                    funnelStage: client.funnelStage || 'Lead',
                     contactPreference: client.contactPreference || 'Email',
-                    productInterest: client.productInterest || [], 
-                    notes: client.notes || '', 
+                    productInterest: client.productInterest || [],
+                    notes: client.notes || '',
                     consentGiven: client.consentGiven || false,
                     acceptsMarketing: client.acceptsMarketing || false,
-                    lastContact: client.lastContact || new Date().toISOString().split('T')[0]
+                    lastContact: client.lastContact || new Date().toISOString().split('T')[0],
+                    // Nuevos campos
+                    nif: client.nif || '',
+                    website: client.website || '',
+                    sector: client.sector || '',
+                    employeeCount: client.employeeCount || '',
+                    source: client.source || 'Directo'
                 });
 
                 // Obtener configuración dinámicamente para ventas
