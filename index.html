@@ -563,6 +563,25 @@
                         const firebaseAuth = getAuth(app);
                         setDb(firestoreDb);
                         setAuth(firebaseAuth);
+                        
+                        // Hacer disponible globalmente para AdminPanel
+                        window.firebaseDb = firestoreDb;
+                        
+                        // Debug: Verificar permisos del usuario
+                        setTimeout(async () => {
+                            if (firebaseUser) {
+                                try {
+                                    const userDoc = await getDoc(doc(firestoreDb, 'users', firebaseUser.uid));
+                                    console.log('🔍 Usuario encontrado:', userDoc.exists());
+                                    if (userDoc.exists()) {
+                                        console.log('👤 Datos usuario:', userDoc.data());
+                                        console.log('🔑 Role usuario:', userDoc.data().role);
+                                    }
+                                } catch (error) {
+                                    console.log('❌ Error verificando usuario:', error);
+                                }
+                            }
+                        }, 2000);
 
                         // Listener de autenticación
                         const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
