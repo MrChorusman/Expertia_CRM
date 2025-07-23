@@ -1282,6 +1282,7 @@
                                 onSave={handleSaveOffer} 
                                 onCancel={() => setActiveView('offers')} 
                                 offerData={selectedItem}
+                                db={db}
                             />;
                         case 'viewOffer': 
                             return <OfferDetail 
@@ -1300,6 +1301,7 @@
                                 onSave={handleSaveOffer} 
                                 onCancel={() => setActiveView('offers')} 
                                 offerData={selectedItem}
+                                db={db}
                             />;
                         case 'products': 
                             return <ProductsDashboard 
@@ -2837,9 +2839,52 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 const [selectedStatus, setSelectedStatus] = useState('all');
                 const [sortField, setSortField] = useState('offerDate');
                 const [sortDirection, setSortDirection] = useState('desc');
+                
+                // Estados para cargar usuarios comerciales
+                const [commercialUsers, setCommercialUsers] = useState([]);
 
                 // Función para obtener el nombre del cliente
                 const getClientName = (clientId) => clients.find(c => c.id === clientId)?.name || clientId || 'N/A';
+                
+                // Función para obtener el nombre del comercial
+                const getCommercialName = (assignedTo) => {
+                    if (!assignedTo) return 'No asignado';
+                    const commercial = commercialUsers.find(u => u.id === assignedTo);
+                    return commercial ? commercial.name : assignedTo;
+                };
+
+                // Cargar usuarios comerciales al montar el componente
+                useEffect(() => {
+                    const loadCommercialUsers = async () => {
+                        try {
+                            if (window.firebaseDb) {
+                                const { collection, query, where, getDocs } = window.firebase;
+                                const usersRef = collection(window.firebaseDb, 'users');
+                                const q = query(usersRef, where('role', 'in', ['comercial', 'admin']));
+                                const querySnapshot = await getDocs(q);
+                                
+                                const users = [];
+                                querySnapshot.forEach((doc) => {
+                                    const userData = doc.data();
+                                    if (userData.active !== false) {
+                                        users.push({
+                                            id: doc.id,
+                                            name: userData.name || userData.displayName || userData.email,
+                                            email: userData.email,
+                                            role: userData.role
+                                        });
+                                    }
+                                });
+                                
+                                setCommercialUsers(users);
+                            }
+                        } catch (error) {
+                            console.error('Error cargando usuarios comerciales:', error);
+                        }
+                    };
+
+                    loadCommercialUsers();
+                }, []);
 
                 // Obtener estados únicos para el filtro
                 const uniqueStatuses = useMemo(() => {
@@ -2876,7 +2921,8 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                             offer.offerNumber?.toLowerCase().includes(searchLower) ||
                             getClientName(offer.clientId).toLowerCase().includes(searchLower) ||
                             offer.status?.toLowerCase().includes(searchLower) ||
-                            offer.offerSeries?.toLowerCase().includes(searchLower);
+                            offer.offerSeries?.toLowerCase().includes(searchLower) ||
+                            getCommercialName(offer.assignedTo).toLowerCase().includes(searchLower);
 
                         // Filtro por estado
                         const matchesStatus = selectedStatus === 'all' || offer.status === selectedStatus;
@@ -2912,6 +2958,10 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                             case 'status':
                                 aValue = a.status || '';
                                 bValue = b.status || '';
+                                break;
+                            case 'assignedTo':
+                                aValue = getCommercialName(a.assignedTo);
+                                bValue = getCommercialName(b.assignedTo);
                                 break;
                             default:
                                 return 0;
@@ -3042,6 +3092,15 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                     {renderSortIcon('status')}
                                                 </div>
                                             </th>
+                                            <th 
+                                                className="p-3 cursor-pointer hover:bg-gray-200 select-none"
+                                                onClick={() => handleSort('assignedTo')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    Comercial
+                                                    {renderSortIcon('assignedTo')}
+                                                </div>
+                                            </th>
                                             <th className="p-3">
                                                 Acciones
                                             </th>
@@ -3066,6 +3125,11 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                         'bg-yellow-100 text-yellow-800'
                                                     }`}>
                                                         {offer.status || 'Borrador'}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3 text-sm">
+                                                    <span className={`${offer.assignedTo ? 'text-gray-700' : 'text-gray-400 italic'}`}>
+                                                        {getCommercialName(offer.assignedTo)}
                                                     </span>
                                                 </td>
                                                 <td className="p-3">
@@ -3100,7 +3164,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                             </tr>
                                         )) : (
                                             <tr>
-                                                <td colSpan="7" className="text-center py-8 text-gray-500">
+                                                <td colSpan="8" className="text-center py-8 text-gray-500">
                                                     {searchTerm || selectedStatus !== 'all' ? (
                                                         <>
                                                             No se encontraron ofertas que coincidan con los filtros aplicados.
@@ -4014,13 +4078,63 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
             }
 
             // === FORMULARIO DE OFERTAS ===
-            function OfferForm({ clients, products, onSave, onCancel, offerData }) {
+            function OfferForm({ clients, products, onSave, onCancel, offerData, db }) {
                 const [config, setConfig] = useState(null);
                 
                 // Cargar configuración dinámica
                 useEffect(() => {
                     loadAppConfig().then(setConfig);
                 }, []);
+
+                // Cargar usuarios comerciales al montar el componente
+                useEffect(() => {
+                    const loadCommercialUsers = async () => {
+                        setIsLoadingUsers(true);
+                        try {
+                            // Obtener usuarios con rol comercial desde Firebase
+                            if (db) {
+                                // Obtener las funciones de Firebase del objeto global
+                                const { collection, query, where, getDocs } = window.firebase;
+                                if (!collection || !query || !where || !getDocs) {
+                                    throw new Error('Funciones de Firestore no disponibles');
+                                }
+                                
+                                const usersRef = collection(db, 'users');
+                                const q = query(usersRef, where('role', 'in', ['comercial', 'admin']));
+                                const querySnapshot = await getDocs(q);
+                                
+                                const users = [];
+                                querySnapshot.forEach((doc) => {
+                                    const userData = doc.data();
+                                    if (userData.active !== false) { // Solo usuarios activos
+                                        users.push({
+                                            id: doc.id,
+                                            name: userData.name || userData.displayName || userData.email,
+                                            email: userData.email,
+                                            role: userData.role
+                                        });
+                                    }
+                                });
+                                
+                                setCommercialUsers(users);
+                            }
+                        } catch (error) {
+                            console.error('Error cargando usuarios comerciales:', error);
+                            // Fallback con usuario actual si está disponible
+                            if (window.currentUser) {
+                                setCommercialUsers([{
+                                    id: window.currentUser.uid,
+                                    name: window.currentUser.displayName || window.currentUser.email,
+                                    email: window.currentUser.email,
+                                    role: 'comercial'
+                                }]);
+                            }
+                        }
+                        setIsLoadingUsers(false);
+                    };
+
+                    loadCommercialUsers();
+                }, [db]);
                 
                 // Series dinámicas con fallback
                 const offerSeries = config ? getConfigValue('offers.series', config) : ['OF'];
@@ -4037,6 +4151,10 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     'Esta oferta es válida hasta la fecha indicada. Los precios incluyen IVA.' :
                     'Esta oferta es válida hasta la fecha indicada. Los precios incluyen IVA.';
 
+                // Estados para cargar datos dinámicos
+                const [commercialUsers, setCommercialUsers] = useState([]);
+                const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
                 const [formData, setFormData] = useState({
                     id: offerData?.id || null, 
                     clientId: offerData?.client?.id || '',
@@ -4048,6 +4166,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     description: offerData?.description || '',
                     items: offerData?.items || [{ description: '', quantity: 1, price: 0, productId: '' }],
                     terms: offerData?.terms || defaultTerms,
+                    assignedTo: offerData?.assignedTo || ''
                 });
 
                 const subtotal = useMemo(() => formData.items.reduce((acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0), [formData.items]);
@@ -4159,6 +4278,38 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                     </p>
                                 )}
                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Asignado a (Comercial)
+                                </label>
+                                {isLoadingUsers ? (
+                                    <div className="flex items-center text-gray-500">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#008080] mr-2"></div>
+                                        Cargando usuarios...
+                                    </div>
+                                ) : (
+                                    <select
+                                        name="assignedTo"
+                                        value={formData.assignedTo}
+                                        onChange={handleChange}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:border-[#008080]"
+                                    >
+                                        <option value="">Seleccionar comercial...</option>
+                                        {commercialUsers.map(user => (
+                                            <option key={user.id} value={user.id}>
+                                                {user.name} ({user.role})
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                                <div className="mt-1 text-xs text-gray-500">
+                                    Solo se muestran usuarios con rol comercial o admin
+                                </div>
+                            </div>
+                            <div></div>
                         </div>
 
                         <div>
