@@ -17,7 +17,7 @@
   try {
     // 1. Configuración General
     console.log('📋 Creando configuración general...');
-    await db.collection('configuracion').doc('general').set({
+    await db.collection('system_settings').doc('main').set({
       id: "general",
       company: {
         name: "Expertia Medical Solutions",
@@ -431,7 +431,7 @@ window.limpiarDatosFirebase = async function() {
   console.log('🗑️ Eliminando todos los datos...');
 
   try {
-    const colecciones = ['configuracion', 'productos', 'empresas', 'clientes', 'counters', 'actividades', 'users', 'facturas', 'ofertas'];
+    const colecciones = ['system_settings', 'productos', 'empresas', 'clientes', 'counters', 'actividades', 'users', 'facturas', 'ofertas'];
 
     for (const coleccion of colecciones) {
       const snapshot = await db.collection(coleccion).get();

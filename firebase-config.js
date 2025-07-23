@@ -1,5 +1,11 @@
+// ===============================
 // Configuración de Firebase para Expertia CRM
-// Este archivo debe ser configurado con tus credenciales reales de Firebase
+//
+// Este archivo solo expone la configuración y el appId globalmente.
+// NO debe contener imports ES6 ni inicialización de Firebase.
+//
+// La inicialización y exportación de funciones de Firebase debe hacerse en un <script type="module"> en index.html.
+// ===============================
 
 const firebaseConfig = {
   apiKey: "AIzaSyBvxsbp8Lo8bGWK5sbEDC3RN-01Gfj0jFY",
@@ -17,3 +23,4 @@ const appId = 'expertiacrm-7e7eb';
 // Exportar configuración
 window.__firebase_config = JSON.stringify(firebaseConfig);
 window.__app_id = appId;
+

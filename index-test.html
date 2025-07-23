@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expertia CRM - Gestión de Usuarios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family: Inter, sans-serif; color: #4A5568;">
+            Cargando Expertia CRM...
+        </div>
+    </div>
+
+    <script src="./firebase-config.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword,
+            signInWithPopup,
+            GoogleAuthProvider,
+            sendPasswordResetEmail,
+            signOut,
+            updateProfile
+        } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+        
+        window.firebase = {
+            initializeApp, getAuth, onAuthStateChanged, 
+            signInWithEmailAndPassword, createUserWithEmailAndPassword,
+            signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail, signOut, updateProfile,
+            getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc, getDocs, where
+        };
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Componente principal simplificado para pruebas
+        function App() {
+            const [user, setUser] = useState(null);
+            const [userProfile, setUserProfile] = useState(null);
+            const [isAuthReady, setIsAuthReady] = useState(false);
+            const [showLogin, setShowLogin] = useState(true);
+
+            // Inicializar Firebase
+            useEffect(() => {
+                if (typeof window.firebaseConfig !== 'undefined') {
+                    const app = firebase.initializeApp(window.firebaseConfig);
+                    const auth = firebase.getAuth(app);
+                    const db = firebase.getFirestore(app);
+                    
+                    const unsubscribe = firebase.onAuthStateChanged(auth, async (firebaseUser) => {
+                        if (firebaseUser) {
+                            setUser(firebaseUser);
+                            
+                            // Cargar perfil del usuario
+                            const userDoc = firebase.doc(db, 'users', firebaseUser.uid);
+                            firebase.onSnapshot(userDoc, (snapshot) => {
+                                if (snapshot.exists()) {
+                                    setUserProfile({ id: firebaseUser.uid, ...snapshot.data() });
+                                }
+                                setIsAuthReady(true);
+                            });
+                        } else {
+                            setUser(null);
+                            setUserProfile(null);
+                            setIsAuthReady(true);
+                        }
+                    });
+
+                    return () => unsubscribe();
+                }
+            }, []);
+
+            // Función de registro simplificada
+            const handleRegister = async (email, password, name) => {
+                try {
+                    const app = firebase.initializeApp(window.firebaseConfig);
+                    const auth = firebase.getAuth(app);
+                    const db = firebase.getFirestore(app);
+                    
+                    // Verificar si es el primer usuario
+                    const usersQuery = firebase.query(firebase.collection(db, 'users'));
+                    const usersSnapshot = await firebase.getDocs(usersQuery);
+                    const isFirstUser = usersSnapshot.empty;
+                    
+                    // Crear usuario en Authentication
+                    const userCredential = await firebase.createUserWithEmailAndPassword(auth, email, password);
+                    
+                    // Actualizar perfil
+                    await firebase.updateProfile(userCredential.user, { displayName: name });
+                    
+                    // Crear documento del usuario en Firestore
+                    const userProfile = {
+                        email: email,
+                        name: name,
+                        role: isFirstUser ? 'admin' : 'comercial',
+                        createdAt: new Date().toISOString(),
+                        isActive: true
+                    };
+                    
+                    await firebase.setDoc(firebase.doc(db, 'users', userCredential.user.uid), userProfile);
+                    console.log('Usuario registrado:', userProfile);
+                    
+                } catch (error) {
+                    console.error('Error al registrar:', error);
+                    alert('Error al registrar: ' + error.message);
+                }
+            };
+
+            if (!isAuthReady) {
+                return (
+                    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#006666] mx-auto"></div>
+                            <p className="text-gray-600 mt-4">Cargando...</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!user || !userProfile) {
+                return (
+                    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                        <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+                            <h1 className="text-2xl font-bold text-center text-[#006666] mb-6">Expertia CRM</h1>
+                            <h2 className="text-xl font-semibold text-center mb-4">Registro de Usuario</h2>
+                            
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const formData = new FormData(e.target);
+                                handleRegister(
+                                    formData.get('email'),
+                                    formData.get('password'),
+                                    formData.get('name')
+                                );
+                            }}>
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                                    <input 
+                                        type="text" 
+                                        name="name" 
+                                        required 
+                                        className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006666]"
+                                    />
+                                </div>
+                                
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                    <input 
+                                        type="email" 
+                                        name="email" 
+                                        required 
+                                        className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006666]"
+                                    />
+                                </div>
+                                
+                                <div className="mb-6">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                                    <input 
+                                        type="password" 
+                                        name="password" 
+                                        required 
+                                        minLength="8"
+                                        className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006666]"
+                                    />
+                                </div>
+                                
+                                <button 
+                                    type="submit" 
+                                    className="w-full bg-[#006666] text-white py-3 rounded-md hover:bg-[#005555] transition-colors"
+                                >
+                                    Registrarse
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <div className="bg-white shadow-sm border-b border-gray-200">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex justify-between items-center py-4">
+                                <h1 className="text-2xl font-bold text-[#006666]">Expertia CRM</h1>
+                                <div className="flex items-center space-x-4">
+                                    <span className="text-sm text-gray-600">
+                                        {userProfile.name} ({userProfile.role})
+                                    </span>
+                                    <button 
+                                        onClick={() => firebase.signOut(firebase.getAuth())}
+                                        className="text-sm text-red-600 hover:text-red-800"
+                                    >
+                                        Cerrar Sesión
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <h2 className="text-xl font-semibold mb-4">¡Bienvenido al Sistema!</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="p-4 bg-green-50 rounded-lg">
+                                    <h3 className="font-medium text-green-800">✅ Autenticación</h3>
+                                    <p className="text-sm text-green-600">Sistema funcionando correctamente</p>
+                                </div>
+                                <div className="p-4 bg-blue-50 rounded-lg">
+                                    <h3 className="font-medium text-blue-800">👤 Usuario</h3>
+                                    <p className="text-sm text-blue-600">
+                                        Rol: <strong>{userProfile.role}</strong>
+                                        {userProfile.role === 'admin' && ' (Primer usuario - Administrador)'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Renderizar la aplicación
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>

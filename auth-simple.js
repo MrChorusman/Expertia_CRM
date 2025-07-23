@@ -214,6 +214,45 @@ class AuthManager {
     isLoggedIn() {
         return this.currentUser !== null;
     }
+
+    // Obtener todos los usuarios (solo para administradores)
+    async getAllUsers() {
+        if (!this.currentUser) {
+            throw new Error('Usuario no autenticado');
+        }
+
+        try {
+            // Verificar que el usuario actual es administrador
+            const currentProfile = await this.getUserProfile();
+            if (!currentProfile || currentProfile.role !== 'admin') {
+                throw new Error('Acceso denegado: Solo los administradores pueden ver la lista de usuarios');
+            }
+
+            const { getFirestore, collection, getDocs } = 
+                await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+            
+            const db = getFirestore(this.app);
+            const usersCollection = collection(db, 'users');
+            const usersSnapshot = await getDocs(usersCollection);
+            
+            const users = [];
+            usersSnapshot.forEach((doc) => {
+                const userData = doc.data();
+                users.push({
+                    id: doc.id,
+                    ...userData,
+                    // Ocultar información sensible
+                    password: undefined
+                });
+            });
+
+            console.log(`📋 Obtenidos ${users.length} usuarios para administración`);
+            return users;
+        } catch (error) {
+            console.error('❌ Error obteniendo usuarios:', error);
+            throw error;
+        }
+    }
 }
 
 // Crear instancia global

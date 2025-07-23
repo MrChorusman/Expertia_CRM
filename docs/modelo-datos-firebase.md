@@ -13,7 +13,7 @@ expertiacrm-7e7eb/
 ├── ofertas/               # Ofertas comerciales
 ├── empresas/              # Información de empresas cliente
 ├── actividades/           # Log de actividades comerciales
-├── configuracion/         # Configuración del sistema
+├── system_settings/       # Configuración del sistema
 └── counters/              # Contadores para numeración automática
 ```
 
@@ -355,7 +355,7 @@ expertiacrm-7e7eb/
 
 ---
 
-## ⚙️ Colección: `configuracion`
+## ⚙️ Colección: `system_settings`
 
 **Propósito**: Configuración global del sistema
 
@@ -805,7 +805,7 @@ service cloud.firestore {
 | `type` | String | Tipo MIME |
 | `size` | Number | Tamaño en bytes |
 
-### ⚙️ Colección `configuracion` - Definiciones de Campos
+### ⚙️ Colección `system_settings` - Definiciones de Campos
 
 | Campo | Tipo | Obligatorio | Descripción | Valores/Formato |
 |-------|------|-------------|-------------|-----------------|
@@ -873,7 +873,7 @@ productos (1) ←→ (N) oferta_items [productId]
 
 ofertas (1) ←→ (1) facturas [originOfferId]
 
-configuracion (1) ←→ (N) counters [series]
+system_settings (1) ←→ (N) counters [series]
 ```
 
 ### Integridad Referencial
@@ -1199,7 +1199,7 @@ service cloud.firestore {
     }
     
     // CONFIGURACIÓN
-    match /configuracion/{configId} {
+    match /system_settings/{configId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
@@ -1222,7 +1222,7 @@ service cloud.firestore {
 
 **Colecciones a implementar**:
 - ✅ `users` - Sistema de usuarios y autenticación
-- ✅ `configuracion` - Configuración básica del sistema
+- ✅ `system_settings` - Configuración básica del sistema
 - ✅ `counters` - Contadores para numeración
 
 **Tareas**:

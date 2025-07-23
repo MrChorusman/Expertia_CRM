@@ -7,7 +7,7 @@ Este script debe ejecutarse una vez para crear la estructura inicial de datos en
 ### 1. Configuración General
 
 ```javascript
-// Documento: configuracion/general
+// Documento: system_settings/main
 {
   "id": "general",
   "company": {
