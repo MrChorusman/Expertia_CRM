@@ -2852,6 +2852,25 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     const commercial = commercialUsers.find(u => u.id === assignedTo);
                     return commercial ? commercial.name : assignedTo;
                 };
+                
+                // Función para formatear los productos de una oferta
+                const getProductsSummary = (items) => {
+                    if (!items || items.length === 0) return 'Sin productos';
+                    
+                    const productNames = items.map(item => {
+                        if (item.productId) {
+                            const product = products.find(p => p.id === item.productId);
+                            return product ? `${product.name} (${item.quantity})` : `${item.description} (${item.quantity})`;
+                        }
+                        return `${item.description} (${item.quantity})`;
+                    }).filter(name => name && name !== ' ()');
+                    
+                    if (productNames.length === 0) return 'Sin productos';
+                    if (productNames.length === 1) return productNames[0];
+                    if (productNames.length <= 3) return productNames.join(', ');
+                    
+                    return `${productNames.slice(0, 2).join(', ')} y ${productNames.length - 2} más`;
+                };
 
                 // Cargar usuarios comerciales al montar el componente
                 useEffect(() => {
@@ -2922,7 +2941,8 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                             getClientName(offer.clientId).toLowerCase().includes(searchLower) ||
                             offer.status?.toLowerCase().includes(searchLower) ||
                             offer.offerSeries?.toLowerCase().includes(searchLower) ||
-                            getCommercialName(offer.assignedTo).toLowerCase().includes(searchLower);
+                            getCommercialName(offer.assignedTo).toLowerCase().includes(searchLower) ||
+                            getProductsSummary(offer.items).toLowerCase().includes(searchLower);
 
                         // Filtro por estado
                         const matchesStatus = selectedStatus === 'all' || offer.status === selectedStatus;
@@ -2962,6 +2982,10 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                             case 'assignedTo':
                                 aValue = getCommercialName(a.assignedTo);
                                 bValue = getCommercialName(b.assignedTo);
+                                break;
+                            case 'products':
+                                aValue = getProductsSummary(a.items);
+                                bValue = getProductsSummary(b.items);
                                 break;
                             default:
                                 return 0;
@@ -3094,6 +3118,15 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                             </th>
                                             <th 
                                                 className="p-3 cursor-pointer hover:bg-gray-200 select-none"
+                                                onClick={() => handleSort('products')}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    Productos
+                                                    {renderSortIcon('products')}
+                                                </div>
+                                            </th>
+                                            <th 
+                                                className="p-3 cursor-pointer hover:bg-gray-200 select-none"
                                                 onClick={() => handleSort('assignedTo')}
                                             >
                                                 <div className="flex items-center gap-2">
@@ -3126,6 +3159,11 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                     }`}>
                                                         {offer.status || 'Borrador'}
                                                     </span>
+                                                </td>
+                                                <td className="p-3 text-sm max-w-48">
+                                                    <div className="truncate" title={getProductsSummary(offer.items)}>
+                                                        {getProductsSummary(offer.items)}
+                                                    </div>
                                                 </td>
                                                 <td className="p-3 text-sm">
                                                     <span className={`${offer.assignedTo ? 'text-gray-700' : 'text-gray-400 italic'}`}>
@@ -3164,7 +3202,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                             </tr>
                                         )) : (
                                             <tr>
-                                                <td colSpan="8" className="text-center py-8 text-gray-500">
+                                                <td colSpan="9" className="text-center py-8 text-gray-500">
                                                     {searchTerm || selectedStatus !== 'all' ? (
                                                         <>
                                                             No se encontraron ofertas que coincidan con los filtros aplicados.
@@ -4158,7 +4196,6 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 const [formData, setFormData] = useState({
                     id: offerData?.id || null, 
                     clientId: offerData?.client?.id || '',
-                    offerNumber: offerData?.offerNumber || '',
                     offerDate: offerData?.offerDate || new Date().toISOString().split('T')[0],
                     validUntil: offerData?.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                     status: offerData?.status || (offerStatuses[0] || 'Borrador'),
@@ -4209,7 +4246,47 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 
                 const handleSubmit = (e) => { 
                     e.preventDefault(); 
-                    onSave({ ...formData, subtotal, vat, total }); 
+                    
+                    // Validaciones obligatorias
+                    const errors = [];
+                    
+                    // 1. Cliente obligatorio
+                    if (!formData.clientId) {
+                        errors.push('Debe seleccionar un cliente');
+                    }
+                    
+                    // 2. Comercial obligatorio
+                    if (!formData.assignedTo) {
+                        errors.push('Debe asignar la oferta a un comercial');
+                    }
+                    
+                    // 3. Al menos un producto con datos válidos
+                    const validItems = formData.items.filter(item => 
+                        (item.productId || item.description.trim()) && 
+                        item.quantity > 0 && 
+                        item.price >= 0
+                    );
+                    
+                    if (validItems.length === 0) {
+                        errors.push('Debe añadir al menos un producto o servicio válido');
+                    }
+                    
+                    // Mostrar errores si los hay
+                    if (errors.length > 0) {
+                        alert('Por favor, corrija los siguientes errores:\n\n• ' + errors.join('\n• '));
+                        return;
+                    }
+                    
+                    // Filtrar items válidos antes de guardar
+                    const dataToSave = {
+                        ...formData,
+                        items: validItems,
+                        subtotal,
+                        vat,
+                        total: validItems.reduce((acc, item) => acc + (item.quantity * item.price), 0) * (1 + VAT_RATE)
+                    };
+                    
+                    onSave(dataToSave); 
                 };
 
                 return (
@@ -4221,7 +4298,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                             </h2>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="md:col-span-2">
                                 <FormSelect 
                                     label="Cliente *" 
@@ -4235,7 +4312,6 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                     required
                                 />
                             </div>
-                            <FormField label="Nº Oferta" name="offerNumber" value={formData.offerNumber} onChange={handleChange} required />
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Serie</label>
                                 <select 
@@ -4283,7 +4359,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Asignado a (Comercial)
+                                    Asignado a (Comercial) *
                                 </label>
                                 {isLoadingUsers ? (
                                     <div className="flex items-center text-gray-500">
@@ -4296,6 +4372,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                         value={formData.assignedTo}
                                         onChange={handleChange}
                                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:border-[#008080]"
+                                        required
                                     >
                                         <option value="">Seleccionar comercial...</option>
                                         {commercialUsers.map(user => (
