@@ -1224,9 +1224,9 @@
                         case 'bulkCommunication': 
                             return <BulkCommunication clients={clients} onBack={() => setActiveView('dashboard')} />;
                         case 'addClient': 
-                            return <ClientForm onSave={handleSaveClient} onCancel={() => setActiveView('dashboard')} showNotification={showNotification} getConfigValue={getConfigValue} />;
+                            return <ClientForm onSave={handleSaveClient} onCancel={() => setActiveView('dashboard')} showNotification={showNotification} getConfigValue={getConfigValue} db={db} />;
                         case 'editClient': 
-                            return <ClientForm client={selectedItem} onSave={handleSaveClient} onCancel={() => setActiveView('dashboard')} showNotification={showNotification} getConfigValue={getConfigValue} />;
+                            return <ClientForm client={selectedItem} onSave={handleSaveClient} onCancel={() => setActiveView('dashboard')} showNotification={showNotification} getConfigValue={getConfigValue} db={db} />;
                         case 'detailClient': 
                             return <ClientDetail 
                                 client={selectedItem} 
@@ -1765,7 +1765,7 @@
             }
             
             // Formulario de Cliente
-            function ClientForm({ client = {}, onSave, onCancel, showNotification, getConfigValue }) {
+            function ClientForm({ client = {}, onSave, onCancel, showNotification, getConfigValue, db }) {
                 const [formData, setFormData] = useState({
                     id: client.id || null, 
                     name: client.name || '', 
@@ -1776,6 +1776,7 @@
                     funnelStage: client.funnelStage || 'Lead',
                     contactPreference: client.contactPreference || 'Email',
                     productInterest: client.productInterest || [],
+                    supplierInterest: client.supplierInterest || [],
                     notes: client.notes || '',
                     consentGiven: client.consentGiven || false,
                     acceptsMarketing: client.acceptsMarketing || false,
@@ -1785,8 +1786,13 @@
                     website: client.website || '',
                     sector: client.sector || '',
                     employeeCount: client.employeeCount || '',
-                    source: client.source || 'Directo'
+                    source: client.source || 'Directo',
+                    contactedBy: client.contactedBy || ''
                 });
+
+                // Estados para cargar datos dinámicos
+                const [commercialUsers, setCommercialUsers] = useState([]);
+                const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
                 // Obtener configuración dinámicamente para ventas
                 const funnelStages = getConfigValue('sales', 'funnelStages', [
@@ -1796,21 +1802,89 @@
                     'Email', 'Teléfono', 'WhatsApp', 'Visita Comercial'
                 ]);
                 const productCategories = getConfigValue('products', 'categories', [
-                    'STORZ MEDICAL', 'ZAMAR', 'Equipos Diagnóstico', 'Software Médico'
+                    'Diagnóstico', 'Monitorización', 'Emergencias', 'Laboratorio', 'Software Médico', 'Equipos Especializados'
                 ]);
+                const suppliers = getConfigValue('products', 'suppliers', [
+                    'Storz Medical', 'Zamar Medical', 'Phillips Healthcare', 'GE Healthcare', 'Siemens', 'Mindray'
+                ]);
+
+                // Cargar usuarios comerciales al montar el componente
+                useEffect(() => {
+                    const loadCommercialUsers = async () => {
+                        setIsLoadingUsers(true);
+                        try {
+                            // Obtener usuarios con rol comercial desde Firebase
+                            if (db) {
+                                const usersRef = collection(db, 'users');
+                                const q = query(usersRef, where('role', 'in', ['comercial', 'admin']));
+                                const querySnapshot = await getDocs(q);
+                                
+                                const users = [];
+                                querySnapshot.forEach((doc) => {
+                                    const userData = doc.data();
+                                    if (userData.active !== false) { // Solo usuarios activos
+                                        users.push({
+                                            id: doc.id,
+                                            name: userData.name || userData.displayName || userData.email,
+                                            email: userData.email,
+                                            role: userData.role
+                                        });
+                                    }
+                                });
+                                
+                                setCommercialUsers(users);
+                            }
+                        } catch (error) {
+                            console.error('Error cargando usuarios comerciales:', error);
+                            // Fallback con usuario actual si está disponible
+                            if (window.currentUser) {
+                                setCommercialUsers([{
+                                    id: window.currentUser.uid,
+                                    name: window.currentUser.displayName || window.currentUser.email,
+                                    email: window.currentUser.email,
+                                    role: 'comercial'
+                                }]);
+                            }
+                        }
+                        setIsLoadingUsers(false);
+                    };
+
+                    loadCommercialUsers();
+                }, [db]);
 
                 const handleChange = (e) => {
                     const { name, value, type, checked } = e.target;
                     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
                 };
 
+                // Manejar selección múltiple de categorías de productos
+                const handleProductCategoryChange = (category) => {
+                    setFormData(prev => ({
+                        ...prev,
+                        productInterest: prev.productInterest.includes(category)
+                            ? prev.productInterest.filter(item => item !== category)
+                            : [...prev.productInterest, category]
+                    }));
+                };
+
+                // Manejar selección múltiple de proveedores
+                const handleSupplierChange = (supplier) => {
+                    setFormData(prev => ({
+                        ...prev,
+                        supplierInterest: prev.supplierInterest.includes(supplier)
+                            ? prev.supplierInterest.filter(item => item !== supplier)
+                            : [...prev.supplierInterest, supplier]
+                    }));
+                };
+
+                // Función legacy para compatibilidad
                 const handleBrandChange = (e) => {
                     const { value, checked } = e.target;
-                    setFormData(prev => {
-                        const interests = prev.productInterest;
-                        if (checked) return { ...prev, productInterest: [...interests, value] };
-                        else return { ...prev, productInterest: interests.filter(b => b !== value) };
-                    });
+                    if (checked) {
+                        handleProductCategoryChange(value);
+                    } else {
+                        handleProductCategoryChange(value);
+                    }
                 };
 
                 const handleSubmit = (e) => {
@@ -1872,24 +1946,87 @@
                                     value={formData.lastContact} 
                                     onChange={handleChange} 
                                 />
-                                <div className="md:col-span-1">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Interesado en</label>
-                                    <div className="flex flex-wrap gap-4">
-                                        {productCategories.map(interest => (
-                                            <label key={interest} className="flex items-center gap-2">
-                                                <input 
-                                                    type="checkbox" 
-                                                    value={interest} 
-                                                    checked={formData.productInterest.includes(interest)} 
-                                                    onChange={handleBrandChange} 
-                                                    className="h-4 w-4 rounded border-gray-300 text-[#006666] focus:ring-[#006666]" 
-                                                />
-                                                {interest}
-                                            </label>
-                                        ))}
-                                    </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Contactado por
+                                    </label>
+                                    {isLoadingUsers ? (
+                                        <div className="flex items-center text-gray-500">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#006666] mr-2"></div>
+                                            Cargando usuarios...
+                                        </div>
+                                    ) : (
+                                        <select
+                                            name="contactedBy"
+                                            value={formData.contactedBy}
+                                            onChange={handleChange}
+                                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#006666] focus:ring-[#006666] sm:text-sm p-3"
+                                        >
+                                            <option value="">Seleccionar comercial...</option>
+                                            {commercialUsers.map(user => (
+                                                <option key={user.id} value={user.id}>
+                                                    {user.name} ({user.role})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
                                     <div className="mt-1 text-xs text-gray-500">
-                                        💡 Las categorías se configuran en Panel Admin → Configuración → Productos
+                                        Solo se muestran usuarios con rol comercial o admin
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Intereses del Cliente</h3>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Categorías de Productos */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Categorías de Productos de Interés
+                                            </label>
+                                            <div className="border border-gray-200 rounded-lg p-3 max-h-40 overflow-y-auto">
+                                                {productCategories.map(category => (
+                                                    <label key={category} className="flex items-center gap-2 mb-2 last:mb-0">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.productInterest.includes(category)} 
+                                                            onChange={() => handleProductCategoryChange(category)}
+                                                            className="h-4 w-4 rounded border-gray-300 text-[#006666] focus:ring-[#006666]" 
+                                                        />
+                                                        <span className="text-sm">{category}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            <div className="mt-1 text-xs text-gray-500">
+                                                {formData.productInterest.length} categoría(s) seleccionada(s)
+                                            </div>
+                                        </div>
+
+                                        {/* Proveedores */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Proveedores de Interés
+                                            </label>
+                                            <div className="border border-gray-200 rounded-lg p-3 max-h-40 overflow-y-auto">
+                                                {suppliers.map(supplier => (
+                                                    <label key={supplier} className="flex items-center gap-2 mb-2 last:mb-0">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.supplierInterest.includes(supplier)} 
+                                                            onChange={() => handleSupplierChange(supplier)}
+                                                            className="h-4 w-4 rounded border-gray-300 text-[#006666] focus:ring-[#006666]" 
+                                                        />
+                                                        <span className="text-sm">{supplier}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            <div className="mt-1 text-xs text-gray-500">
+                                                {formData.supplierInterest.length} proveedor(es) seleccionado(s)
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-2 text-xs text-gray-500">
+                                        💡 Las opciones se configuran en Panel Admin → Configuración → Productos
                                     </div>
                                 </div>
                             </fieldset>
@@ -2109,7 +2246,7 @@
                                                 <p className="font-medium">{client.contactPreference || 'No especificado'}</p>
                                             </div>
                                             <div>
-                                                <span className="text-sm text-gray-500">Intereses</span>
+                                                <span className="text-sm text-gray-500">Categorías de Interés</span>
                                                 <div className="flex flex-wrap gap-2 mt-1">
                                                     {client.productInterest?.length > 0 ? 
                                                         client.productInterest.map(interest => (
@@ -2117,10 +2254,29 @@
                                                                 {interest}
                                                             </span>
                                                         )) :
+                                                        <span className="text-gray-500 text-sm">No especificadas</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <span className="text-sm text-gray-500">Proveedores de Interés</span>
+                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                    {client.supplierInterest?.length > 0 ? 
+                                                        client.supplierInterest.map(supplier => (
+                                                            <span key={supplier} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                                                {supplier}
+                                                            </span>
+                                                        )) :
                                                         <span className="text-gray-500 text-sm">No especificados</span>
                                                     }
                                                 </div>
                                             </div>
+                                            {client.contactedBy && (
+                                                <div>
+                                                    <span className="text-sm text-gray-500">Contactado por</span>
+                                                    <p className="font-medium text-[#006666]">{client.contactedBy}</p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
