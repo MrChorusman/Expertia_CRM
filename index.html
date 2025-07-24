@@ -816,6 +816,47 @@
                         throw error;
                     }
                 };
+                
+                // === FUNCIONES PARA OFERTAS ===
+                
+                // Función para obtener contador actual de ofertas
+                const getOfferCount = () => {
+                    return counters['offers']?.count || 1;
+                };
+                
+                // Función para actualizar contador de ofertas
+                const updateOfferCounter = async (newValue) => {
+                    if (!db) {
+                        console.log('⚠️ db no disponible, no se puede actualizar contador de ofertas');
+                        return;
+                    }
+                    
+                    try {
+                        const { doc, setDoc } = window.firebase;
+                        const counterRef = doc(db, 'counters', 'offers');
+                        await setDoc(counterRef, {
+                            count: parseInt(newValue) || 1,
+                            updatedAt: new Date(),
+                            description: 'Numeración de ofertas'
+                        }, { merge: true });
+                        
+                        // Actualizar estado local
+                        setCounters(prev => ({
+                            ...prev,
+                            'offers': {
+                                ...prev['offers'],
+                                count: parseInt(newValue) || 1
+                            }
+                        }));
+                        
+                        console.log(`✅ Contador de ofertas actualizado a ${newValue}`);
+                    } catch (error) {
+                        console.error(`❌ Error actualizando contador de ofertas:`, error);
+                        throw error;
+                    }
+                };
+                
+
 
                 // Hacer funciones disponibles globalmente
                 window.loadAppConfig = loadAppConfig;
@@ -827,6 +868,8 @@
                 window.updateCounter = updateCounter;
                 window.createNewSeries = createNewSeries;
                 window.deleteSeries = deleteSeries;
+                window.getOfferCount = getOfferCount;
+                window.updateOfferCounter = updateOfferCounter;
 
                 // Función para mostrar confirmación personalizada
                 const showConfirm = (title, message, onConfirm, type = 'warning') => {
@@ -9886,6 +9929,60 @@ Equipo Expertia Medical Solutions"
                                                             <p className="text-gray-400 text-xs mt-1">Crea tu primera serie usando el botón "Crear Serie"</p>
                                                         </div>
                                                     )}
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Contador de Ofertas */}
+                                            <div className="border border-gray-200 rounded-lg p-6">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div>
+                                                        <h4 className="font-semibold text-gray-900">Contador de Ofertas</h4>
+                                                        <p className="text-sm text-gray-500 mt-1">Gestión del contador de ofertas desde /counters/offers</p>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-gray-50 px-4 py-4 rounded-lg">
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <div>
+                                                            <h5 className="font-medium text-gray-900 text-lg">Contador de Ofertas</h5>
+                                                            <div className="text-sm text-gray-600 space-y-1">
+                                                                <div>Contador actual: <span className="font-medium">{window.getOfferCount ? window.getOfferCount() : 1}</span></div>
+                                                                <div>Próxima oferta: <span className="font-medium text-[#006666]">OF-{new Date().getFullYear()}-{String((window.getOfferCount ? window.getOfferCount() : 1)).padStart(3, '0')}</span></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center gap-3 pt-3 border-t border-gray-200">
+                                                        <label className="text-sm font-medium text-gray-700 min-w-fit">
+                                                            Modificar contador a:
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            value={window.getOfferCount ? window.getOfferCount() : 1}
+                                                            onChange={async (e) => {
+                                                                const newValue = parseInt(e.target.value) || 1;
+                                                                try {
+                                                                    await window.updateOfferCounter(newValue);
+                                                                    showNotification(
+                                                                        'Contador de Ofertas Actualizado',
+                                                                        `El contador de ofertas ha sido actualizado a ${newValue}.`,
+                                                                        'success',
+                                                                        3000
+                                                                    );
+                                                                } catch (error) {
+                                                                    showNotification(
+                                                                        'Error',
+                                                                        `No se pudo actualizar el contador: ${error.message}`,
+                                                                        'error'
+                                                                    );
+                                                                }
+                                                            }}
+                                                            className="w-24 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-transparent"
+                                                            min="1"
+                                                        />
+                                                        <span className="text-xs text-gray-500">
+                                                            La próxima oferta será: <span className="font-medium">OF-{new Date().getFullYear()}-{String((window.getOfferCount ? window.getOfferCount() : 1) + 1).padStart(3, '0')}</span>
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                             
