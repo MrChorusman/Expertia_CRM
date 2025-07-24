@@ -512,6 +512,9 @@
                 // Cache de configuración global
                 const [appConfig, setAppConfig] = useState(null);
                 
+                // Cache de contadores desde /counters
+                const [counters, setCounters] = useState({});
+                
                 // Función para cargar configuración desde system_settings
                 const loadAppConfig = async () => {
                     console.log('🔄 loadAppConfig llamada, db:', db ? 'disponible' : 'no disponible');
@@ -688,10 +691,142 @@
                     };
                 };
 
+                // === SISTEMA DE CONTADORES ===
+                
+                // Función para cargar contadores desde /counters
+                const loadCounters = async () => {
+                    if (!db) {
+                        console.log('⚠️ db no disponible, saltando carga de contadores');
+                        return;
+                    }
+                    
+                    try {
+                        console.log('📊 Cargando contadores desde /counters...');
+                        const { collection, getDocs } = window.firebase;
+                        const countersCollection = collection(db, 'counters');
+                        const countersSnapshot = await getDocs(countersCollection);
+                        
+                        const countersData = {};
+                        countersSnapshot.docs.forEach(doc => {
+                            countersData[doc.id] = { id: doc.id, ...doc.data() };
+                        });
+                        
+                        setCounters(countersData);
+                        console.log('✅ Contadores cargados:', Object.keys(countersData));
+                    } catch (error) {
+                        console.error('❌ Error cargando contadores:', error);
+                        // Fallback con contadores por defecto
+                        const fallbackCounters = {
+                            'EXP': { id: 'EXP', current: 1, description: 'Facturas EXP' },
+                            'ALQ': { id: 'ALQ', current: 1, description: 'Facturas ALQ' },
+                            'PROF': { id: 'PROF', current: 1, description: 'Facturas PROF' },
+                            'offers': { id: 'offers', count: 1, description: 'Ofertas' }
+                        };
+                        setCounters(fallbackCounters);
+                        console.log('📝 Usando contadores por defecto');
+                    }
+                };
+                
+                // Función para obtener lista de series desde contadores
+                const getInvoiceSeries = () => {
+                    return Object.keys(counters).filter(id => 
+                        ['EXP', 'ALQ', 'PROF'].includes(id)
+                    );
+                };
+                
+                // Función para obtener contador actual de una serie
+                const getCurrentCounter = (seriesId) => {
+                    return counters[seriesId]?.current || 1;
+                };
+                
+                // Función para actualizar contador
+                const updateCounter = async (seriesId, newValue) => {
+                    if (!db) {
+                        console.log('⚠️ db no disponible, no se puede actualizar contador');
+                        return;
+                    }
+                    
+                    try {
+                        const { doc, setDoc } = window.firebase;
+                        const counterRef = doc(db, 'counters', seriesId);
+                        await setDoc(counterRef, {
+                            current: parseInt(newValue) || 1,
+                            updatedAt: new Date(),
+                            description: `Facturas ${seriesId}`
+                        }, { merge: true });
+                        
+                        // Actualizar estado local
+                        setCounters(prev => ({
+                            ...prev,
+                            [seriesId]: {
+                                ...prev[seriesId],
+                                current: parseInt(newValue) || 1
+                            }
+                        }));
+                        
+                        console.log(`✅ Contador ${seriesId} actualizado a ${newValue}`);
+                    } catch (error) {
+                        console.error(`❌ Error actualizando contador ${seriesId}:`, error);
+                        throw error;
+                    }
+                };
+                
+                // Función para crear nueva serie
+                const createNewSeries = async (seriesId) => {
+                    if (!db || !seriesId) return;
+                    
+                    try {
+                        const { doc, setDoc } = window.firebase;
+                        const counterRef = doc(db, 'counters', seriesId.toUpperCase());
+                        await setDoc(counterRef, {
+                            current: 1,
+                            updatedAt: new Date(),
+                            description: `Facturas ${seriesId.toUpperCase()}`
+                        });
+                        
+                        // Recargar contadores
+                        await loadCounters();
+                        
+                        console.log(`✅ Nueva serie ${seriesId} creada`);
+                    } catch (error) {
+                        console.error(`❌ Error creando serie ${seriesId}:`, error);
+                        throw error;
+                    }
+                };
+                
+                // Función para eliminar serie
+                const deleteSeries = async (seriesId) => {
+                    if (!db || !seriesId) return;
+                    
+                    try {
+                        const { doc, deleteDoc } = window.firebase;
+                        const counterRef = doc(db, 'counters', seriesId);
+                        await deleteDoc(counterRef);
+                        
+                        // Actualizar estado local
+                        setCounters(prev => {
+                            const updated = { ...prev };
+                            delete updated[seriesId];
+                            return updated;
+                        });
+                        
+                        console.log(`✅ Serie ${seriesId} eliminada`);
+                    } catch (error) {
+                        console.error(`❌ Error eliminando serie ${seriesId}:`, error);
+                        throw error;
+                    }
+                };
+
                 // Hacer funciones disponibles globalmente
                 window.loadAppConfig = loadAppConfig;
+                window.loadCounters = loadCounters;
                 window.getConfigValue = getConfigValue;
                 window.getSettings = getSettings;
+                window.getInvoiceSeries = getInvoiceSeries;
+                window.getCurrentCounter = getCurrentCounter;
+                window.updateCounter = updateCounter;
+                window.createNewSeries = createNewSeries;
+                window.deleteSeries = deleteSeries;
 
                 // Función para mostrar confirmación personalizada
                 const showConfirm = (title, message, onConfirm, type = 'warning') => {
@@ -845,6 +980,7 @@
                     if (db && user) {
                         console.log('Condiciones cumplidas para cargar configuración - db:', !!db, 'user:', !!user);
                         loadAppConfig();
+                        loadCounters();
                     } else {
                         console.log('Esperando condiciones para cargar configuración - db:', !!db, 'user:', !!user);
                     }
@@ -1185,9 +1321,9 @@
 
                 const getNextInvoiceNumber = async (type) => {
                     if (!db) {
-                        // Modo demo - generar número temporal usando configuración
+                        // Modo demo - generar número temporal usando contadores
                         const timestamp = Date.now();
-                        const series = getConfigValue('invoice', 'series', ['EXP', 'ALQ', 'PROF']);
+                        const series = window.getInvoiceSeries ? window.getInvoiceSeries() : ['EXP', 'ALQ', 'PROF'];
                         const prefix = series.includes(type) ? type : series[0] || 'EXP';
                         return `${prefix}-DEMO-${timestamp}`;
                     }
@@ -1209,13 +1345,13 @@
                             }
                         });
                         
-                        // Usar series de configuración
-                        const series = getConfigValue('invoice', 'series', ['EXP', 'ALQ', 'PROF']);
+                        // Usar series desde contadores
+                        const series = window.getInvoiceSeries ? window.getInvoiceSeries() : ['EXP', 'ALQ', 'PROF'];
                         const prefix = series.includes(type) ? type : series[0] || 'EXP';
                         return `${prefix}${String(nextNumber).padStart(3, '0')}`;
                     } catch (error) {
                         console.error("Error obteniendo número de factura:", error);
-                        const series = getConfigValue('invoice', 'series', ['EXP', 'ALQ', 'PROF']);
+                        const series = window.getInvoiceSeries ? window.getInvoiceSeries() : ['EXP', 'ALQ', 'PROF'];
                         const prefix = series.includes(type) ? type : series[0] || 'EXP';
                         return `${prefix}-ERROR-${Date.now()}`;
                     }
@@ -1226,8 +1362,9 @@
                     
                     if (convertFromProforma || !dataToSave.id) {
                         if (dataToSave.type !== 'Factura Proforma') {
-                            // Usar serie por defecto de configuración
-                            const defaultSeries = getConfigValue('invoice', 'series', ['EXP', 'ALQ', 'PROF'])[0];
+                            // Usar serie por defecto desde contadores
+                            const series = window.getInvoiceSeries ? window.getInvoiceSeries() : ['EXP', 'ALQ', 'PROF'];
+                            const defaultSeries = series[0];
                             dataToSave.invoiceNumber = await getNextInvoiceNumber(dataToSave.invoiceSeries || defaultSeries);
                         } else {
                             dataToSave.invoiceNumber = `PROFORMA-${Date.now()}`;
@@ -1394,7 +1531,7 @@
                         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                         status: 'Borrador',
                         type: 'Factura',
-                        invoiceSeries: getConfigValue('invoice', 'series', ['EXP', 'ALQ', 'PROF'])[0] || 'EXP',
+                        invoiceSeries: (window.getInvoiceSeries ? window.getInvoiceSeries() : ['EXP', 'ALQ', 'PROF'])[0] || 'EXP',
                         items: offer.items || [],
                         subtotal: offer.subtotal,
                         vat: offer.vat,
@@ -4203,8 +4340,8 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
 
             // === FORMULARIO DE FACTURAS ===
             function InvoiceForm({ clients, products, onSave, onCancel, invoiceData }) {
-                // Obtener series dinámicas de configuración
-                const invoiceSeries = getConfigValue('invoice', 'series', ['EXP', 'ALQ', 'PROF']);
+                // Obtener series dinámicas desde contadores
+                const invoiceSeries = window.getInvoiceSeries ? window.getInvoiceSeries() : ['EXP', 'ALQ', 'PROF'];
                 const defaultSeries = invoiceSeries[0] || 'EXP';
                 
                 const [formData, setFormData] = useState({
@@ -9617,76 +9754,137 @@ Equipo Expertia Medical Solutions"
                                         </h3>
                                         
                                         <div className="space-y-6">
-                                            {/* Series de Facturas */}
+                                            {/* Series de Facturas - Desde /counters */}
                                             <div className="border border-gray-200 rounded-lg p-6">
                                                 <div className="flex items-center justify-between mb-4">
-                                                    <h4 className="font-semibold text-gray-900">Series de Facturas</h4>
+                                                    <div>
+                                                        <h4 className="font-semibold text-gray-900">Series de Facturas</h4>
+                                                        <p className="text-sm text-gray-500 mt-1">Gestión de contadores desde la colección /counters</p>
+                                                    </div>
                                                     <button
                                                         type="button"
                                                         onClick={async () => {
-                                                            const newSeries = await showInput('Agregar Serie', 'Código de la nueva serie (ej: A, B, C)');
-                                                            if (newSeries && !settings.invoice.series.includes(newSeries.toUpperCase())) {
-                                                                const newSeriesCode = newSeries.toUpperCase();
-                                                                handleSettingChange('invoice', 'series', [...settings.invoice.series, newSeriesCode]);
-                                                                // Inicializar el nextNumber para la nueva serie
-                                                                const updatedNextNumbers = { ...settings.invoice.nextNumbers };
-                                                                updatedNextNumbers[newSeriesCode] = 1;
-                                                                handleSettingChange('invoice', 'nextNumbers', updatedNextNumbers);
-                                                            } else if (newSeries && settings.invoice.series.includes(newSeries.toUpperCase())) {
-                                                                showNotification('Error', 'Esta serie ya existe', 'danger');
+                                                            const newSeries = await showInput('Crear Nueva Serie', 'Código de la nueva serie (ej: A, B, C)');
+                                                            if (newSeries) {
+                                                                const seriesCode = newSeries.toUpperCase();
+                                                                const currentSeries = window.getInvoiceSeries ? window.getInvoiceSeries() : [];
+                                                                
+                                                                if (!currentSeries.includes(seriesCode)) {
+                                                                    try {
+                                                                        await window.createNewSeries(seriesCode);
+                                                                        showNotification(
+                                                                            'Serie Creada',
+                                                                            `La serie ${seriesCode} ha sido creada exitosamente.`,
+                                                                            'success'
+                                                                        );
+                                                                    } catch (error) {
+                                                                        showNotification(
+                                                                            'Error',
+                                                                            `No se pudo crear la serie: ${error.message}`,
+                                                                            'error'
+                                                                        );
+                                                                    }
+                                                                } else {
+                                                                    showNotification('Error', 'Esta serie ya existe', 'error');
+                                                                }
                                                             }
                                                         }}
                                                         className="px-3 py-1 bg-[#006666] text-white rounded-md text-sm hover:bg-[#004d4d] transition-colors"
                                                     >
-                                                        Agregar Serie
+                                                        Crear Serie
                                                     </button>
                                                 </div>
                                                 <div className="space-y-3">
-                                                    {settings.invoice.series.map((series, index) => (
-                                                        <div key={index} className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="font-medium text-gray-900">Serie {series}</span>
-                                                                <span className="text-sm text-gray-600">
-                                                                    Próximo: {series}-{String(settings.invoice.nextNumbers[series] || 1).padStart(6, '0')}
-                                                                </span>
+                                                    {(window.getInvoiceSeries ? window.getInvoiceSeries() : []).map((seriesId) => {
+                                                        const currentCounter = window.getCurrentCounter ? window.getCurrentCounter(seriesId) : 1;
+                                                        const nextNumber = String(currentCounter).padStart(6, '0');
+                                                        
+                                                        return (
+                                                            <div key={seriesId} className="bg-gray-50 px-4 py-4 rounded-lg space-y-3">
+                                                                {/* Información de la serie */}
+                                                                <div className="flex items-center justify-between">
+                                                                    <div>
+                                                                        <h5 className="font-medium text-gray-900 text-lg">Serie {seriesId}</h5>
+                                                                        <div className="text-sm text-gray-600 space-y-1">
+                                                                            <div>Contador actual: <span className="font-medium">{currentCounter}</span></div>
+                                                                            <div>Próxima factura: <span className="font-medium text-[#006666]">{seriesId}-{nextNumber}</span></div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={async () => {
+                                                                            const confirmed = await showConfirm(
+                                                                                'Eliminar Serie', 
+                                                                                `¿Estás seguro de que quieres eliminar la serie "${seriesId}"? Esta acción no se puede deshacer y afectará la numeración de facturas.`,
+                                                                                () => {},
+                                                                                'danger'
+                                                                            );
+                                                                            
+                                                                            if (confirmed) {
+                                                                                try {
+                                                                                    await window.deleteSeries(seriesId);
+                                                                                    showNotification(
+                                                                                        'Serie Eliminada',
+                                                                                        `La serie ${seriesId} ha sido eliminada.`,
+                                                                                        'success'
+                                                                                    );
+                                                                                } catch (error) {
+                                                                                    showNotification(
+                                                                                        'Error',
+                                                                                        `No se pudo eliminar la serie: ${error.message}`,
+                                                                                        'error'
+                                                                                    );
+                                                                                }
+                                                                            }
+                                                                        }}
+                                                                        className="text-red-600 hover:text-red-800 text-sm px-3 py-1 rounded-md border border-red-200 hover:border-red-300 transition-colors"
+                                                                    >
+                                                                        Eliminar Serie
+                                                                    </button>
+                                                                </div>
+                                                                
+                                                                {/* Control para modificar contador */}
+                                                                <div className="flex items-center gap-3 pt-3 border-t border-gray-200">
+                                                                    <label className="text-sm font-medium text-gray-700 min-w-fit">
+                                                                        Modificar contador a:
+                                                                    </label>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={currentCounter}
+                                                                        onChange={async (e) => {
+                                                                            const newValue = parseInt(e.target.value) || 1;
+                                                                            try {
+                                                                                await window.updateCounter(seriesId, newValue);
+                                                                                showNotification(
+                                                                                    'Contador Actualizado',
+                                                                                    `El contador de la serie ${seriesId} ha sido actualizado a ${newValue}.`,
+                                                                                    'success',
+                                                                                    3000
+                                                                                );
+                                                                            } catch (error) {
+                                                                                showNotification(
+                                                                                    'Error',
+                                                                                    `No se pudo actualizar el contador: ${error.message}`,
+                                                                                    'error'
+                                                                                );
+                                                                            }
+                                                                        }}
+                                                                        className="w-24 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-transparent"
+                                                                        min="1"
+                                                                    />
+                                                                    <span className="text-xs text-gray-500">
+                                                                        La próxima factura será: <span className="font-medium">{seriesId}-{String(currentCounter + 1).padStart(6, '0')}</span>
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <input
-                                                                    type="number"
-                                                                    value={settings.invoice.nextNumbers[series] || 1}
-                                                                    onChange={(e) => {
-                                                                        const updatedNextNumbers = { ...settings.invoice.nextNumbers };
-                                                                        updatedNextNumbers[series] = parseInt(e.target.value) || 1;
-                                                                        handleSettingChange('invoice', 'nextNumbers', updatedNextNumbers);
-                                                                    }}
-                                                                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-[#006666] focus:border-transparent"
-                                                                    min="1"
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={async () => {
-                                                                        const confirmed = await showConfirm(
-                                                                            'Eliminar Serie', 
-                                                                            `¿Estás seguro de que quieres eliminar la serie "${series}"? Esta acción no se puede deshacer y afectará la numeración de facturas.`,
-                                                                            () => {
-                                                                                const updatedSeries = settings.invoice.series.filter((_, i) => i !== index);
-                                                                                const updatedNextNumbers = { ...settings.invoice.nextNumbers };
-                                                                                delete updatedNextNumbers[series];
-                                                                                handleSettingChange('invoice', 'series', updatedSeries);
-                                                                                handleSettingChange('invoice', 'nextNumbers', updatedNextNumbers);
-                                                                            },
-                                                                            'danger'
-                                                                        );
-                                                                    }}
-                                                                    className="text-red-500 hover:text-red-700 text-sm px-2 py-1"
-                                                                >
-                                                                    Eliminar
-                                                                </button>
-                                                            </div>
+                                                        );
+                                                    })}
+                                                    {(!window.getInvoiceSeries || window.getInvoiceSeries().length === 0) && (
+                                                        <div className="text-center py-8">
+                                                            <div className="text-gray-400 mb-2">📋</div>
+                                                            <p className="text-gray-500 text-sm">No hay series configuradas</p>
+                                                            <p className="text-gray-400 text-xs mt-1">Crea tu primera serie usando el botón "Crear Serie"</p>
                                                         </div>
-                                                    ))}
-                                                    {settings.invoice.series.length === 0 && (
-                                                        <p className="text-gray-500 text-sm italic">No hay series configuradas</p>
                                                     )}
                                                 </div>
                                             </div>
