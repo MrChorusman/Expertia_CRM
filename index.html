@@ -42,7 +42,7 @@
     <script src="./js/performance-utils.js"></script>
     
     <!-- 🧪 Script de prueba para system_settings -->
-    <script src="./test-system-settings.js"></script>
+            <!-- <script src="./test-system-settings.js"></script> MOVIDO A archive/testing/ -->
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
@@ -11841,6 +11841,8 @@ Equipo Expertia Medical Solutions"
         }
         
         // Función para analizar referencias hardcodeadas de configuracion
+        // ❌ FUNCIÓN MOVIDA A archive/tools/firebase-analyzer.js
+        /*
         async function analyzeConfigReferences() {
             try {
                 if (!window.authManager || !window.authManager.app) {
@@ -11969,9 +11971,10 @@ Equipo Expertia Medical Solutions"
                 console.error('❌ Error analizando referencias:', error);
             }
         }
+        */
         
-        // Hacer la función disponible globalmente
-        window.analyzeConfigReferences = analyzeConfigReferences;
+        // Función analyzeConfigReferences movida a archive/tools/
+        // window.analyzeConfigReferences = analyzeConfigReferences;
         
         // Se llama a la función de inicialización después de que la ventana completa se haya cargado.
         window.onload = initAuthAndApp;
