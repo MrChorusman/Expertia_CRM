@@ -641,6 +641,9 @@
                     });
                 };
 
+                // Hacer showInput disponible globalmente para AdminPanel
+                window.showInput = showInput;
+
                 // Función para verificar permisos
                 const isAdmin = () => userProfile?.role === 'admin';
                 const isCommercialOrAdmin = () => userProfile?.role === 'admin' || userProfile?.role === 'comercial';
