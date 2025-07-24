@@ -641,8 +641,10 @@
                     });
                 };
 
-                // Hacer showInput disponible globalmente para AdminPanel
+                // Hacer showInput y showConfirm disponibles globalmente para AdminPanel
                 window.showInput = showInput;
+                window.showConfirm = showConfirm;
+                window.showNotification = showNotification;
 
                 // Función para verificar permisos
                 const isAdmin = () => userProfile?.role === 'admin';
@@ -1759,7 +1761,7 @@
                                                     onClick={() => {
                                                         setShowUserDropdown(false);
                                                         resetInactivityTimer();
-                                                        alert('Timer de inactividad reiniciado. Tu sesión durará 30 minutos más.');
+                                                        showNotification('Sesión Extendida', 'Timer de inactividad reiniciado. Tu sesión durará 30 minutos más.', 'success');
                                                     }}
                                                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                                                 >
@@ -2532,7 +2534,7 @@
                         setNewReminder({ text: '', dueDate: '' });
                     } catch (error) {
                         console.error("Error adding reminder:", error);
-                        alert('Error al agregar recordatorio');
+                        showNotification('Error', 'Error al agregar recordatorio', 'danger');
                     }
                 };
 
@@ -4395,7 +4397,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     
                     // Mostrar errores si los hay
                     if (errors.length > 0) {
-                        alert('Por favor, corrija los siguientes errores:\n\n• ' + errors.join('\n• '));
+                        showNotification('Errores de Validación', 'Por favor, corrija los siguientes errores:\n\n• ' + errors.join('\n• '), 'danger');
                         return;
                     }
                     
@@ -7782,7 +7784,14 @@ Equipo Expertia Medical Solutions"
                                 setShowViewModal(true);
                                 break;
                             case 'deactivate':
-                                if (confirm(`¿Estás seguro de ${userData.active !== false ? 'desactivar' : 'activar'} este usuario?\n\nUsuario: ${userData.name || userData.email}\nAcción: ${userData.active !== false ? 'DESACTIVAR' : 'ACTIVAR'} cuenta\n\n${userData.active !== false ? 'El usuario no podrá iniciar sesión hasta ser reactivado.' : 'El usuario podrá iniciar sesión nuevamente.'}`)) {
+                                const action = userData.active !== false ? 'desactivar' : 'activar';
+                                const actionUpper = userData.active !== false ? 'DESACTIVAR' : 'ACTIVAR';
+                                const consequence = userData.active !== false ? 'El usuario no podrá iniciar sesión hasta ser reactivado.' : 'El usuario podrá iniciar sesión nuevamente.';
+                                
+                                await showConfirm(
+                                    `${action.charAt(0).toUpperCase() + action.slice(1)} Usuario`,
+                                    `¿Estás seguro de ${action} este usuario?\n\nUsuario: ${userData.name || userData.email}\nAcción: ${actionUpper} cuenta\n\n${consequence}`,
+                                    async () => {
                                     try {
                                         setLoading(true);
                                         const newActiveState = userData.active === false;
@@ -7850,14 +7859,16 @@ Equipo Expertia Medical Solutions"
                                     } finally {
                                         setLoading(false);
                                     }
-                                }
+                                    },
+                                    'warning'
+                                );
                                 break;
                             default:
                                 console.log('Acción no reconocida:', action);
                         }
                     } catch (error) {
                         console.error('Error en acción de usuario:', error);
-                        alert('Error realizando la acción: ' + error.message);
+                        showNotification('Error', 'Error realizando la acción: ' + error.message, 'danger');
                     }
                 };
                 
@@ -8998,11 +9009,16 @@ Equipo Expertia Medical Solutions"
                                                             <span className="text-gray-700">{category}</span>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => {
-                                                                    if (confirm(`¿Eliminar la categoría "${category}"?`)) {
-                                                                        const updatedCategories = settings.products.categories.filter((_, i) => i !== index);
-                                                                        handleSettingChange('products', 'categories', updatedCategories);
-                                                                    }
+                                                                onClick={async () => {
+                                                                    const confirmed = await showConfirm(
+                                                                        'Eliminar Categoría', 
+                                                                        `¿Estás seguro de que quieres eliminar la categoría "${category}"? Esta acción no se puede deshacer.`,
+                                                                        () => {
+                                                                            const updatedCategories = settings.products.categories.filter((_, i) => i !== index);
+                                                                            handleSettingChange('products', 'categories', updatedCategories);
+                                                                        },
+                                                                        'danger'
+                                                                    );
                                                                 }}
                                                                 className="text-red-500 hover:text-red-700 text-sm"
                                                             >
@@ -9039,11 +9055,16 @@ Equipo Expertia Medical Solutions"
                                                             <span className="text-gray-700">{supplier}</span>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => {
-                                                                    if (confirm(`¿Eliminar el proveedor "${supplier}"?`)) {
-                                                                        const updatedSuppliers = settings.products.suppliers.filter((_, i) => i !== index);
-                                                                        handleSettingChange('products', 'suppliers', updatedSuppliers);
-                                                                    }
+                                                                onClick={async () => {
+                                                                    const confirmed = await showConfirm(
+                                                                        'Eliminar Proveedor', 
+                                                                        `¿Estás seguro de que quieres eliminar el proveedor "${supplier}"? Esta acción no se puede deshacer.`,
+                                                                        () => {
+                                                                            const updatedSuppliers = settings.products.suppliers.filter((_, i) => i !== index);
+                                                                            handleSettingChange('products', 'suppliers', updatedSuppliers);
+                                                                        },
+                                                                        'danger'
+                                                                    );
                                                                 }}
                                                                 className="text-red-500 hover:text-red-700 text-sm"
                                                             >
@@ -9092,11 +9113,16 @@ Equipo Expertia Medical Solutions"
                                                             <span className="text-gray-700">{source}</span>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => {
-                                                                    if (confirm(`¿Eliminar la fuente "${source}"?`)) {
-                                                                        const updatedSources = settings.sales.sources.filter((_, i) => i !== index);
-                                                                        handleSettingChange('sales', 'sources', updatedSources);
-                                                                    }
+                                                                onClick={async () => {
+                                                                    const confirmed = await showConfirm(
+                                                                        'Eliminar Fuente', 
+                                                                        `¿Estás seguro de que quieres eliminar la fuente "${source}"? Esta acción no se puede deshacer.`,
+                                                                        () => {
+                                                                            const updatedSources = settings.sales.sources.filter((_, i) => i !== index);
+                                                                            handleSettingChange('sales', 'sources', updatedSources);
+                                                                        },
+                                                                        'danger'
+                                                                    );
                                                                 }}
                                                                 className="text-red-500 hover:text-red-700 text-sm"
                                                             >
@@ -9133,11 +9159,16 @@ Equipo Expertia Medical Solutions"
                                                             <span className="text-gray-700">{stage}</span>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => {
-                                                                    if (confirm(`¿Eliminar la etapa "${stage}"?`)) {
-                                                                        const updatedStages = settings.sales.funnelStages.filter((_, i) => i !== index);
-                                                                        handleSettingChange('sales', 'funnelStages', updatedStages);
-                                                                    }
+                                                                onClick={async () => {
+                                                                    const confirmed = await showConfirm(
+                                                                        'Eliminar Etapa', 
+                                                                        `¿Estás seguro de que quieres eliminar la etapa "${stage}"? Esta acción no se puede deshacer.`,
+                                                                        () => {
+                                                                            const updatedStages = settings.sales.funnelStages.filter((_, i) => i !== index);
+                                                                            handleSettingChange('sales', 'funnelStages', updatedStages);
+                                                                        },
+                                                                        'danger'
+                                                                    );
                                                                 }}
                                                                 className="text-red-500 hover:text-red-700 text-sm"
                                                             >
@@ -9174,11 +9205,16 @@ Equipo Expertia Medical Solutions"
                                                             <span className="text-gray-700">{preference}</span>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => {
-                                                                    if (confirm(`¿Eliminar la preferencia "${preference}"?`)) {
-                                                                        const updatedPreferences = settings.sales.contactPreferences.filter((_, i) => i !== index);
-                                                                        handleSettingChange('sales', 'contactPreferences', updatedPreferences);
-                                                                    }
+                                                                onClick={async () => {
+                                                                    const confirmed = await showConfirm(
+                                                                        'Eliminar Preferencia', 
+                                                                        `¿Estás seguro de que quieres eliminar la preferencia "${preference}"? Esta acción no se puede deshacer.`,
+                                                                        () => {
+                                                                            const updatedPreferences = settings.sales.contactPreferences.filter((_, i) => i !== index);
+                                                                            handleSettingChange('sales', 'contactPreferences', updatedPreferences);
+                                                                        },
+                                                                        'danger'
+                                                                    );
                                                                 }}
                                                                 className="text-red-500 hover:text-red-700 text-sm"
                                                             >
@@ -9215,11 +9251,16 @@ Equipo Expertia Medical Solutions"
                                                             <span className="text-gray-700">{priority}</span>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => {
-                                                                    if (confirm(`¿Eliminar la prioridad "${priority}"?`)) {
-                                                                        const updatedPriorities = settings.sales.priorities.filter((_, i) => i !== index);
-                                                                        handleSettingChange('sales', 'priorities', updatedPriorities);
-                                                                    }
+                                                                onClick={async () => {
+                                                                    const confirmed = await showConfirm(
+                                                                        'Eliminar Prioridad', 
+                                                                        `¿Estás seguro de que quieres eliminar la prioridad "${priority}"? Esta acción no se puede deshacer.`,
+                                                                        () => {
+                                                                            const updatedPriorities = settings.sales.priorities.filter((_, i) => i !== index);
+                                                                            handleSettingChange('sales', 'priorities', updatedPriorities);
+                                                                        },
+                                                                        'danger'
+                                                                    );
                                                                 }}
                                                                 className="text-red-500 hover:text-red-700 text-sm"
                                                             >
@@ -9327,14 +9368,19 @@ Equipo Expertia Medical Solutions"
                                                                 />
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => {
-                                                                        if (confirm(`¿Eliminar la serie "${series}"?`)) {
-                                                                            const updatedSeries = settings.invoice.series.filter((_, i) => i !== index);
-                                                                            const updatedNextNumbers = { ...settings.invoice.nextNumbers };
-                                                                            delete updatedNextNumbers[series];
-                                                                            handleSettingChange('invoice', 'series', updatedSeries);
-                                                                            handleSettingChange('invoice', 'nextNumbers', updatedNextNumbers);
-                                                                        }
+                                                                    onClick={async () => {
+                                                                        const confirmed = await showConfirm(
+                                                                            'Eliminar Serie', 
+                                                                            `¿Estás seguro de que quieres eliminar la serie "${series}"? Esta acción no se puede deshacer y afectará la numeración de facturas.`,
+                                                                            () => {
+                                                                                const updatedSeries = settings.invoice.series.filter((_, i) => i !== index);
+                                                                                const updatedNextNumbers = { ...settings.invoice.nextNumbers };
+                                                                                delete updatedNextNumbers[series];
+                                                                                handleSettingChange('invoice', 'series', updatedSeries);
+                                                                                handleSettingChange('invoice', 'nextNumbers', updatedNextNumbers);
+                                                                            },
+                                                                            'danger'
+                                                                        );
                                                                     }}
                                                                     className="text-red-500 hover:text-red-700 text-sm px-2 py-1"
                                                                 >
