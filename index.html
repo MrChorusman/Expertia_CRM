@@ -1395,7 +1395,7 @@
                                 products={products} 
                                 onSave={handleSaveOffer} 
                                 onCancel={() => setActiveView('offers')} 
-                                offerData={selectedItem}
+                                offerData={null}
                                 db={db}
                             />;
                         case 'viewOffer': 
@@ -2350,7 +2350,7 @@
                                             <option value="">Seleccionar comercial...</option>
                                             {commercialUsers.map(user => (
                                                 <option key={user.id} value={user.id}>
-                                                    {user.name} ({user.role})
+                                                    {user.name}
                                                 </option>
                                             ))}
                                         </select>
@@ -4545,7 +4545,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                         <option value="">Seleccionar comercial...</option>
                                         {commercialUsers.map(user => (
                                             <option key={user.id} value={user.id}>
-                                                {user.name} ({user.role})
+                                                {user.name}
                                             </option>
                                         ))}
                                     </select>
@@ -5141,6 +5141,188 @@ Email: info@expertiamedical.com`;
                     }
                 };
 
+                const handleSendOffer = (offer, client) => {
+                    // Crear el asunto del email
+                    const subject = `Oferta ${offer.offerNumber} - ${client?.company || client?.name || 'Cliente'}`;
+                    
+                    // Crear el cuerpo del email
+                    const body = `Estimado/a cliente,
+
+Adjuntamos la oferta ${offer.offerNumber} correspondiente a su consulta.
+
+Detalles de la oferta:
+- Fecha: ${offer.offerDate}
+- Válida hasta: ${offer.validUntil}
+- Total: ${offer.total?.toFixed(2)} €
+
+${offer.description ? `Descripción: ${offer.description}` : ''}
+
+Para cualquier consulta, no dude en contactarnos.
+
+Atentamente,
+Expertia Medical Solutions`;
+
+                    // Crear el enlace mailto
+                    const mailtoLink = `mailto:${client?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                    
+                    // Abrir el enlace en una nueva ventana
+                    window.open(mailtoLink, '_blank');
+                };
+
+                const handlePrintOffer = (offer, client) => {
+                    // Crear contenido HTML para imprimir
+                    const printContent = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>Oferta ${offer.offerNumber}</title>
+                            <style>
+                                body { 
+                                    font-family: Arial, sans-serif; 
+                                    margin: 20px; 
+                                    color: #333;
+                                }
+                                .header { 
+                                    border-bottom: 2px solid #008080; 
+                                    padding-bottom: 20px; 
+                                    margin-bottom: 30px;
+                                }
+                                .company-info { 
+                                    text-align: right; 
+                                    color: #008080;
+                                }
+                                .offer-info { 
+                                    display: grid; 
+                                    grid-template-columns: 1fr 1fr; 
+                                    gap: 30px; 
+                                    margin-bottom: 30px;
+                                }
+                                .section { 
+                                    background-color: #f8f9fa; 
+                                    padding: 15px; 
+                                    border-radius: 5px;
+                                }
+                                table { 
+                                    width: 100%; 
+                                    border-collapse: collapse; 
+                                    margin: 20px 0;
+                                }
+                                th, td { 
+                                    border: 1px solid #ddd; 
+                                    padding: 12px; 
+                                    text-align: left;
+                                }
+                                th { 
+                                    background-color: #008080; 
+                                    color: white;
+                                }
+                                .totals { 
+                                    text-align: right; 
+                                    margin-top: 20px;
+                                    background-color: #f8f9fa;
+                                    padding: 15px;
+                                    border-radius: 5px;
+                                }
+                                .footer { 
+                                    margin-top: 40px; 
+                                    border-top: 1px solid #ddd; 
+                                    padding-top: 20px; 
+                                    font-size: 12px; 
+                                    color: #666;
+                                }
+                                @media print {
+                                    body { margin: 0; }
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="header">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <h1 style="color: #008080; margin: 0;">OFERTA COMERCIAL</h1>
+                                        <h2 style="margin: 5px 0 0 0;">${offer.offerNumber}</h2>
+                                    </div>
+                                    <div class="company-info">
+                                        <strong>Expertia Medical Solutions</strong><br>
+                                        Calle Innovación 1<br>
+                                        28001 Madrid<br>
+                                        Tel: +34 91 000 0000<br>
+                                        info@expertia.com
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="offer-info">
+                                <div class="section">
+                                    <h3 style="margin-top: 0; color: #008080;">Información del Cliente</h3>
+                                    <strong>${client?.company || client?.name || 'N/A'}</strong><br>
+                                    ${client?.name ? `Att: ${client.name}<br>` : ''}
+                                    ${client?.email ? `Email: ${client.email}<br>` : ''}
+                                    ${client?.phone ? `Tel: ${client.phone}<br>` : ''}
+                                </div>
+                                <div class="section">
+                                    <h3 style="margin-top: 0; color: #008080;">Detalles de la Oferta</h3>
+                                    <strong>Fecha:</strong> ${offer.offerDate}<br>
+                                    <strong>Válida hasta:</strong> ${offer.validUntil}<br>
+                                    <strong>Estado:</strong> ${offer.status}<br>
+                                    ${offer.description ? `<strong>Descripción:</strong> ${offer.description}` : ''}
+                                </div>
+                            </div>
+
+                            <h3 style="color: #008080;">Items de la Oferta</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Descripción</th>
+                                        <th style="text-align: center;">Cantidad</th>
+                                        <th style="text-align: right;">Precio Unitario</th>
+                                        <th style="text-align: right;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${offer.items?.map(item => `
+                                        <tr>
+                                            <td>${item.description}</td>
+                                            <td style="text-align: center;">${item.quantity}</td>
+                                            <td style="text-align: right;">${item.price.toFixed(2)} €</td>
+                                            <td style="text-align: right;"><strong>${(item.quantity * item.price).toFixed(2)} €</strong></td>
+                                        </tr>
+                                    `).join('') || '<tr><td colspan="4">No hay items</td></tr>'}
+                                </tbody>
+                            </table>
+
+                            <div class="totals">
+                                <div style="margin-bottom: 10px;"><strong>Subtotal: ${offer.subtotal?.toFixed(2)} €</strong></div>
+                                <div style="margin-bottom: 10px;"><strong>IVA (21%): ${offer.vat?.toFixed(2)} €</strong></div>
+                                <div style="font-size: 18px; color: #008080;"><strong>TOTAL: ${offer.total?.toFixed(2)} €</strong></div>
+                            </div>
+
+                            ${offer.terms ? `
+                                <div style="margin-top: 30px;">
+                                    <h3 style="color: #008080;">Términos y Condiciones</h3>
+                                    <p style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">${offer.terms}</p>
+                                </div>
+                            ` : ''}
+
+                            <div class="footer">
+                                <p>Esta oferta ha sido generada automáticamente por Expertia CRM el ${new Date().toLocaleDateString('es-ES')}.</p>
+                                <p>Para cualquier consulta, no dude en contactarnos en los datos indicados arriba.</p>
+                            </div>
+                        </body>
+                        </html>
+                    `;
+
+                    // Crear nueva ventana para imprimir
+                    const printWindow = window.open('', '_blank');
+                    printWindow.document.write(printContent);
+                    printWindow.document.close();
+                    
+                    // Esperar a que se cargue el contenido y después imprimir
+                    printWindow.onload = () => {
+                        printWindow.print();
+                    };
+                };
+
                 return (
                     <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
                         {/* Header */}
@@ -5261,6 +5443,21 @@ Email: info@expertiamedical.com`;
                                     </button>
                                     
                                     <div className="flex flex-col sm:flex-row gap-2">
+                                        {/* Botones de utilidades */}
+                                        <button 
+                                            onClick={() => handleSendOffer(offer, client)} 
+                                            className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                                        >
+                                            <MailIcon width={16} height={16} /> Enviar Oferta
+                                        </button>
+                                        
+                                        <button 
+                                            onClick={() => handlePrintOffer(offer, client)} 
+                                            className="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 flex items-center gap-2"
+                                        >
+                                            <PrinterIcon width={16} height={16} /> Imprimir Oferta
+                                        </button>
+                                        
                                         {/* Acciones de estado */}
                                         {offer.status === 'Borrador' && (
                                             <button 
