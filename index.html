@@ -129,6 +129,85 @@
                 return 'No especificada';
             };
 
+            // --- Componente de Input Modal Personalizado ---
+            function CustomInputModal({ isOpen, title, placeholder, value, onConfirm, onCancel }) {
+                const [inputValue, setInputValue] = useState(value || '');
+                
+                useEffect(() => {
+                    setInputValue(value || '');
+                }, [value]);
+                
+                if (!isOpen) return null;
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    if (inputValue.trim()) {
+                        onConfirm(inputValue.trim());
+                    }
+                };
+
+                return (
+                    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" style={{backdropFilter: 'blur(8px)'}}>
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden" style={{animation: 'slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'}}>
+                            {/* Header minimalista con gradiente */}
+                            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4 relative overflow-hidden">
+                                <div className="absolute inset-0 opacity-20" style={{
+                                    backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px)'
+                                }}></div>
+                                <div className="flex items-center justify-between relative z-10">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                            <svg width="20" height="20" fill="none" stroke="white" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-xl font-bold text-white">{title}</h3>
+                                    </div>
+                                    <button 
+                                        onClick={onCancel}
+                                        className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-all duration-200 text-white"
+                                    >
+                                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <form onSubmit={handleSubmit} className="p-6">
+                                <div className="mb-6">
+                                    <input
+                                        type="text"
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        placeholder={placeholder}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200"
+                                        autoFocus
+                                    />
+                                </div>
+                                
+                                <div className="flex gap-3 justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={onCancel}
+                                        className="px-6 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors duration-200"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={!inputValue.trim()}
+                                        className="px-6 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                                    >
+                                        Aceptar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
             // --- Componente de Confirmación Personalizado ---
             function CustomConfirm({ isOpen, title, message, onConfirm, onCancel, type = 'warning' }) {
                 if (!isOpen) return null;
@@ -420,6 +499,16 @@
                     type: 'success'
                 });
 
+                // Estado para modal de input personalizado
+                const [inputModal, setInputModal] = useState({
+                    isOpen: false,
+                    title: '',
+                    placeholder: '',
+                    value: '',
+                    onConfirm: () => {},
+                    onCancel: () => {}
+                });
+
                 // Cache de configuración global
                 const [appConfig, setAppConfig] = useState(null);
                 
@@ -529,6 +618,26 @@
                         title,
                         message,
                         type
+                    });
+                };
+
+                // Función para mostrar modal de input personalizado
+                const showInput = (title, placeholder = '', defaultValue = '') => {
+                    return new Promise((resolve) => {
+                        setInputModal({
+                            isOpen: true,
+                            title,
+                            placeholder,
+                            value: defaultValue,
+                            onConfirm: (value) => {
+                                setInputModal({ ...inputModal, isOpen: false });
+                                resolve(value);
+                            },
+                            onCancel: () => {
+                                setInputModal({ ...inputModal, isOpen: false });
+                                resolve(null);
+                            }
+                        });
                     });
                 };
 
@@ -1413,6 +1522,16 @@
                             message={notificationModal.message}
                             type={notificationModal.type}
                             onClose={() => setNotificationModal({ ...notificationModal, isOpen: false })}
+                        />
+                        
+                        {/* Modal de input personalizado */}
+                        <CustomInputModal 
+                            isOpen={inputModal.isOpen}
+                            title={inputModal.title}
+                            placeholder={inputModal.placeholder}
+                            value={inputModal.value}
+                            onConfirm={inputModal.onConfirm}
+                            onCancel={inputModal.onCancel}
                         />
                     </div>
                 );
@@ -8859,10 +8978,10 @@ Equipo Expertia Medical Solutions"
                                                     <h4 className="font-semibold text-gray-900">Categorías de Productos</h4>
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            const newCategory = prompt('Nombre de la nueva categoría:');
-                                                            if (newCategory && newCategory.trim()) {
-                                                                handleSettingChange('products', 'categories', [...settings.products.categories, newCategory.trim()]);
+                                                        onClick={async () => {
+                                                            const newCategory = await showInput('Agregar Categoría', 'Nombre de la nueva categoría');
+                                                            if (newCategory) {
+                                                                handleSettingChange('products', 'categories', [...settings.products.categories, newCategory]);
                                                             }
                                                         }}
                                                         className="px-3 py-1 bg-[#006666] text-white rounded-md text-sm hover:bg-[#004d4d] transition-colors"
@@ -8900,10 +9019,10 @@ Equipo Expertia Medical Solutions"
                                                     <h4 className="font-semibold text-gray-900">Proveedores</h4>
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            const newSupplier = prompt('Nombre del nuevo proveedor:');
-                                                            if (newSupplier && newSupplier.trim()) {
-                                                                handleSettingChange('products', 'suppliers', [...settings.products.suppliers, newSupplier.trim()]);
+                                                        onClick={async () => {
+                                                            const newSupplier = await showInput('Agregar Proveedor', 'Nombre del nuevo proveedor');
+                                                            if (newSupplier) {
+                                                                handleSettingChange('products', 'suppliers', [...settings.products.suppliers, newSupplier]);
                                                             }
                                                         }}
                                                         className="px-3 py-1 bg-[#006666] text-white rounded-md text-sm hover:bg-[#004d4d] transition-colors"
@@ -8953,10 +9072,10 @@ Equipo Expertia Medical Solutions"
                                                     <h4 className="font-semibold text-gray-900">Fuentes de Leads</h4>
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            const newSource = prompt('Nombre de la nueva fuente:');
-                                                            if (newSource && newSource.trim()) {
-                                                                handleSettingChange('sales', 'sources', [...settings.sales.sources, newSource.trim()]);
+                                                        onClick={async () => {
+                                                            const newSource = await showInput('Agregar Fuente', 'Nombre de la nueva fuente');
+                                                            if (newSource) {
+                                                                handleSettingChange('sales', 'sources', [...settings.sales.sources, newSource]);
                                                             }
                                                         }}
                                                         className="px-3 py-1 bg-[#006666] text-white rounded-md text-sm hover:bg-[#004d4d] transition-colors"
@@ -8994,10 +9113,10 @@ Equipo Expertia Medical Solutions"
                                                     <h4 className="font-semibold text-gray-900">Etapas del Embudo de Ventas</h4>
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            const newStage = prompt('Nombre de la nueva etapa:');
-                                                            if (newStage && newStage.trim()) {
-                                                                handleSettingChange('sales', 'funnelStages', [...settings.sales.funnelStages, newStage.trim()]);
+                                                        onClick={async () => {
+                                                            const newStage = await showInput('Agregar Etapa', 'Nombre de la nueva etapa');
+                                                            if (newStage) {
+                                                                handleSettingChange('sales', 'funnelStages', [...settings.sales.funnelStages, newStage]);
                                                             }
                                                         }}
                                                         className="px-3 py-1 bg-[#006666] text-white rounded-md text-sm hover:bg-[#004d4d] transition-colors"
@@ -9035,10 +9154,10 @@ Equipo Expertia Medical Solutions"
                                                     <h4 className="font-semibold text-gray-900">Preferencias de Contacto</h4>
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            const newPreference = prompt('Nueva preferencia de contacto:');
-                                                            if (newPreference && newPreference.trim()) {
-                                                                handleSettingChange('sales', 'contactPreferences', [...settings.sales.contactPreferences, newPreference.trim()]);
+                                                        onClick={async () => {
+                                                            const newPreference = await showInput('Agregar Preferencia', 'Nueva preferencia de contacto');
+                                                            if (newPreference) {
+                                                                handleSettingChange('sales', 'contactPreferences', [...settings.sales.contactPreferences, newPreference]);
                                                             }
                                                         }}
                                                         className="px-3 py-1 bg-[#006666] text-white rounded-md text-sm hover:bg-[#004d4d] transition-colors"
@@ -9076,10 +9195,10 @@ Equipo Expertia Medical Solutions"
                                                     <h4 className="font-semibold text-gray-900">Niveles de Prioridad</h4>
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            const newPriority = prompt('Nuevo nivel de prioridad:');
-                                                            if (newPriority && newPriority.trim()) {
-                                                                handleSettingChange('sales', 'priorities', [...settings.sales.priorities, newPriority.trim()]);
+                                                        onClick={async () => {
+                                                            const newPriority = await showInput('Agregar Prioridad', 'Nuevo nivel de prioridad');
+                                                            if (newPriority) {
+                                                                handleSettingChange('sales', 'priorities', [...settings.sales.priorities, newPriority]);
                                                             }
                                                         }}
                                                         className="px-3 py-1 bg-[#006666] text-white rounded-md text-sm hover:bg-[#004d4d] transition-colors"
@@ -9164,17 +9283,17 @@ Equipo Expertia Medical Solutions"
                                                     <h4 className="font-semibold text-gray-900">Series de Facturas</h4>
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            const newSeries = prompt('Código de la nueva serie (ej: A, B, C):');
-                                                            if (newSeries && newSeries.trim() && !settings.invoice.series.includes(newSeries.trim().toUpperCase())) {
-                                                                const newSeriesCode = newSeries.trim().toUpperCase();
+                                                        onClick={async () => {
+                                                            const newSeries = await showInput('Agregar Serie', 'Código de la nueva serie (ej: A, B, C)');
+                                                            if (newSeries && !settings.invoice.series.includes(newSeries.toUpperCase())) {
+                                                                const newSeriesCode = newSeries.toUpperCase();
                                                                 handleSettingChange('invoice', 'series', [...settings.invoice.series, newSeriesCode]);
                                                                 // Inicializar el nextNumber para la nueva serie
                                                                 const updatedNextNumbers = { ...settings.invoice.nextNumbers };
                                                                 updatedNextNumbers[newSeriesCode] = 1;
                                                                 handleSettingChange('invoice', 'nextNumbers', updatedNextNumbers);
-                                                            } else if (settings.invoice.series.includes(newSeries.trim().toUpperCase())) {
-                                                                alert('Esta serie ya existe');
+                                                            } else if (newSeries && settings.invoice.series.includes(newSeries.toUpperCase())) {
+                                                                showNotification('Error', 'Esta serie ya existe', 'danger');
                                                             }
                                                         }}
                                                         className="px-3 py-1 bg-[#006666] text-white rounded-md text-sm hover:bg-[#004d4d] transition-colors"
