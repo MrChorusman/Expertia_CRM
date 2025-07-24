@@ -2485,6 +2485,17 @@
                 // Estado para recordatorios
                 const [reminders, setReminders] = useState([]);
                 const [newReminder, setNewReminder] = useState({ text: '', dueDate: '' });
+                
+                // Estados para resolver nombres de usuarios
+                const [allUsers, setAllUsers] = useState([]);
+                const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+                
+                // Función para obtener el nombre de un usuario por su ID
+                const getUserName = (userId) => {
+                    if (!userId) return 'No asignado';
+                    const foundUser = allUsers.find(u => u.id === userId);
+                    return foundUser ? foundUser.name : userId; // Fallback al ID si no se encuentra
+                };
 
                 // Cargar recordatorios del cliente
                 useEffect(() => {
@@ -2502,6 +2513,39 @@
                     });
                     return () => unsubscribe();
                 }, [db, user, client.id]);
+
+                // Cargar usuarios para resolver nombres
+                useEffect(() => {
+                    const loadAllUsers = async () => {
+                        setIsLoadingUsers(true);
+                        try {
+                            if (window.firebaseDb) {
+                                const { collection, getDocs } = window.firebase;
+                                const usersRef = collection(window.firebaseDb, 'users');
+                                const querySnapshot = await getDocs(usersRef);
+                                
+                                const users = [];
+                                querySnapshot.forEach((doc) => {
+                                    const userData = doc.data();
+                                    users.push({
+                                        id: doc.id,
+                                        name: userData.name || userData.displayName || userData.email,
+                                        email: userData.email,
+                                        role: userData.role
+                                    });
+                                });
+                                
+                                setAllUsers(users);
+                            }
+                        } catch (error) {
+                            console.error('Error cargando usuarios:', error);
+                        } finally {
+                            setIsLoadingUsers(false);
+                        }
+                    };
+
+                    loadAllUsers();
+                }, []);
 
                 // Agregar nuevo recordatorio
                 const handleAddReminder = async (e) => {
@@ -2659,7 +2703,7 @@
                                             {client.contactedBy && (
                                                 <div>
                                                     <span className="text-sm text-gray-500">Contactado por</span>
-                                                    <p className="font-medium text-[#006666]">{client.contactedBy}</p>
+                                                    <p className="font-medium text-[#006666]">{getUserName(client.contactedBy)}</p>
                                                 </div>
                                             )}
                                         </div>
