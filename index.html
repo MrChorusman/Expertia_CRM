@@ -5326,7 +5326,7 @@ Email: info@expertiamedical.com`;
                             'Fecha': new Date(inv.createdAt?.seconds * 1000 || inv.createdAt).toLocaleDateString('es-ES'),
                             'Nº Factura': inv.invoiceNumber,
                             'Cliente': inv.clientName,
-                            'Comercial': inv.createdBy || 'N/A',
+                            'Comercial': inv.createdByName || inv.createdBy || 'N/A',
                             'Total (€)': parseFloat(inv.total || 0).toFixed(2),
                             'IVA (€)': parseFloat(inv.vat || 0).toFixed(2),
                             'Estado': inv.status,
@@ -5675,7 +5675,7 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                     const salespersonSales = {};
                     
                     filteredInvoices.forEach(invoice => {
-                        const salesperson = invoice.createdBy || 'Sin asignar';
+                        const salesperson = invoice.createdByName || invoice.createdBy || 'Sin asignar';
                         if (!salespersonSales[salesperson]) {
                             salespersonSales[salesperson] = {
                                 name: salesperson,
@@ -7617,9 +7617,9 @@ Equipo Expertia Medical Solutions"
                                                 </h4>
                                                 <div className="text-sm text-gray-600 space-y-1">
                                                     <p><strong>Creado:</strong> {product.createdAt ? new Date(product.createdAt).toLocaleString() : 'No disponible'}</p>
-                                                    <p><strong>Creado por:</strong> {product.createdBy || 'No disponible'}</p>
+                                                    <p><strong>Creado por:</strong> {product.createdByName || product.createdBy || 'Sistema'}</p>
                                                     <p><strong>Última actualización:</strong> {product.updatedAt ? new Date(product.updatedAt).toLocaleString() : 'No disponible'}</p>
-                                                    <p><strong>Actualizado por:</strong> {product.updatedBy || 'No disponible'}</p>
+                                                    <p><strong>Actualizado por:</strong> {product.updatedByName || product.updatedBy || 'Sistema'}</p>
                                                 </div>
                                             </div>
                                         )}
