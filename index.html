@@ -585,10 +585,113 @@
                 const getConfigValue = (section, key, defaultValue) => {
                     return appConfig?.[section]?.[key] || defaultValue;
                 };
+                
+                // Función para obtener todas las configuraciones (incluye fallbacks)
+                const getSettings = () => {
+                    if (!appConfig) {
+                        // Configuración por defecto si no hay datos cargados
+                        return {
+                            company: {
+                                name: 'Expertia Medical Solutions',
+                                address: 'Calle Innovación 1, Madrid, 28001',
+                                phone: '+34 91 000 0000',
+                                email: 'info@expertia.com',
+                                website: 'https://expertia.com',
+                                nit: 'B12345678',
+                                taxId: 'B12345678',
+                                logo: './LOGO_EXPERTIA.jpg'
+                            },
+                            invoice: {
+                                series: ['EXP', 'ALQ', 'PROF'],
+                                offerSeries: 'OF',
+                                globalCounter: 1,
+                                defaultCurrency: 'EUR',
+                                vatRate: 0.21,
+                                paymentTerms: 30
+                            },
+                            products: {
+                                categories: ['Diagnóstico', 'Monitorización', 'Emergencias', 'Laboratorio'],
+                                suppliers: ['Storz Medical', 'Zamar Medical', 'Phillips Healthcare', 'GE Healthcare', 'Siemens']
+                            },
+                            sales: {
+                                sources: ['Web', 'Teléfono', 'Email', 'Referencia', 'Presencial', 'Redes Sociales'],
+                                funnelStages: ['Lead', 'Contactado', 'Interesado', 'Propuesta', 'Negociación', 'Cliente', 'Perdido', 'Seguimiento'],
+                                priorities: ['Alta', 'Media', 'Baja'],
+                                contactPreferences: ['Email', 'Teléfono', 'WhatsApp', 'Visita Comercial']
+                            },
+                            security: {
+                                sessionTimeout: 30,
+                                requireEmailVerification: true,
+                                allowGoogleLogin: true,
+                                passwordComplexity: 'medium',
+                                twoFactorAuth: false,
+                                maxLoginAttempts: 5
+                            },
+                            notifications: {
+                                emailNotifications: true,
+                                newUserRegistration: true,
+                                systemAlerts: true,
+                                weeklyReports: false,
+                                maintenanceAlerts: true
+                            },
+                            integrations: {
+                                whatsappApiKey: '',
+                                emailProvider: 'gmail',
+                                smtpHost: '',
+                                smtpPort: 587,
+                                smtpUsername: '',
+                                smtpPassword: ''
+                            }
+                        };
+                    }
+                    
+                    // Mezclar configuración cargada con defaults para campos faltantes
+                    const defaults = {
+                        company: {
+                            name: 'Expertia Medical Solutions',
+                            address: 'Calle Innovación 1, Madrid, 28001',
+                            phone: '+34 91 000 0000',
+                            email: 'info@expertia.com',
+                            website: 'https://expertia.com',
+                            nit: 'B12345678',
+                            taxId: 'B12345678',
+                            logo: './LOGO_EXPERTIA.jpg'
+                        },
+                        invoice: {
+                            series: ['EXP', 'ALQ', 'PROF'],
+                            offerSeries: 'OF',
+                            globalCounter: 1,
+                            defaultCurrency: 'EUR',
+                            vatRate: 0.21,
+                            paymentTerms: 30
+                        },
+                        products: {
+                            categories: ['Diagnóstico', 'Monitorización', 'Emergencias', 'Laboratorio'],
+                            suppliers: ['Storz Medical', 'Zamar Medical', 'Phillips Healthcare', 'GE Healthcare', 'Siemens']
+                        },
+                        sales: {
+                            sources: ['Web', 'Teléfono', 'Email', 'Referencia', 'Presencial', 'Redes Sociales'],
+                            funnelStages: ['Lead', 'Contactado', 'Interesado', 'Propuesta', 'Negociación', 'Cliente', 'Perdido', 'Seguimiento'],
+                            priorities: ['Alta', 'Media', 'Baja'],
+                            contactPreferences: ['Email', 'Teléfono', 'WhatsApp', 'Visita Comercial']
+                        }
+                    };
+                    
+                    return {
+                        company: { ...defaults.company, ...appConfig.company },
+                        invoice: { ...defaults.invoice, ...appConfig.invoice },
+                        products: { ...defaults.products, ...appConfig.products },
+                        sales: { ...defaults.sales, ...appConfig.sales },
+                        security: { ...appConfig.security },
+                        notifications: { ...appConfig.notifications },
+                        integrations: { ...appConfig.integrations }
+                    };
+                };
 
-                // Hacer loadAppConfig disponible globalmente para AdminPanel
+                // Hacer funciones disponibles globalmente
                 window.loadAppConfig = loadAppConfig;
                 window.getConfigValue = getConfigValue;
+                window.getSettings = getSettings;
 
                 // Función para mostrar confirmación personalizada
                 const showConfirm = (title, message, onConfirm, type = 'warning') => {
@@ -740,10 +843,10 @@
                 // Cargar configuración del sistema cuando db y user estén disponibles
                 useEffect(() => {
                     if (db && user) {
-                        console.log('🔄 Condiciones cumplidas para cargar configuración - db:', !!db, 'user:', !!user);
+                        console.log('Condiciones cumplidas para cargar configuración - db:', !!db, 'user:', !!user);
                         loadAppConfig();
                     } else {
-                        console.log('⏳ Esperando condiciones para cargar configuración - db:', !!db, 'user:', !!user);
+                        console.log('Esperando condiciones para cargar configuración - db:', !!db, 'user:', !!user);
                     }
                 }, [db, user]);
 
@@ -4706,6 +4809,9 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 const amountPaid = invoice.totalPaid || 0;
                 const amountDue = invoice.total - amountPaid;
                 
+                // Obtener configuraciones dinámicas
+                const settings = window.getSettings();
+                
                 useEffect(() => { 
                     if (!db || !userId || !invoice.id) return; 
                     const paymentsPath = `companies/${invoice.clientId}/invoices/${invoice.id}/payments`; 
@@ -4729,7 +4835,8 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
 
                 // Función para imprimir la factura
                 const handlePrintInvoice = () => {
-                    const printContent = generateInvoicePrintHTML(invoice, client);
+                    const settings = window.getSettings();
+                    const printContent = generateInvoicePrintHTML(invoice, client, settings);
                     const printWindow = window.open('', '_blank', 'width=800,height=600');
                     printWindow.document.open();
                     printWindow.document.write(printContent);
@@ -4742,7 +4849,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 };
 
                 // Función para generar el HTML de impresión
-                const generateInvoicePrintHTML = (invoice, client) => {
+                const generateInvoicePrintHTML = (invoice, client, settings) => {
                     return `
                         <!DOCTYPE html>
                         <html>
@@ -4786,12 +4893,11 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                         <p style="color: #666;">Nº: ${invoice.invoiceNumber || 'N/A'}</p>
                                     </div>
                                     <div class="company-info">
-                                        <h3>Expertia Medical Solutions SL</h3>
-                                        <p>Calle Ficticia 123</p>
-                                        <p>28080 Madrid, España</p>
-                                        <p>CIF: B12345678</p>
-                                        <p>Tel: +34 912 345 678</p>
-                                        <p>Email: info@expertiamedical.com</p>
+                                      <h3>${settings.company.name}</h3>
+                                      <p>${settings.company.address}</p>
+                                      ${settings.company.phone ? `<p>Tel: ${settings.company.phone}</p>` : ''}
+                                      ${settings.company.email ? `<p>${settings.company.email}</p>` : ''}
+                                      ${settings.company.website ? `<p><a href="${settings.company.website}">${settings.company.website}</a></p>` : ''}
                                     </div>
                                 </div>
 
@@ -4860,13 +4966,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                 <div class="footer">
                                     <p><strong>Forma de pago:</strong> Transferencia bancaria</p>
                                     <p><strong>Cuenta bancaria:</strong> ES21 1234 5678 9012 3456 7890</p>
-                                    <p><strong>Notas:</strong> ${invoice.notes || 'Gracias por confiar en Expertia Medical Solutions.'}</p>
-                                    <br>
-                                    <p style="text-align: center;">
-                                        Expertia Medical Solutions SL | CIF: B12345678 | 
-                                        Calle Ficticia 123, 28080 Madrid | 
-                                        Tel: +34 912 345 678 | www.expertiamedical.com
-                                    </p>
+                                    <p><strong>Notas:</strong> ${invoice.notes || 'Gracias por confiar en ${settings.company.name}'}</p>
                                 </div>
                             </div>
                         </body>
@@ -4876,7 +4976,8 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
 
                 // Función para generar y descargar PDF de la factura
                 const handleDownloadPDF = () => {
-                    const printContent = generateInvoicePrintHTML(invoice, client);
+                    const settings = window.getSettings();
+                    const printContent = generateInvoicePrintHTML(invoice, client, settings);
                     const printWindow = window.open('', '_blank', 'width=800,height=600');
                     printWindow.document.open();
                     printWindow.document.write(printContent);
@@ -4920,7 +5021,8 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 };
 
                 const openEmailCompose = () => {
-                    const subject = `Factura ${invoice.invoiceNumber} - Expertia Medical Solutions`;
+                    const settings = window.getSettings();
+                    const subject = `${settings.company.name} - Factura ${invoice.invoiceNumber} para ${client.name}`;
                     const body = `Estimado/a ${client.name},
 
 Adjunto encontrará la factura ${invoice.invoiceNumber} correspondiente a los servicios prestados.
@@ -4934,9 +5036,11 @@ Detalles de la factura:
 Si tiene alguna pregunta sobre esta factura, no dude en contactarnos.
 
 Atentamente,
-Expertia Medical Solutions
-Tel: +34 912 345 678
-Email: info@expertiamedical.com`;
+
+${settings.company.name}
+Tel: ${settings.company.phone}
+Email: ${settings.company.email}
+Website: ${settings.company.website}</a> `; 
 
                     const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
                     // Abrir en nueva ventana/pestaña
@@ -4952,9 +5056,13 @@ Email: info@expertiamedical.com`;
                                 <p className="text-gray-500">Nº: {invoice.invoiceNumber}</p>
                             </div>
                             <div className="text-right">
-                                <h3 className="text-xl font-bold">Expertia Medical Solutions SL</h3>
-                                <p className="text-sm">Calle Ficticia 123, 28080 Madrid</p>
-                                <p className="text-sm">B12345678</p>
+                                <div className="company-info">
+                                    <strong>{settings.company.name}</strong><br />
+                                    {settings.company.address}<br />
+                                    {settings.company.phone && `Tel: ${settings.company.phone}`}<br />
+                                    {settings.company.email && settings.company.email}<br />
+                                    {settings.company.website && <a href={settings.company.website}>{settings.company.website}</a>}
+                                </div>
                             </div>
                         </div>
                         
@@ -5126,6 +5234,9 @@ Email: info@expertiamedical.com`;
                 const client = clients.find(c => c.id === offer.clientId);
                 const isExpired = new Date(offer.validUntil) < new Date();
                 const canConvert = offer.status === 'Aceptada';
+                
+                // Obtener configuraciones dinámicas
+                const settings = window.getSettings();
 
                 const handleStatusUpdate = (newStatus) => {
                     switch(newStatus) {
@@ -5143,7 +5254,7 @@ Email: info@expertiamedical.com`;
 
                 const handleSendOffer = (offer, client) => {
                     // Crear el asunto del email
-                    const subject = `Oferta ${offer.offerNumber} - ${client?.company || client?.name || 'Cliente'}`;
+                    const subject = `${settings.company.name} - Oferta ${offer.offerNumber} - ${client?.company || client?.name || 'Cliente'}`;
                     
                     // Crear el cuerpo del email
                     const body = `Estimado/a cliente,
@@ -5160,7 +5271,11 @@ ${offer.description ? `Descripción: ${offer.description}` : ''}
 Para cualquier consulta, no dude en contactarnos.
 
 Atentamente,
-Expertia Medical Solutions`;
+
+${settings.company.name}
+Tel: ${settings.company.phone}
+Email: ${settings.company.email}
+Website: <a href="${settings.company.website}">${settings.company.website}</a>`;
 
                     // Crear el enlace mailto
                     const mailtoLink = `mailto:${client?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -5169,7 +5284,7 @@ Expertia Medical Solutions`;
                     window.open(mailtoLink, '_blank');
                 };
 
-                const handlePrintOffer = (offer, client) => {
+                const handlePrintOffer = (offer, client, settings) => {
                     // Crear contenido HTML para imprimir
                     const printContent = `
                         <!DOCTYPE html>
@@ -5242,13 +5357,13 @@ Expertia Medical Solutions`;
                                         <h1 style="color: #008080; margin: 0;">OFERTA COMERCIAL</h1>
                                         <h2 style="margin: 5px 0 0 0;">${offer.offerNumber}</h2>
                                     </div>
-                                    <div class="company-info">
-                                        <strong>Expertia Medical Solutions</strong><br>
-                                        Calle Innovación 1<br>
-                                        28001 Madrid<br>
-                                        Tel: +34 91 000 0000<br>
-                                        info@expertia.com
-                                    </div>
+                                    <div class="company-info" style="line-height: 1.3;">
+                                    <h3 style="margin: 0 0 5px 0;">${settings.company.name}</h3>
+                                    ${settings.company.address}<br>
+                                    ${settings.company.phone ? `Tel: ${settings.company.phone}<br>` : ''}
+                                    ${settings.company.email ? `${settings.company.email}<br>` : ''}
+                                    ${settings.company.website ? `${settings.company.website}` : ''}
+                                    </div>                          
                                 </div>
                             </div>
 
@@ -5452,7 +5567,7 @@ Expertia Medical Solutions`;
                                         </button>
                                         
                                         <button 
-                                            onClick={() => handlePrintOffer(offer, client)} 
+                                            onClick={() => handlePrintOffer(offer, client, settings)} 
                                             className="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 flex items-center gap-2"
                                         >
                                             <PrinterIcon width={16} height={16} /> Imprimir Oferta
@@ -5601,17 +5716,17 @@ Expertia Medical Solutions`;
                         // Estadísticas principales
                         pdf.setFontSize(14);
                         pdf.setFont('helvetica', 'bold');
-                        pdf.text('📊 RESUMEN EJECUTIVO', 15, 40);
+                        pdf.text(' RESUMEN EJECUTIVO', 15, 40);
                         
                         pdf.setFontSize(11);
                         pdf.setFont('helvetica', 'normal');
                         
                         const stats = [
-                            `💰 Ventas Totales: ${data.totalSales.toFixed(2)} €`,
-                            `📋 Número de Facturas: ${data.totalInvoices}`,
-                            `🎯 Ticket Medio: ${data.averageTicket.toFixed(2)} €`,
-                            `💼 IVA Recaudado: ${data.totalVat.toFixed(2)} €`,
-                            `📅 Período Analizado: ${data.dateFilter === 'all' ? 'Todo el tiempo' : data.dateFilter}`
+                            ` Ventas Totales: ${data.totalSales.toFixed(2)} €`,
+                            ` Número de Facturas: ${data.totalInvoices}`,
+                            ` Ticket Medio: ${data.averageTicket.toFixed(2)} €`,
+                            ` IVA Recaudado: ${data.totalVat.toFixed(2)} €`,
+                            ` Período Analizado: ${data.dateFilter === 'all' ? 'Todo el tiempo' : data.dateFilter}`
                         ];
                         
                         stats.forEach((stat, index) => {
@@ -5690,15 +5805,15 @@ Expertia Medical Solutions`;
                 copyToClipboard: (data) => {
                     try {
                         const text = `EXPERTIA CRM - Resumen de Ventas
-📅 ${new Date().toLocaleDateString('es-ES')}
+ ${new Date().toLocaleDateString('es-ES')}
 
-📊 ESTADÍSTICAS:
-💰 Ventas Totales: ${data.totalSales.toFixed(2)} €
-📋 Facturas: ${data.totalInvoices}
-🎯 Ticket Medio: ${data.averageTicket.toFixed(2)} €
-💼 IVA: ${data.totalVat.toFixed(2)} €
+ESTADÍSTICAS:
+Ventas Totales: ${data.totalSales.toFixed(2)} €
+Facturas: ${data.totalInvoices}
+Ticket Medio: ${data.averageTicket.toFixed(2)} €
+IVA: ${data.totalVat.toFixed(2)} €
 
-🏆 TOP PRODUCTOS:
+TOP PRODUCTOS:
 ${data.topProducts.slice(0, 5).map((p, i) => 
     `${i + 1}. ${p.name}: ${p.revenue.toFixed(2)} € (${p.quantity} uds)`
 ).join('\n')}`;
@@ -6502,7 +6617,7 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                                             const success = ExportUtils.exportToExcel(exportData);
                                             if (success) {
                                                 showNotification(
-                                                    '📊 Exportación Exitosa',
+                                                    ' Exportación Exitosa',
                                                     'Los datos se han exportado a Excel correctamente.',
                                                     'success'
                                                 );
@@ -6533,7 +6648,7 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                                             const success = await ExportUtils.exportToPDF(exportData);
                                             if (success) {
                                                 showNotification(
-                                                    '📄 PDF Generado',
+                                                    'PDF Generado',
                                                     'El informe PDF se ha generado exitosamente.',
                                                     'success'
                                                 );
@@ -6562,7 +6677,7 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                                             const success = ExportUtils.copyToClipboard(exportData);
                                             if (success) {
                                                 showNotification(
-                                                    '📋 Datos Copiados',
+                                                    'Datos Copiados',
                                                     'Los datos se han copiado al portapapeles correctamente.',
                                                     'success'
                                                 );
@@ -6582,32 +6697,6 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                             </div>
                         </div>
                         
-                        {/* Información sobre estado de Recharts */}
-                        {hasRecharts ? (
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <div className="flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <div>
-                                        <p className="text-green-800 font-medium">Gráficos avanzados activos</p>
-                                        <p className="text-green-700 text-sm">Recharts cargado localmente - Gráficos interactivos disponibles</p>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                <div className="flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.864-.833-2.634 0L3.198 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                    </svg>
-                                    <div>
-                                        <p className="text-yellow-800 font-medium">Gráficos en modo simplificado</p>
-                                        <p className="text-yellow-700 text-sm">Los gráficos avanzados no están disponibles. Se muestran gráficos alternativos.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                         
                         {/* Filtros */}
                         <div className="bg-white p-4 rounded-lg shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -6643,164 +6732,7 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                             />
                         </div>
 
-                        {/* 🚀 MEJORA 3/4: Panel avanzado de exportación */}
-                        <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl shadow-sm border border-blue-200">
-                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-2">
-                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path>
-                                        </svg>
-                                        📊 Centro de Exportación Avanzada
-                                    </h3>
-                                    <p className="text-sm text-gray-600">
-                                        Exporta tus datos de ventas en múltiples formatos profesionales
-                                    </p>
-                                </div>
-                                
-                                <div className="flex flex-wrap gap-3">
-                                    {/* Exportación Excel Avanzada */}
-                                    <div className="group relative">
-                                        <button
-                                            onClick={async () => {
-                                                const exportData = {
-                                                    invoices: filteredInvoices,
-                                                    totalSales,
-                                                    totalInvoices,
-                                                    averageTicket,
-                                                    totalVat,
-                                                    topProducts,
-                                                    dateFilter,
-                                                    salesByMonth,
-                                                    salesByQuarter
-                                                };
-                                                const success = ExportUtils.exportToExcel(exportData, 'informe_completo_expertia');
-                                                if (success) {
-                                                    // Animación de éxito
-                                                    const btn = event.target.closest('button');
-                                                    btn.classList.add('animate-pulse');
-                                                    setTimeout(() => btn.classList.remove('animate-pulse'), 1000);
-                                                    alert('📊 ¡Excel generado con 3 hojas: Ventas, Estadísticas y Top Productos!');
-                                                } else {
-                                                    alert('❌ Error al exportar a Excel');
-                                                }
-                                            }}
-                                            className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transform hover:scale-105 transition-all duration-300 font-medium flex items-center gap-2 shadow-lg hover:shadow-xl"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                            </svg>
-                                            📈 Excel Completo
-                                        </button>
-                                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                            Incluye datos detallados, estadísticas y gráficos
-                                        </div>
-                                    </div>
-                                    
-                                    {/* PDF Profesional */}
-                                    <div className="group relative">
-                                        <button
-                                            onClick={async () => {
-                                                const exportData = {
-                                                    invoices: filteredInvoices,
-                                                    totalSales,
-                                                    totalInvoices,
-                                                    averageTicket,
-                                                    totalVat,
-                                                    topProducts,
-                                                    dateFilter
-                                                };
-                                                const success = await ExportUtils.exportToPDF(exportData, 'informe_profesional_expertia');
-                                                if (success) {
-                                                    const btn = event.target.closest('button');
-                                                    btn.classList.add('animate-bounce');
-                                                    setTimeout(() => btn.classList.remove('animate-bounce'), 1000);
-                                                    alert('📄 ¡PDF profesional generado con gráficos incluidos!');
-                                                } else {
-                                                    alert('❌ Error al generar PDF');
-                                                }
-                                            }}
-                                            className="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transform hover:scale-105 transition-all duration-300 font-medium flex items-center gap-2 shadow-lg hover:shadow-xl"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                                            </svg>
-                                            📊 PDF Profesional
-                                        </button>
-                                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                            Informe ejecutivo con gráficos capturados
-                                        </div>
-                                    </div>
-                                    
-                                    {/* Compartir Datos */}
-                                    <div className="group relative">
-                                        <button
-                                            onClick={() => {
-                                                const exportData = {
-                                                    totalSales,
-                                                    totalInvoices,
-                                                    averageTicket,
-                                                    totalVat,
-                                                    topProducts,
-                                                    filteredInvoices: filteredInvoices.length
-                                                };
-                                                const success = ExportUtils.copyToClipboard(exportData);
-                                                if (success) {
-                                                    const btn = event.target.closest('button');
-                                                    btn.innerHTML = `
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                                        </svg>
-                                                        ✅ ¡Copiado!
-                                                    `;
-                                                    setTimeout(() => {
-                                                        btn.innerHTML = `
-                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
-                                                            </svg>
-                                                            📋 Compartir
-                                                        `;
-                                                    }, 2000);
-                                                } else {
-                                                    alert('❌ Error al copiar datos');
-                                                }
-                                            }}
-                                            className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transform hover:scale-105 transition-all duration-300 font-medium flex items-center gap-2 shadow-lg hover:shadow-xl"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
-                                            </svg>
-                                            📋 Compartir
-                                        </button>
-                                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                            Copia resumen al portapapeles
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            {/* Estadísticas de exportación */}
-                            <div className="mt-4 pt-4 border-t border-blue-200">
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                    <div className="text-center">
-                                        <div className="text-blue-600 font-bold">{filteredInvoices.length}</div>
-                                        <div className="text-gray-600">Facturas a exportar</div>
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="text-blue-600 font-bold">{totalSales.toFixed(0)} €</div>
-                                        <div className="text-gray-600">Valor total</div>
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="text-blue-600 font-bold">{topProducts.length}</div>
-                                        <div className="text-gray-600">Productos únicos</div>
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="text-blue-600 font-bold">{new Set(filteredInvoices.map(inv => inv.createdBy)).size}</div>
-                                        <div className="text-gray-600">Comerciales</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                       
 
                         {/* Métricas principales */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -7033,6 +6965,164 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                                 </div>
                             </div>
                         )}
+                         {/* 🚀 MEJORA 3/4: Panel avanzado de exportación */}
+                         <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl shadow-sm border border-blue-200">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-2">
+                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path>
+                                        </svg>
+                                         Centro de Exportación Avanzada
+                                    </h3>
+                                    <p className="text-sm text-gray-600">
+                                        Exporta tus datos de ventas en múltiples formatos profesionales
+                                    </p>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-3">
+                                    {/* Exportación Excel Avanzada */}
+                                    <div className="group relative">
+                                        <button
+                                            onClick={async () => {
+                                                const exportData = {
+                                                    invoices: filteredInvoices,
+                                                    totalSales,
+                                                    totalInvoices,
+                                                    averageTicket,
+                                                    totalVat,
+                                                    topProducts,
+                                                    dateFilter,
+                                                    salesByMonth,
+                                                    salesByQuarter
+                                                };
+                                                const success = ExportUtils.exportToExcel(exportData, 'informe_completo_expertia');
+                                                if (success) {
+                                                    // Animación de éxito
+                                                    const btn = event.target.closest('button');
+                                                    btn.classList.add('animate-pulse');
+                                                    setTimeout(() => btn.classList.remove('animate-pulse'), 1000);
+                                                    alert(' ¡Excel generado con 3 hojas: Ventas, Estadísticas y Top Productos!');
+                                                } else {
+                                                    alert('❌ Error al exportar a Excel');
+                                                }
+                                            }}
+                                            className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transform hover:scale-105 transition-all duration-300 font-medium flex items-center gap-2 shadow-lg hover:shadow-xl"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                            </svg>
+                                             Excel Completo
+                                        </button>
+                                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                            Incluye datos detallados, estadísticas y gráficos
+                                        </div>
+                                    </div>
+                                    
+                                    {/* PDF Profesional */}
+                                    <div className="group relative">
+                                        <button
+                                            onClick={async () => {
+                                                const exportData = {
+                                                    invoices: filteredInvoices,
+                                                    totalSales,
+                                                    totalInvoices,
+                                                    averageTicket,
+                                                    totalVat,
+                                                    topProducts,
+                                                    dateFilter
+                                                };
+                                                const success = await ExportUtils.exportToPDF(exportData, 'informe_profesional_expertia');
+                                                if (success) {
+                                                    const btn = event.target.closest('button');
+                                                    btn.classList.add('animate-bounce');
+                                                    setTimeout(() => btn.classList.remove('animate-bounce'), 1000);
+                                                    alert(' ¡PDF profesional generado con gráficos incluidos!');
+                                                } else {
+                                                    alert('❌ Error al generar PDF');
+                                                }
+                                            }}
+                                            className="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transform hover:scale-105 transition-all duration-300 font-medium flex items-center gap-2 shadow-lg hover:shadow-xl"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                            </svg>
+                                             PDF Profesional
+                                        </button>
+                                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                            Informe ejecutivo con gráficos capturados
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Compartir Datos */}
+                                    <div className="group relative">
+                                        <button
+                                            onClick={() => {
+                                                const exportData = {
+                                                    totalSales,
+                                                    totalInvoices,
+                                                    averageTicket,
+                                                    totalVat,
+                                                    topProducts,
+                                                    filteredInvoices: filteredInvoices.length
+                                                };
+                                                const success = ExportUtils.copyToClipboard(exportData);
+                                                if (success) {
+                                                    const btn = event.target.closest('button');
+                                                    btn.innerHTML = `
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                        ✅ ¡Copiado!
+                                                    `;
+                                                    setTimeout(() => {
+                                                        btn.innerHTML = `
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                                            </svg>
+                                                            📋 Compartir
+                                                        `;
+                                                    }, 2000);
+                                                } else {
+                                                    alert('❌ Error al copiar datos');
+                                                }
+                                            }}
+                                            className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transform hover:scale-105 transition-all duration-300 font-medium flex items-center gap-2 shadow-lg hover:shadow-xl"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                            </svg>
+                                             Compartir
+                                        </button>
+                                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                            Copia resumen al portapapeles
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Estadísticas de exportación */}
+                            <div className="mt-4 pt-4 border-t border-blue-200">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                    <div className="text-center">
+                                        <div className="text-blue-600 font-bold">{filteredInvoices.length}</div>
+                                        <div className="text-gray-600">Facturas a exportar</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-blue-600 font-bold">{totalSales.toFixed(0)} €</div>
+                                        <div className="text-gray-600">Valor total</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-blue-600 font-bold">{topProducts.length}</div>
+                                        <div className="text-gray-600">Productos únicos</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-blue-600 font-bold">{new Set(filteredInvoices.map(inv => inv.createdBy)).size}</div>
+                                        <div className="text-gray-600">Comerciales</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         {/* 🚀 MEJORA 2/4: Mensaje mejorado cuando no hay datos */}
                         {filteredInvoices.length === 0 && (
@@ -7041,13 +7131,13 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                                     <BarChartIcon width={72} height={72} className="transform hover:scale-110 transition-transform duration-300" />
                                 </div>
                                 <h3 className="text-2xl font-bold text-gray-700 mb-3">
-                                    📊 No hay datos para mostrar
+                                     No hay datos para mostrar
                                 </h3>
                                 <p className="text-gray-600 mb-2 max-w-md mx-auto">
                                     No se encontraron facturas pagadas que coincidan con los filtros seleccionados.
                                 </p>
                                 <p className="text-sm text-gray-500 mb-6">
-                                    💡 Intenta ajustar los filtros o limpiarlos para ver más datos
+                                     Intenta ajustar los filtros o limpiarlos para ver más datos
                                 </p>
                                 <div className="flex gap-3 justify-center">
                                     <button 
@@ -7058,13 +7148,13 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                                         }}
                                         className="px-6 py-3 bg-gradient-to-r from-[#008080] to-[#00a6a6] text-white rounded-lg hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 font-medium"
                                     >
-                                        🔄 Limpiar todos los filtros
+                                         Limpiar todos los filtros
                                     </button>
                                     <button 
                                         onClick={() => setDateFilter('thisYear')}
                                         className="px-6 py-3 bg-white text-[#008080] border-2 border-[#008080] rounded-lg hover:bg-[#008080] hover:text-white transform hover:-translate-y-1 transition-all duration-300 font-medium"
                                     >
-                                        📅 Ver este año
+                                         Ver este año
                                     </button>
                                 </div>
                                 
@@ -9527,41 +9617,6 @@ Equipo Expertia Medical Solutions"
                                         </h3>
                                         
                                         <div className="space-y-6">
-                                            {/* Contador Global */}
-                                            <div className="border border-blue-200 rounded-lg p-6 bg-blue-50">
-                                                <h4 className="font-semibold text-blue-900 mb-4 flex items-center gap-2">
-                                                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20" className="text-blue-600">
-                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
-                                                    </svg>
-                                                    Contador Global de Facturas
-                                                </h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                            Número actual
-                                                        </label>
-                                                        <input
-                                                            type="number"
-                                                            value={settings.invoice.globalCounter}
-                                                            onChange={(e) => handleSettingChange('invoice', 'globalCounter', parseInt(e.target.value) || 0)}
-                                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-transparent"
-                                                        />
-                                                        <p className="text-sm text-gray-600 mt-1">
-                                                            La próxima factura será: {(settings.invoice.globalCounter || 0) + 1}
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex flex-col justify-center">
-                                                        <div className="text-sm text-gray-600 mb-2">Estado del contador:</div>
-                                                        <div className="text-2xl font-bold text-blue-600">
-                                                            #{String(settings.invoice.globalCounter || 0).padStart(6, '0')}
-                                                        </div>
-                                                        <div className="text-xs text-gray-500 mt-1">
-                                                            Formato de numeración actual
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
                                             {/* Series de Facturas */}
                                             <div className="border border-gray-200 rounded-lg p-6">
                                                 <div className="flex items-center justify-between mb-4">
