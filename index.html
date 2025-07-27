@@ -730,7 +730,7 @@
                 // Función para obtener lista de series desde contadores
                 const getInvoiceSeries = () => {
                     return Object.keys(counters).filter(id => 
-                        ['EXP', 'ALQ', 'PROF'].includes(id)
+                        id !== 'offers' && counters[id] && counters[id].hasOwnProperty('current')
                     );
                 };
                 
@@ -4396,7 +4396,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     status: invoiceData?.status || 'Borrador',
                     type: invoiceData?.type || 'Factura',
                     invoiceSeries: invoiceData?.invoiceSeries || defaultSeries,
-                    items: invoiceData?.items || [{ description: '', quantity: 1, price: 0, productId: '' }],
+                    items: invoiceData?.items || [{ description: '', quantity: 1, price: 0, productId: '', serialNumber: '' }],
                 });
 
                 const subtotal = useMemo(() => formData.items.reduce((acc, item) => acc + (item.quantity * item.price), 0), [formData.items]);
@@ -4425,7 +4425,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 const addItem = () => { 
                     setFormData(prev => ({ 
                         ...prev, 
-                        items: [...prev.items, { description: '', quantity: 1, price: 0, productId: '' }] 
+                        items: [...prev.items, { description: '', quantity: 1, price: 0, productId: '', serialNumber: '' }] 
                     })); 
                 };
                 
@@ -4474,8 +4474,8 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                         <div className="border-t pt-4">
                             <h3 className="text-lg font-semibold mb-2">Líneas de la factura</h3>
                             {formData.items.map((item, index) => (
-                                <div key={index} className="grid grid-cols-12 gap-2 mb-2 items-center">
-                                    <div className="col-span-6">
+                                <div key={index} className="grid grid-cols-15 gap-2 mb-2 items-center">
+                                    <div className="col-span-4">
                                         <select 
                                             name="productId" 
                                             value={item.productId} 
@@ -4487,6 +4487,15 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                 <option key={p.id} value={p.id}>{p.name}</option>
                                             ))}
                                         </select>
+                                    </div>
+                                    <div className="col-span-3">
+                                        <FormField 
+                                            placeholder="Nº Serie" 
+                                            name="serialNumber" 
+                                            type="text" 
+                                            value={item.serialNumber || ''} 
+                                            onChange={(e) => handleItemChange(index, e)} 
+                                        />
                                     </div>
                                     <div className="col-span-2">
                                         <FormField 
@@ -4507,10 +4516,10 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                             onChange={(e) => handleItemChange(index, e)} 
                                         />
                                     </div>
-                                    <div className="col-span-1 font-semibold text-right">
+                                    <div className="col-span-2 font-semibold text-right">
                                         {(item.quantity * item.price).toFixed(2)}€
                                     </div>
-                                    <div className="col-span-1">
+                                    <div className="col-span-2">
                                         <button 
                                             type="button" 
                                             onClick={() => removeItem(index)} 
@@ -4652,7 +4661,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     status: offerData?.status || (offerStatuses[0] || 'Borrador'),
                     offerSeries: offerData?.offerSeries || defaultOfferSeries,
                     description: offerData?.description || '',
-                    items: offerData?.items || [{ description: '', quantity: 1, price: 0, productId: '' }],
+                    items: offerData?.items || [{ description: '', quantity: 1, price: 0, productId: '', serialNumber: '' }],
                     terms: offerData?.terms || defaultTerms,
                     assignedTo: offerData?.assignedTo || ''
                 });
@@ -4685,7 +4694,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 const addItem = () => { 
                     setFormData(prev => ({ 
                         ...prev, 
-                        items: [...prev.items, { description: '', quantity: 1, price: 0, productId: '' }] 
+                        items: [...prev.items, { description: '', quantity: 1, price: 0, productId: '', serialNumber: '' }] 
                     })); 
                 };
                 
@@ -4862,7 +4871,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                             
                             <div className="space-y-3">
                                 {formData.items.map((item, index) => (
-                                    <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-3 p-4 bg-gray-50 rounded-lg">
+                                    <div key={index} className="grid grid-cols-1 md:grid-cols-7 gap-3 p-4 bg-gray-50 rounded-lg">
                                         <div className="md:col-span-2">
                                             <label className="block text-xs font-medium text-gray-700 mb-1">Producto</label>
                                             <select 
@@ -4886,6 +4895,17 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                 onChange={(e) => handleItemChange(index, e)} 
                                                 className="w-full text-sm border border-gray-300 rounded-md p-2" 
                                                 placeholder="Descripción"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">Nº Serie</label>
+                                            <input 
+                                                type="text" 
+                                                name="serialNumber" 
+                                                value={item.serialNumber || ''} 
+                                                onChange={(e) => handleItemChange(index, e)} 
+                                                className="w-full text-sm border border-gray-300 rounded-md p-2" 
+                                                placeholder="Número de serie"
                                             />
                                         </div>
                                         <div>
@@ -5106,15 +5126,17 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                     <thead>
                                         <tr>
                                             <th>Descripción</th>
+                                            <th style="text-align: center;">Nº Serie</th>
                                             <th style="width: 80px;">Cantidad</th>
-                                            <th style="width: 100px;">Precio Unit.</th>
-                                            <th style="width: 100px;">Total</th>
+                                            <th style="text-align: right;">Precio Unit.</th>
+                                            <th style="text-align: right;">Total</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         ${(invoice.items || []).map(item => `
                                             <tr>
                                                 <td>${item.description || 'N/A'}</td>
+                                                <td style="text-align: center;">${item.serialNumber || 'N/A'}</td>
                                                 <td style="text-align: center;">${item.quantity || 0}</td>
                                                 <td style="text-align: right;">${(item.price || 0).toFixed(2)} €</td>
                                                 <td style="text-align: right;">${((item.quantity || 0) * (item.price || 0)).toFixed(2)} €</td>
@@ -5146,7 +5168,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                 <div class="footer">
                                     <p><strong>Forma de pago:</strong> Transferencia bancaria</p>
                                     <p><strong>Cuenta bancaria:</strong> ES21 1234 5678 9012 3456 7890</p>
-                                    <p><strong>Notas:</strong> ${invoice.notes || 'Gracias por confiar en ${settings.company.name}'}</p>
+                                    <p>Gracias por confiar en ${settings.company.name}</p>
                                 </div>
                             </div>
                         </body>
@@ -5220,7 +5242,7 @@ Atentamente,
 ${settings.company.name}
 Tel: ${settings.company.phone}
 Email: ${settings.company.email}
-Website: ${settings.company.website}</a> `; 
+Website: ${settings.company.website} `; 
 
                     const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
                     // Abrir en nueva ventana/pestaña
@@ -5276,6 +5298,7 @@ Website: ${settings.company.website}</a> `;
                             <thead className="bg-gray-100">
                                 <tr>
                                     <th className="p-3">Descripción</th>
+                                    <th className="p-3 text-center">Nº Serie</th>
                                     <th className="p-3 text-center">Cantidad</th>
                                     <th className="p-3 text-right">Precio Unitario</th>
                                     <th className="p-3 text-right">Total</th>
@@ -5285,6 +5308,7 @@ Website: ${settings.company.website}</a> `;
                                 {invoice.items.map((item, index) => (
                                     <tr key={index} className="border-b">
                                         <td className="p-3">{item.description}</td>
+                                        <td className="p-3 text-center">{item.serialNumber}</td>
                                         <td className="p-3 text-center">{item.quantity}</td>
                                         <td className="p-3 text-right">{parseFloat(item.price).toFixed(2)} €</td>
                                         <td className="p-3 text-right">{(item.quantity * item.price).toFixed(2)} €</td>
@@ -5436,15 +5460,43 @@ Website: ${settings.company.website}</a> `;
                     // Crear el asunto del email
                     const subject = `${settings.company.name} - Oferta ${offer.offerNumber} - ${client?.company || client?.name || 'Cliente'}`;
                     
+                    // Generar la lista de items dinámicamente
+                    const itemsList = offer.items?.map((item, index) => {
+                        let itemText = `${index + 1}. ${item.description || 'Producto'}`;
+                        
+                        // Agregar número de serie si existe
+                        if (item.serialNumber) {
+                            itemText += `\n   Nº Serie: ${item.serialNumber}`;
+                        }
+                        
+                        itemText += `\n   Cantidad: ${item.quantity}`;
+                        itemText += `\n   Precio Unitario: ${item.price.toFixed(2)} €`;
+                        itemText += `\n   Total: ${(item.quantity * item.price).toFixed(2)} €`;
+                        
+                        return itemText;
+                    }).join('\n\n') || 'No hay productos en esta oferta';
+
+                    // Calcular totales
+                    const subtotal = offer.items?.reduce((acc, item) => acc + (item.quantity * item.price), 0) || 0;
+                    const vat = subtotal * 0.21;
+                    const total = subtotal + vat;
+                    
                     // Crear el cuerpo del email
                     const body = `Estimado/a cliente,
 
 Adjuntamos la oferta ${offer.offerNumber} correspondiente a su consulta.
 
-Detalles de la oferta:
+PRODUCTOS Y SERVICIOS:
+${itemsList}
+
+RESUMEN:
+- Subtotal: ${subtotal.toFixed(2)} €
+- IVA (21%): ${vat.toFixed(2)} €
+- TOTAL: ${total.toFixed(2)} €
+
+DETALLES DE LA OFERTA:
 - Fecha: ${offer.offerDate}
 - Válida hasta: ${offer.validUntil}
-- Total: ${offer.total?.toFixed(2)} €
 
 ${offer.description ? `Descripción: ${offer.description}` : ''}
 
@@ -5455,7 +5507,7 @@ Atentamente,
 ${settings.company.name}
 Tel: ${settings.company.phone}
 Email: ${settings.company.email}
-Website: <a href="${settings.company.website}">${settings.company.website}</a>`;
+Website: ${settings.company.website}`;
 
                     // Crear el enlace mailto
                     const mailtoLink = `mailto:${client?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -5569,6 +5621,7 @@ Website: <a href="${settings.company.website}">${settings.company.website}</a>`;
                                 <thead>
                                     <tr>
                                         <th>Descripción</th>
+                                        <th style="text-align: center;">Referencia</th>
                                         <th style="text-align: center;">Cantidad</th>
                                         <th style="text-align: right;">Precio Unitario</th>
                                         <th style="text-align: right;">Total</th>
@@ -5578,6 +5631,7 @@ Website: <a href="${settings.company.website}">${settings.company.website}</a>`;
                                     ${offer.items?.map(item => `
                                         <tr>
                                             <td>${item.description}</td>
+                                            <td style="text-align: center;">${item.serialNumber}</td>
                                             <td style="text-align: center;">${item.quantity}</td>
                                             <td style="text-align: right;">${item.price.toFixed(2)} €</td>
                                             <td style="text-align: right;"><strong>${(item.quantity * item.price).toFixed(2)} €</strong></td>
@@ -5678,6 +5732,7 @@ Website: <a href="${settings.company.website}">${settings.company.website}</a>`;
                                         <thead className="bg-gray-100">
                                             <tr>
                                                 <th className="text-left p-3 border-b">Descripción</th>
+                                                <th className="text-center p-3 border-b">Referencia</th>
                                                 <th className="text-center p-3 border-b">Cantidad</th>
                                                 <th className="text-right p-3 border-b">Precio Unitario</th>
                                                 <th className="text-right p-3 border-b">Total</th>
@@ -5687,6 +5742,7 @@ Website: <a href="${settings.company.website}">${settings.company.website}</a>`;
                                             {offer.items?.map((item, index) => (
                                                 <tr key={index} className="border-b">
                                                     <td className="p-3">{item.description}</td>
+                                                    <td className="p-3 text-center">{item.serialNumber}</td>
                                                     <td className="p-3 text-center">{item.quantity}</td>
                                                     <td className="p-3 text-right">{item.price.toFixed(2)} €</td>
                                                     <td className="p-3 text-right font-semibold">{(item.quantity * item.price).toFixed(2)} €</td>
@@ -6869,7 +6925,7 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                                         title="Copiar resumen al portapapeles"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2H7a2 2 0 01-2-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                         </svg>
                                         Copiar
                                     </button>
@@ -9820,6 +9876,7 @@ Equipo Expertia Medical Solutions"
                                                                             `La serie ${seriesCode} ha sido creada exitosamente.`,
                                                                             'success'
                                                                         );
+                                                                        await window.loadCounters(); // Cargar contadores actualizados
                                                                     } catch (error) {
                                                                         showNotification(
                                                                             'Error',
@@ -9848,10 +9905,6 @@ Equipo Expertia Medical Solutions"
                                                                 <div className="flex items-center justify-between">
                                                                     <div>
                                                                         <h5 className="font-medium text-gray-900 text-lg">Serie {seriesId}</h5>
-                                                                        <div className="text-sm text-gray-600 space-y-1">
-                                                                            <div>Contador actual: <span className="font-medium">{currentCounter}</span></div>
-                                                                            <div>Próxima factura: <span className="font-medium text-[#006666]">{seriesId}-{nextNumber}</span></div>
-                                                                        </div>
                                                                     </div>
                                                                     <button
                                                                         type="button"
@@ -9934,20 +9987,10 @@ Equipo Expertia Medical Solutions"
                                             
                                             {/* Contador de Ofertas */}
                                             <div className="border border-gray-200 rounded-lg p-6">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <div>
-                                                        <h4 className="font-semibold text-gray-900">Contador de Ofertas</h4>
-                                                        <p className="text-sm text-gray-500 mt-1">Gestión del contador de ofertas desde /counters/offers</p>
-                                                    </div>
-                                                </div>
                                                 <div className="bg-gray-50 px-4 py-4 rounded-lg">
                                                     <div className="flex items-center justify-between mb-3">
                                                         <div>
                                                             <h5 className="font-medium text-gray-900 text-lg">Contador de Ofertas</h5>
-                                                            <div className="text-sm text-gray-600 space-y-1">
-                                                                <div>Contador actual: <span className="font-medium">{window.getOfferCount ? window.getOfferCount() : 1}</span></div>
-                                                                <div>Próxima oferta: <span className="font-medium text-[#006666]">OF-{new Date().getFullYear()}-{String((window.getOfferCount ? window.getOfferCount() : 1)).padStart(3, '0')}</span></div>
-                                                            </div>
                                                         </div>
                                                     </div>
                                                     
@@ -10146,7 +10189,7 @@ Equipo Expertia Medical Solutions"
                         setLoading(true);
                         setError(null);
                         
-                        console.log('📧 Creando invitación de usuario en Firebase:', formData);
+                        console.log(' Creando invitación de usuario en Firebase:', formData);
                         
                         if (!window.authManager || !window.authManager.app) {
                             throw new Error('Sistema de autenticación no disponible');
@@ -11108,18 +11151,18 @@ Equipo Expertia Medical Solutions"
                             
                             // Mostrar mensaje de bienvenida específico según el rol
                             if (userProfile.isFirstUser) {
-                                console.log('🎉 ¡Bienvenido, administrador! Eres el primer usuario del sistema.');
+                                console.log('¡Bienvenido, administrador! Eres el primer usuario del sistema.');
                             }
                             
                             startApp();
                         } else {
-                            console.log('⚠️ Perfil no encontrado, intentando crear...');
+                            console.log('Perfil no encontrado, intentando crear...');
                             await createMissingUserProfile(currentUser);
                             
                             // Reintentar obtener perfil
                             const newProfile = await window.authManager.getUserProfile();
                             if (newProfile) {
-                                console.log('✅ Perfil creado y cargado:', newProfile.name, '- Rol:', newProfile.role);
+                                console.log('Perfil creado y cargado:', newProfile.name, '- Rol:', newProfile.role);
                                 startApp();
                             } else {
                                 console.error('❌ No se pudo crear el perfil del usuario');
@@ -11474,12 +11517,12 @@ Equipo Expertia Medical Solutions"
                 const userProfile = await window.authManager.getUserProfile();
                 if (userProfile) {
                     if (userProfile.isFirstUser) {
-                        showAuthStatus('✅ ¡Bienvenido ADMINISTRADOR! Cargando aplicación...', 'success');
+                        showAuthStatus(' Cargando aplicación...', 'success');
                     } else {
-                        showAuthStatus('✅ Sesión iniciada con Google, cargando aplicación...', 'success');
+                        showAuthStatus('Sesión iniciada con Google, cargando aplicación...', 'success');
                     }
                 } else {
-                    showAuthStatus('✅ Sesión iniciada con Google, cargando aplicación...', 'success');
+                    showAuthStatus('Sesión iniciada con Google, cargando aplicación...', 'success');
                 }
                 
                 // Esperar un momento y luego cargar la aplicación
@@ -12563,9 +12606,6 @@ Equipo Expertia Medical Solutions"
             }
         }
         */
-        
-        // Función analyzeConfigReferences movida a archive/tools/
-        // window.analyzeConfigReferences = analyzeConfigReferences;
         
         // Se llama a la función de inicialización después de que la ventana completa se haya cargado.
         window.onload = initAuthAndApp;
