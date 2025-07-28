@@ -1429,14 +1429,39 @@
 
                 const handleCreateRectificativa = async (originalInvoice) => {
                     try {
+                        // Extraer la serie y número de la factura original
+                        const originalInvoiceNumber = originalInvoice.invoiceNumber || originalInvoice.number || '';
+                        const originalSeries = originalInvoice.invoiceSeries || 'EXP';
+                        
+                        // Generar serie y número de rectificativa: REC + número original completo
+                        const rectificativaSeries = `REC${originalSeries}`;
+                        const rectificativaNumber = `REC${originalInvoiceNumber}`;
+                        
+                        console.log('📋 Generando rectificativa:', {
+                            original: {
+                                fullNumber: originalInvoiceNumber,
+                                series: originalSeries
+                            },
+                            rectificativa: {
+                                series: rectificativaSeries,
+                                number: rectificativaNumber
+                            }
+                        });
+                        
                         // Crear una nueva factura rectificativa
                         const rectificativaData = {
                             ...originalInvoice,
                             id: null, // Se generará un nuevo ID
                             type: 'Factura Rectificativa',
-                            number: `${originalInvoice.number}-RECT`,
+                            invoiceSeries: rectificativaSeries,
+                            invoiceNumber: rectificativaNumber,
+                            number: rectificativaNumber, // Para compatibilidad
                             originalInvoiceId: originalInvoice.id,
-                            originalInvoiceNumber: originalInvoice.number,
+                            originalInvoiceNumber: originalInvoiceNumber,
+                            originalInvoiceSeries: originalSeries,
+                            // Mantener el cliente de la factura original
+                            clientId: originalInvoice.clientId,
+                            client: originalInvoice.client,
                             date: new Date().toISOString().split('T')[0],
                             status: 'Borrador',
                             total: -originalInvoice.total, // Valor negativo para rectificar
@@ -1451,6 +1476,17 @@
                                 total: -item.total
                             }))
                         };
+
+                        console.log('📋 Creando factura rectificativa:', {
+                            original: {
+                                fullNumber: originalInvoiceNumber,
+                                series: originalSeries
+                            },
+                            rectificativa: {
+                                series: rectificativaSeries,
+                                number: rectificativaNumber
+                            }
+                        });
 
                         // Cambiar a vista de creación con los datos de la rectificativa
                         setSelectedItem(rectificativaData);
@@ -4384,8 +4420,17 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
             // === FORMULARIO DE FACTURAS ===
             function InvoiceForm({ clients, products, onSave, onCancel, invoiceData }) {
                 // Obtener series dinámicas desde contadores
-                const invoiceSeries = window.getInvoiceSeries ? window.getInvoiceSeries() : ['EXP', 'ALQ', 'PROF'];
-                const defaultSeries = invoiceSeries[0] || 'EXP';
+                let invoiceSeries = window.getInvoiceSeries ? window.getInvoiceSeries() : ['EXP', 'ALQ', 'PROF'];
+                
+                // Si es una factura rectificativa, agregar la serie REC a las opciones disponibles
+                if (invoiceData?.type === 'Factura Rectificativa' && invoiceData?.invoiceSeries) {
+                    const rectSeries = invoiceData.invoiceSeries;
+                    if (!invoiceSeries.includes(rectSeries)) {
+                        invoiceSeries = [...invoiceSeries, rectSeries];
+                    }
+                }
+                
+                const defaultSeries = invoiceData?.invoiceSeries || invoiceSeries[0] || 'EXP';
                 
                 const [formData, setFormData] = useState({
                     id: invoiceData?.id || null, 
