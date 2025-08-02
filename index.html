@@ -191,6 +191,7 @@
                 );
             }
 
+
             // --- Componente de Notificación Personalizado ---
             function CustomNotification({ isOpen, title, message, onClose, type = 'success', autoClose = true, duration = 3000 }) {
                 const [isVisible, setIsVisible] = useState(false);
@@ -1032,6 +1033,10 @@
                     setActiveView('accounting');
                 };
 
+                const handleDeleteExpense = async (expenseId) => {
+                    await handleDelete('gastos', expenseId);
+                };
+
                 const handleConvertToInvoice = async (proformaInvoice) => {
                     const invoiceData = {
                         ...proformaInvoice,
@@ -1329,7 +1334,7 @@
                                 onDeleteInvoice={(id) => handleDelete('facturas', id)}
                                 onCreateExpense={() => setActiveView('createExpense')}
                                 onEditExpense={(expense) => { setSelectedItem(expense); setActiveView('editExpense'); }}
-                                onDeleteExpense={(id) => handleDelete('gastos', id)}
+                                onDeleteExpense={handleDeleteExpense}
                                 showConfirm={showConfirm}
                                 showNotification={showNotification}
                             />;
@@ -5046,4 +5051,173 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                                 })}
                             </div>
 
-                            {data.length >
+                            {data.length > 5 && (
+                                <div className="mt-4 text-center text-sm text-gray-500">
+                                    Mostrando top 5 de {data.length} comerciales.
+                                </div>
+                            )}
+                        </div>
+                    );
+                };
+
+                return (
+                    <div className="space-y-6">
+                        {/* Panel de control de filtros */}
+                        <div className="bg-white p-4 rounded-lg shadow-sm flex flex-wrap items-center gap-4">
+                            <h2 className="text-lg font-semibold text-gray-800 mr-4">Filtrar Informes</h2>
+
+                            <div className="flex-1 min-w-[150px]">
+                                <label htmlFor="dateFilter" className="text-sm font-medium text-gray-700 block mb-1">Período</label>
+                                <select id="dateFilter" value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md">
+                                    <option value="all">Todo el tiempo</option>
+                                    <option value="thisMonth">Este mes</option>
+                                    <option value="lastMonth">Mes pasado</option>
+                                    <option value="thisYear">Este año</option>
+                                    <option value="lastYear">Año pasado</option>
+                                </select>
+                            </div>
+
+                            <div className="flex-1 min-w-[150px]">
+                                <label htmlFor="productFilter" className="text-sm font-medium text-gray-700 block mb-1">Producto</label>
+                                <select id="productFilter" value={productFilter} onChange={e => setProductFilter(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md">
+                                    {productOptions.map(opt => <option key={opt} value={opt}>{opt === 'all' ? 'Todos los productos' : opt}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="flex-1 min-w-[150px]">
+                                <label htmlFor="salespersonFilter" className="text-sm font-medium text-gray-700 block mb-1">Comercial</label>
+                                <select id="salespersonFilter" value={salespersonFilter} onChange={e => setSalespersonFilter(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md">
+                                    {salespersonOptions.map(opt => <option key={opt} value={opt}>{opt === 'all' ? 'Todos los comerciales' : opt}</option>)}
+                                </select>
+                            </div>
+
+                            {/* Botones de acción */}
+                            <div className="flex items-end gap-2">
+                                <button
+                                    onClick={() => ExportUtils.exportToExcel({ invoices: filteredInvoices, totalSales, totalInvoices, averageTicket, totalVat, topProducts })}
+                                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+                                    title="Exportar a Excel"
+                                >
+                                    <DownloadIcon width={16} height={16} /> Excel
+                                </button>
+                                <button
+                                    onClick={() => ExportUtils.exportToPDF({ totalSales, totalInvoices, averageTicket, totalVat, topProducts, dateFilter })}
+                                    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"
+                                    title="Exportar a PDF"
+                                >
+                                    <FileTextIcon width={16} height={16} /> PDF
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        ExportUtils.copyToClipboard({ totalSales, totalInvoices, averageTicket, totalVat, topProducts });
+                                        alert('Resumen copiado al portapapeles.');
+                                    }}
+                                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                                    title="Copiar resumen"
+                                >
+                                    <CopyIcon width={16} height={16} /> Copiar
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Métricas clave */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <StatCard title="Ventas Totales" value={`${totalSales.toFixed(2)} €`} icon={<TrendingUpIcon />} />
+                            <StatCard title="Nº de Facturas" value={totalInvoices} icon={<FileTextIcon />} />
+                            <StatCard title="Ticket Medio" value={`${averageTicket.toFixed(2)} €`} icon={<DollarSignIcon />} />
+                            <StatCard title="IVA Total" value={`${totalVat.toFixed(2)} €`} icon={<AwardIcon />} />
+                        </div>
+
+                        {/* Visualizaciones de datos */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {hasRecharts ? (
+                                <>
+                                    <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-lg">
+                                        <h3 className="text-xl font-semibold mb-4 text-gray-800">Ventas por Mes</h3>
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <BarChart data={salesByMonth}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="name" />
+                                                <YAxis />
+                                                <Tooltip />
+                                                <Legend />
+                                                <Bar dataKey="Ventas" fill="#008080" />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg shadow-lg">
+                                        <h3 className="text-xl font-semibold mb-4 text-gray-800">Top 5 Productos</h3>
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <BarChart data={topProducts} layout="vertical">
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis type="number" />
+                                                <YAxis type="category" dataKey="name" width={120} />
+                                                <Tooltip />
+                                                <Legend />
+                                                <Bar dataKey="revenue" name="Ingresos" fill="#20b2aa" />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="lg:col-span-2">
+                                        <SimpleBarChart data={salesByMonth} title="Ventas por Mes" />
+                                    </div>
+                                    <div>
+                                        <SimplePieChart data={topProducts.map(p => ({ name: p.name, Ventas: p.revenue }))} title="Top Productos por Ingresos" />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* 🚀 MEJORA 4/4: Nuevos gráficos minimalistas */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <TrendLineChart data={monthlyTrend} title="Tendencia últimos 6 meses" />
+                            <SalespersonDistribution data={salesBySalesperson} title="Ventas por Comercial" />
+                            <SimpleBarChart data={salesByQuarter} title="Ventas por Trimestre" />
+                        </div>
+                    </div>
+                );
+            }
+
+            function AdminPanel() {
+                return (
+                    <div className="max-w-4xl mx-auto">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-6">Panel de Administración</h1>
+                        <div className="bg-white rounded-lg shadow-lg p-8">
+                            <h2 className="text-xl font-semibold text-gray-800 mb-4">Configuración del Sistema</h2>
+                            <p className="text-gray-600">
+                                Esta sección está en desarrollo. Aquí los administradores podrán configurar
+                                aspectos clave del CRM como series de facturación, categorías de productos,
+                                roles de usuario y más.
+                            </p>
+                            <div className="mt-6 p-4 bg-blue-50 border-l-4 border-blue-400">
+                                <h3 className="font-bold text-blue-800">Próximas funcionalidades:</h3>
+                                <ul className="list-disc list-inside text-sm text-blue-700 mt-2">
+                                    <li>Gestión de usuarios y permisos.</li>
+                                    <li>Configuración de series de facturas y ofertas.</li>
+                                    <li>Personalización de categorías y etiquetas.</li>
+                                    <li>Importación/Exportación masiva de datos.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- Inicialización de la aplicación ---
+            const container = document.getElementById('root');
+            const root = ReactDOM.createRoot(container);
+            root.render(<App />);
+        }
+
+        // Esperar a que el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', startApp);
+        } else {
+            startApp();
+        }
+    </script>
+</body>
+</html>
