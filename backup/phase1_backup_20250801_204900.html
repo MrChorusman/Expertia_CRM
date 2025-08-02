@@ -15,31 +15,6 @@
     <!-- 🧪 Script de prueba para system_settings -->
             <!-- <script src="./test-system-settings.js"></script> MOVIDO A archive/testing/ -->
 
-    <!-- 🔒 FASE 1: SISTEMAS DE SEGURIDAD Y ESTABILIZACIÓN -->
-    <script src="./js/secure-logging.js"></script>
-    <script src="./js/data-validation.js"></script>
-    <script src="./js/firebase-context.js"></script>
-
-    <!-- 🔧 FASE 2: ARQUITECTURA Y ESTRUCTURA -->
-    <script src="./js/firebase-hooks.js"></script>
-    <script src="./js/shared-utils.js"></script>
-    <script src="./js/app-constants.js"></script>
-
-    <!-- ⚡ FASE 3: RENDIMIENTO Y OPTIMIZACIÓN -->
-    <script src="./js/firebase-cache.js"></script>
-    <script src="./js/query-optimizer.js"></script>
-    <script src="./js/react-optimizer.js"></script>
-    <script src="./js/memory-manager.js"></script>
-
-    <!-- 🎨 FASE 4: UX/UI Y EXPERIENCIA DE USUARIO -->
-    <script src="./js/notification-system.js"></script>
-    <script src="./js/loading-system.js"></script>
-    <script src="./js/accessibility-system.js"></script>
-
-    <!-- 🧪 FASE 5: TESTING Y DOCUMENTACIÓN -->
-    <script src="./js/testing-framework.js"></script>
-    <script src="./js/documentation-system.js"></script>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
@@ -77,18 +52,22 @@
             const { useState, useEffect, useMemo } = React;
             
             // Componente de Configuraciones de Gastos
-            // Crear componente optimizado con ReactOptimizer
-            const OptimizedExpenseSettings = ReactOptimizer ? 
-                ReactOptimizer.createMemoizedComponent(ExpenseSettingsComponent) : 
-                ExpenseSettingsComponent;
-            
-            function ExpenseSettingsComponent() {
+            function ExpenseSettings() {
                 const [expenseConfig, setExpenseConfig] = useState({
-                    categories: AppConstants.EXPENSES.DEFAULT_CATEGORIES,
-                    subcategories: AppConstants.EXPENSES.DEFAULT_SUBCATEGORIES,
-                    paymentTypes: AppConstants.EXPENSES.DEFAULT_PAYMENT_TYPES,
-                    statuses: AppConstants.EXPENSES.DEFAULT_STATUSES,
-                    tags: AppConstants.EXPENSES.DEFAULT_TAGS
+                    categories: ['Alimentación', 'Transporte', 'Material de Oficina', 'Servicios', 'Equipamiento', 'Marketing', 'Formación', 'Otros'],
+                    subcategories: {
+                        'Alimentación': ['Comidas', 'Bebidas', 'Catering'],
+                        'Transporte': ['Gasolina', 'Taxi', 'Transporte público', 'Parking'],
+                        'Material de Oficina': ['Papelería', 'Equipos', 'Software'],
+                        'Servicios': ['Limpieza', 'Mantenimiento', 'Consultoría'],
+                        'Equipamiento': ['Mobiliario', 'Tecnología', 'Herramientas'],
+                        'Marketing': ['Publicidad', 'Eventos', 'Material promocional'],
+                        'Formación': ['Cursos', 'Certificaciones', 'Conferencias'],
+                        'Otros': ['Varios']
+                    },
+                    paymentTypes: ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque', 'Otros'],
+                    statuses: ['Pendiente', 'Aprobado', 'Rechazado', 'Pagado'],
+                    tags: ['Urgente', 'Recurrente', 'Importante', 'Reembolsable']
                 });
 
                 
@@ -119,78 +98,58 @@
                 
                 const loadExpenseSettingsFromFirebase = async () => {
                     try {
-                        // Usar caché y optimización de queries
-                        const cacheKey = FirebaseCache.generateKey('system_settings', 'main');
-                        const cachedResult = FirebaseCache.get(cacheKey);
+                        console.log('📥 Cargando configuraciones de gastos desde Firebase...');
                         
-                        if (cachedResult) {
-                            if (cachedResult.data && cachedResult.data.expenses) {
-                                const validation = DataValidator.validateExpenseConfig(cachedResult.data.expenses);
-                                if (validation.isValid) {
-                                    setExpenseConfig(cachedResult.data.expenses);
-                                    SecureLogger.success('Configuraciones de gastos cargadas desde caché');
-                                    return;
-                                }
+                        // Esperar a que Firebase esté completamente inicializado
+                        let attempts = 0;
+                        const maxAttempts = 50;
+                        
+                        while (attempts < maxAttempts) {
+                            if (window.authManager && window.authManager.app && 
+                                window.firebase && window.firebase.doc && 
+                                window.firebase.getDoc && window.firebase.getFirestore) {
+                                break;
                             }
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            attempts++;
                         }
                         
-                        const { loadSettings } = FirebaseHooks.useFirebaseSettings();
-                        const result = await loadSettings('system_settings', 'main');
+                        if (attempts >= maxAttempts) {
+                            console.log('⚠️ Firebase no disponible después de esperar - usando configuraciones por defecto');
+                            return;
+                        }
                         
-                        if (result.success && result.data && result.data.expenses) {
-                            // Validar datos antes de usarlos
-                            const validation = DataValidator.validateExpenseConfig(result.data.expenses);
-                            if (validation.isValid) {
-                                setExpenseConfig(result.data.expenses);
-                                // Guardar en caché
-                                FirebaseCache.set(cacheKey, result.data);
-                                SecureLogger.success('Configuraciones de gastos cargadas desde Firebase');
-                            } else {
-                                SecureLogger.warn('Configuraciones de gastos inválidas, usando por defecto', validation.errors);
+                        console.log('✅ Firebase disponible, procediendo a cargar configuraciones de gastos');
+                        
+                        const firestoreDb = getFirestoreInstance();
+                        if (!firestoreDb) {
+                            console.log('⚠️ No se pudo obtener instancia de Firestore');
+                            return;
+                        }
+                        
+                        const { doc, getDoc } = window.firebase;
+                        const settingsRef = doc(firestoreDb, 'system_settings', 'main');
+                        const settingsDoc = await getDoc(settingsRef);
+                        
+                        if (settingsDoc.exists()) {
+                            const data = settingsDoc.data();
+                            if (data.expenses) {
+                                setExpenseConfig(data.expenses);
+                                console.log('✅ Configuraciones de gastos cargadas desde Firebase');
                             }
                         }
                     } catch (error) {
-                        SecureLogger.error('Error cargando configuraciones de gastos', error);
-                        // Usar configuraciones por defecto en caso de error
+                        console.error('❌ Error cargando configuraciones de gastos:', error);
                     }
                 };
 
-                const saveExpenseSettingsToFirebase = async () => {
-                    try {
-                        setLoading(true);
-                        
-                        // Validar configuración antes de guardar
-                        const validation = DataValidator.validateExpenseConfig(expenseConfig);
-                        if (!validation.isValid) {
-                            throw new Error(`Configuración inválida: ${validation.errors.join(', ')}`);
-                        }
-                        
-                        const { saveSettings } = FirebaseHooks.useFirebaseSettings();
-                        const result = await saveSettings('system_settings', 'main', { expenses: expenseConfig });
-                        
-                        if (result.success) {
-                            setSaved(true);
-                            setTimeout(() => setSaved(false), AppConstants.UI.NOTIFICATION_TIMEOUT);
-                            SecureLogger.success('Configuraciones de gastos guardadas en Firebase');
-                            NotificationSystem.success(
-                                'Configuraciones Guardadas',
-                                'Las configuraciones de gastos se han guardado correctamente',
-                                { position: NotificationSystem.config.POSITIONS.TOP_RIGHT }
-                            );
-                        } else {
-                            throw new Error('Error al guardar configuraciones');
-                        }
-                    } catch (error) {
-                        SecureLogger.error('Error guardando configuraciones de gastos', error);
-                        NotificationSystem.error(
-                            'Error al Guardar',
-                            'No se pudieron guardar las configuraciones de gastos',
-                            { position: NotificationSystem.config.POSITIONS.TOP_RIGHT }
-                        );
-                    } finally {
-                        setLoading(false);
-                    }
-                };
+
+
+                
+                
+                
+                
+
 
                 const addCategory = () => {
                     if (newCategory.trim() && !expenseConfig.categories.includes(newCategory.trim())) {
@@ -1023,11 +982,20 @@
                                     priorities: ['Alta', 'Media', 'Baja']
                                 },
                                 expenses: {
-                                    categories: AppConstants.EXPENSES.DEFAULT_CATEGORIES,
-                                    subcategories: AppConstants.EXPENSES.DEFAULT_SUBCATEGORIES,
-                                    paymentTypes: AppConstants.EXPENSES.DEFAULT_PAYMENT_TYPES,
-                                    statuses: AppConstants.EXPENSES.DEFAULT_STATUSES,
-                                    tags: AppConstants.EXPENSES.DEFAULT_TAGS
+                                    categories: ['Alimentación', 'Transporte', 'Material de Oficina', 'Servicios', 'Equipamiento', 'Marketing', 'Formación', 'Otros'],
+                                    subcategories: {
+                                        'Alimentación': ['Comidas', 'Bebidas', 'Catering'],
+                                        'Transporte': ['Gasolina', 'Taxi', 'Transporte público', 'Parking'],
+                                        'Material de Oficina': ['Papelería', 'Equipos', 'Software'],
+                                        'Servicios': ['Limpieza', 'Mantenimiento', 'Consultoría'],
+                                        'Equipamiento': ['Mobiliario', 'Tecnología', 'Herramientas'],
+                                        'Marketing': ['Publicidad', 'Eventos', 'Material promocional'],
+                                        'Formación': ['Cursos', 'Certificaciones', 'Conferencias'],
+                                        'Otros': ['Varios']
+                                    },
+                                    paymentTypes: ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque', 'Otros'],
+                                    statuses: ['Pendiente', 'Aprobado', 'Rechazado', 'Pagado'],
+                                    tags: ['Urgente', 'Recurrente', 'Importante', 'Reembolsable']
                                 }
                             };
                             setAppConfig(defaultConfig);
@@ -1052,11 +1020,20 @@
                                 priorities: ['Alta', 'Media', 'Baja']
                             },
                             expenses: {
-                                categories: AppConstants.EXPENSES.DEFAULT_CATEGORIES,
-                                subcategories: AppConstants.EXPENSES.DEFAULT_SUBCATEGORIES,
-                                paymentTypes: AppConstants.EXPENSES.DEFAULT_PAYMENT_TYPES,
-                                statuses: AppConstants.EXPENSES.DEFAULT_STATUSES,
-                                tags: AppConstants.EXPENSES.DEFAULT_TAGS
+                                categories: ['Alimentación', 'Transporte', 'Material de Oficina', 'Servicios', 'Equipamiento', 'Marketing', 'Formación', 'Otros'],
+                                subcategories: {
+                                    'Alimentación': ['Comidas', 'Bebidas', 'Catering'],
+                                    'Transporte': ['Gasolina', 'Taxi', 'Transporte público', 'Parking'],
+                                    'Material de Oficina': ['Papelería', 'Equipos', 'Software'],
+                                    'Servicios': ['Limpieza', 'Mantenimiento', 'Consultoría'],
+                                    'Equipamiento': ['Mobiliario', 'Tecnología', 'Herramientas'],
+                                    'Marketing': ['Publicidad', 'Eventos', 'Material promocional'],
+                                    'Formación': ['Cursos', 'Certificaciones', 'Conferencias'],
+                                    'Otros': ['Varios']
+                                },
+                                paymentTypes: ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque', 'Otros'],
+                                statuses: ['Pendiente', 'Aprobado', 'Rechazado', 'Pagado'],
+                                tags: ['Urgente', 'Recurrente', 'Importante', 'Reembolsable']
                             }
                         };
                         setAppConfig(fallbackConfig);
@@ -1067,11 +1044,6 @@
                 const getConfigValue = (section, key, defaultValue) => {
                     return appConfig?.[section]?.[key] || defaultValue;
                 };
-                
-                // Registrar recursos con MemoryManager
-                if (typeof MemoryManager !== 'undefined') {
-                    MemoryManager.registerResource('appConfig', appConfig, 'config');
-                }
                 
                 // Funciones para obtener configuraciones de gastos dinámicamente
                 const getExpenseConfig = () => {
@@ -1087,11 +1059,11 @@
                     };
                     
                     return {
-                        categories: getConfigValue('expenses', 'categories', AppConstants.EXPENSES.DEFAULT_CATEGORIES),
-                        subcategories: getConfigValue('expenses', 'subcategories', AppConstants.EXPENSES.DEFAULT_SUBCATEGORIES),
-                        paymentTypes: getConfigValue('expenses', 'paymentTypes', AppConstants.EXPENSES.DEFAULT_PAYMENT_TYPES),
-                        statuses: getConfigValue('expenses', 'statuses', AppConstants.EXPENSES.DEFAULT_STATUSES),
-                        tags: getConfigValue('expenses', 'tags', AppConstants.EXPENSES.DEFAULT_TAGS)
+                        categories: getConfigValue('expenses', 'categories', ['Alimentación', 'Transporte', 'Material de Oficina', 'Servicios', 'Equipamiento', 'Marketing', 'Formación', 'Otros']),
+                        subcategories: getConfigValue('expenses', 'subcategories', defaultSubcategories),
+                        paymentTypes: getConfigValue('expenses', 'paymentTypes', ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque', 'Otros']),
+                        statuses: getConfigValue('expenses', 'statuses', ['Pendiente', 'Aprobado', 'Rechazado', 'Pagado']),
+                        tags: getConfigValue('expenses', 'tags', ['Urgente', 'Recurrente', 'Importante', 'Reembolsable'])
                     };
                 };
 
@@ -1427,39 +1399,7 @@
                 
                 const loadExpenses = async () => {
                     try {
-                        console.log('🔄 Iniciando carga de gastos optimizada...');
-                        
-                        // Usar LoadingSystem para mostrar estado de carga
-                        let loadingOverlay = null;
-                        if (typeof LoadingSystem !== 'undefined') {
-                            loadingOverlay = LoadingSystem.showOverlay('Cargando gastos...');
-                            const spinner = LoadingSystem.createSpinner('lg');
-                            AccessibilitySystem.announceLoading('Cargando gastos');
-                        }
-                        
-                        // Usar QueryOptimizer para optimizar la consulta
-                        if (typeof QueryOptimizer !== 'undefined') {
-                            const result = await QueryOptimizer.executeQuery('expenses', {
-                                orderBy: 'date',
-                                orderDirection: 'desc',
-                                pageSize: QueryOptimizer.pagination.DEFAULT_PAGE_SIZE
-                            });
-                            
-                            if (result && result.data) {
-                                setExpenses(result.data);
-                                console.log(`✅ Cargados ${result.data.length} gastos (optimizado)`);
-                                
-                                // Ocultar loading y anunciar éxito
-                                if (loadingOverlay) {
-                                    LoadingSystem.hideOverlay();
-                                }
-                                AccessibilitySystem.announceToScreenReader(`Cargados ${result.data.length} gastos`);
-                                return;
-                            }
-                        }
-                        
-                        // Fallback a método tradicional si QueryOptimizer no está disponible
-                        console.log('⚠️ QueryOptimizer no disponible, usando método tradicional');
+                        console.log('🔄 Iniciando carga de gastos...');
                         
                         // Esperar a que Firebase esté completamente inicializado
                         let attempts = 0;
@@ -1626,13 +1566,6 @@
                 
                 const saveExpense = async (expenseData) => {
                     try {
-                        // Usar LoadingSystem para mostrar estado de carga
-                        let loadingOverlay = null;
-                        if (typeof LoadingSystem !== 'undefined') {
-                            loadingOverlay = LoadingSystem.showOverlay('Guardando gasto...');
-                            AccessibilitySystem.announceLoading('Guardando gasto');
-                        }
-                        
                         const firestoreDb = getFirestoreInstance();
                         if (!firestoreDb) {
                             throw new Error('Firebase no disponible');
@@ -1648,13 +1581,7 @@
                                 ...expenseData,
                                 updatedAt: new Date().toISOString()
                             });
-                            
-                            // Ocultar loading y mostrar notificación
-                            if (loadingOverlay) {
-                                LoadingSystem.hideOverlay();
-                            }
-                            NotificationSystem.success('Gasto Actualizado', 'El gasto se ha actualizado correctamente');
-                            AccessibilitySystem.announceToScreenReader('Gasto actualizado correctamente');
+                            showNotification('Gasto Actualizado', 'El gasto se ha actualizado correctamente', 'success');
                         } else {
                             // Crear nuevo gasto
                             await addDoc(expensesRef, {
@@ -1662,26 +1589,14 @@
                                 createdAt: new Date().toISOString(),
                                 updatedAt: new Date().toISOString()
                             });
-                            
-                            // Ocultar loading y mostrar notificación
-                            if (loadingOverlay) {
-                                LoadingSystem.hideOverlay();
-                            }
-                            NotificationSystem.success('Gasto Creado', 'El gasto se ha creado correctamente');
-                            AccessibilitySystem.announceToScreenReader('Gasto creado correctamente');
+                            showNotification('Gasto Creado', 'El gasto se ha creado correctamente', 'success');
                         }
                         
                         await loadExpenses();
                         return true;
                     } catch (error) {
                         console.error('❌ Error guardando gasto:', error);
-                        
-                        // Ocultar loading y mostrar error
-                        if (typeof LoadingSystem !== 'undefined') {
-                            LoadingSystem.hideOverlay();
-                        }
-                        NotificationSystem.error('Error', 'No se pudo guardar el gasto');
-                        AccessibilitySystem.announceError('Error guardando gasto');
+                        showNotification('Error', 'No se pudo guardar el gasto', 'error');
                         return false;
                     }
                 };
@@ -1809,54 +1724,6 @@
                         
                         // Hacer disponible globalmente para AdminPanel
                         window.firebaseDb = firestoreDb;
-                        
-                        // Inicializar sistemas de optimización
-                        if (typeof FirebaseCache !== 'undefined') {
-                            FirebaseCache.init();
-                        }
-                        if (typeof MemoryManager !== 'undefined') {
-                            MemoryManager.init();
-                        }
-                        
-                        // Inicializar sistemas de UX/UI
-                        if (typeof NotificationSystem !== 'undefined') {
-                            NotificationSystem.init();
-                        }
-                        if (typeof LoadingSystem !== 'undefined') {
-                            LoadingSystem.init();
-                        }
-                        if (typeof AccessibilitySystem !== 'undefined') {
-                            AccessibilitySystem.init();
-                        }
-                        
-                        // Inicializar sistemas de testing y documentación
-                        if (typeof TestingFramework !== 'undefined') {
-                            TestingFramework.init();
-                            TestingFramework.registerDefaultTests();
-                            
-                            // Ejecutar tests automáticamente en desarrollo
-                            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                                setTimeout(() => {
-                                    // Registrar test personalizado
-                                    TestingFramework.registerTest(
-                                        'Custom App Test',
-                                        async () => {
-                                            return true;
-                                        },
-                                        { category: 'custom', critical: false }
-                                    );
-                                    TestingFramework.runAllTests();
-                                }, 2000);
-                            }
-                        }
-                        if (typeof DocumentationSystem !== 'undefined') {
-                            DocumentationSystem.init();
-                            
-                            // Generar documentación automáticamente
-                            setTimeout(() => {
-                                DocumentationSystem.generateDocumentation();
-                            }, 1000);
-                        }
                         
 
 
@@ -10480,7 +10347,7 @@ Equipo Expertia Medical Solutions"
                                             <h2 className="text-xl font-semibold">Configuración de Gastos</h2>
                                         </div>
                                         
-                                        <OptimizedExpenseSettings />
+                                        <ExpenseSettings />
                                     </div>
                                 )}
                             </div>
@@ -12865,7 +12732,7 @@ Equipo Expertia Medical Solutions"
             // Inicializar detección de inactividad después de cargar la app
             setTimeout(() => {
                 initInactivityDetection();
-                console.log('Sistema de detección de inactividad activado (30 min)');
+                console.log('🕐 Sistema de detección de inactividad activado (30 min)');
             }, 2000);
         }
         

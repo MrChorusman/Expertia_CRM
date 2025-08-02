@@ -79,6 +79,12 @@ service cloud.firestore {
       allow list: if request.auth != null;
     }
     
+    // Gastos (nueva colección para el módulo de gastos)
+    match /expenses/{expenseId} {
+      allow read, write: if request.auth != null;
+      allow list: if request.auth != null;
+    }
+    
     // Contadores para numeración secuencial
     match /counters/{counterId} {
       allow read, write: if request.auth != null && isCommercialOrAdmin();

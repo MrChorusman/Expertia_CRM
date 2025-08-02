@@ -25,21 +25,6 @@
     <script src="./js/shared-utils.js"></script>
     <script src="./js/app-constants.js"></script>
 
-    <!-- ⚡ FASE 3: RENDIMIENTO Y OPTIMIZACIÓN -->
-    <script src="./js/firebase-cache.js"></script>
-    <script src="./js/query-optimizer.js"></script>
-    <script src="./js/react-optimizer.js"></script>
-    <script src="./js/memory-manager.js"></script>
-
-    <!-- 🎨 FASE 4: UX/UI Y EXPERIENCIA DE USUARIO -->
-    <script src="./js/notification-system.js"></script>
-    <script src="./js/loading-system.js"></script>
-    <script src="./js/accessibility-system.js"></script>
-
-    <!-- 🧪 FASE 5: TESTING Y DOCUMENTACIÓN -->
-    <script src="./js/testing-framework.js"></script>
-    <script src="./js/documentation-system.js"></script>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
@@ -77,12 +62,7 @@
             const { useState, useEffect, useMemo } = React;
             
             // Componente de Configuraciones de Gastos
-            // Crear componente optimizado con ReactOptimizer
-            const OptimizedExpenseSettings = ReactOptimizer ? 
-                ReactOptimizer.createMemoizedComponent(ExpenseSettingsComponent) : 
-                ExpenseSettingsComponent;
-            
-            function ExpenseSettingsComponent() {
+            function ExpenseSettings() {
                 const [expenseConfig, setExpenseConfig] = useState({
                     categories: AppConstants.EXPENSES.DEFAULT_CATEGORIES,
                     subcategories: AppConstants.EXPENSES.DEFAULT_SUBCATEGORIES,
@@ -119,21 +99,6 @@
                 
                 const loadExpenseSettingsFromFirebase = async () => {
                     try {
-                        // Usar caché y optimización de queries
-                        const cacheKey = FirebaseCache.generateKey('system_settings', 'main');
-                        const cachedResult = FirebaseCache.get(cacheKey);
-                        
-                        if (cachedResult) {
-                            if (cachedResult.data && cachedResult.data.expenses) {
-                                const validation = DataValidator.validateExpenseConfig(cachedResult.data.expenses);
-                                if (validation.isValid) {
-                                    setExpenseConfig(cachedResult.data.expenses);
-                                    SecureLogger.success('Configuraciones de gastos cargadas desde caché');
-                                    return;
-                                }
-                            }
-                        }
-                        
                         const { loadSettings } = FirebaseHooks.useFirebaseSettings();
                         const result = await loadSettings('system_settings', 'main');
                         
@@ -142,8 +107,6 @@
                             const validation = DataValidator.validateExpenseConfig(result.data.expenses);
                             if (validation.isValid) {
                                 setExpenseConfig(result.data.expenses);
-                                // Guardar en caché
-                                FirebaseCache.set(cacheKey, result.data);
                                 SecureLogger.success('Configuraciones de gastos cargadas desde Firebase');
                             } else {
                                 SecureLogger.warn('Configuraciones de gastos inválidas, usando por defecto', validation.errors);
@@ -172,20 +135,20 @@
                             setSaved(true);
                             setTimeout(() => setSaved(false), AppConstants.UI.NOTIFICATION_TIMEOUT);
                             SecureLogger.success('Configuraciones de gastos guardadas en Firebase');
-                            NotificationSystem.success(
-                                'Configuraciones Guardadas',
+                            SharedUtils.showNotification(
+                                AppConstants.MESSAGES.SUCCESS.SAVE,
                                 'Las configuraciones de gastos se han guardado correctamente',
-                                { position: NotificationSystem.config.POSITIONS.TOP_RIGHT }
+                                AppConstants.NOTIFICATIONS.TYPES.SUCCESS
                             );
                         } else {
                             throw new Error('Error al guardar configuraciones');
                         }
                     } catch (error) {
                         SecureLogger.error('Error guardando configuraciones de gastos', error);
-                        NotificationSystem.error(
-                            'Error al Guardar',
+                        SharedUtils.showNotification(
+                            AppConstants.MESSAGES.ERROR.SAVE,
                             'No se pudieron guardar las configuraciones de gastos',
-                            { position: NotificationSystem.config.POSITIONS.TOP_RIGHT }
+                            AppConstants.NOTIFICATIONS.TYPES.ERROR
                         );
                     } finally {
                         setLoading(false);
@@ -1068,11 +1031,6 @@
                     return appConfig?.[section]?.[key] || defaultValue;
                 };
                 
-                // Registrar recursos con MemoryManager
-                if (typeof MemoryManager !== 'undefined') {
-                    MemoryManager.registerResource('appConfig', appConfig, 'config');
-                }
-                
                 // Funciones para obtener configuraciones de gastos dinámicamente
                 const getExpenseConfig = () => {
                     const defaultSubcategories = {
@@ -1427,39 +1385,7 @@
                 
                 const loadExpenses = async () => {
                     try {
-                        console.log('🔄 Iniciando carga de gastos optimizada...');
-                        
-                        // Usar LoadingSystem para mostrar estado de carga
-                        let loadingOverlay = null;
-                        if (typeof LoadingSystem !== 'undefined') {
-                            loadingOverlay = LoadingSystem.showOverlay('Cargando gastos...');
-                            const spinner = LoadingSystem.createSpinner('lg');
-                            AccessibilitySystem.announceLoading('Cargando gastos');
-                        }
-                        
-                        // Usar QueryOptimizer para optimizar la consulta
-                        if (typeof QueryOptimizer !== 'undefined') {
-                            const result = await QueryOptimizer.executeQuery('expenses', {
-                                orderBy: 'date',
-                                orderDirection: 'desc',
-                                pageSize: QueryOptimizer.pagination.DEFAULT_PAGE_SIZE
-                            });
-                            
-                            if (result && result.data) {
-                                setExpenses(result.data);
-                                console.log(`✅ Cargados ${result.data.length} gastos (optimizado)`);
-                                
-                                // Ocultar loading y anunciar éxito
-                                if (loadingOverlay) {
-                                    LoadingSystem.hideOverlay();
-                                }
-                                AccessibilitySystem.announceToScreenReader(`Cargados ${result.data.length} gastos`);
-                                return;
-                            }
-                        }
-                        
-                        // Fallback a método tradicional si QueryOptimizer no está disponible
-                        console.log('⚠️ QueryOptimizer no disponible, usando método tradicional');
+                        console.log('🔄 Iniciando carga de gastos...');
                         
                         // Esperar a que Firebase esté completamente inicializado
                         let attempts = 0;
@@ -1626,13 +1552,6 @@
                 
                 const saveExpense = async (expenseData) => {
                     try {
-                        // Usar LoadingSystem para mostrar estado de carga
-                        let loadingOverlay = null;
-                        if (typeof LoadingSystem !== 'undefined') {
-                            loadingOverlay = LoadingSystem.showOverlay('Guardando gasto...');
-                            AccessibilitySystem.announceLoading('Guardando gasto');
-                        }
-                        
                         const firestoreDb = getFirestoreInstance();
                         if (!firestoreDb) {
                             throw new Error('Firebase no disponible');
@@ -1648,13 +1567,7 @@
                                 ...expenseData,
                                 updatedAt: new Date().toISOString()
                             });
-                            
-                            // Ocultar loading y mostrar notificación
-                            if (loadingOverlay) {
-                                LoadingSystem.hideOverlay();
-                            }
-                            NotificationSystem.success('Gasto Actualizado', 'El gasto se ha actualizado correctamente');
-                            AccessibilitySystem.announceToScreenReader('Gasto actualizado correctamente');
+                            showNotification('Gasto Actualizado', 'El gasto se ha actualizado correctamente', 'success');
                         } else {
                             // Crear nuevo gasto
                             await addDoc(expensesRef, {
@@ -1662,26 +1575,14 @@
                                 createdAt: new Date().toISOString(),
                                 updatedAt: new Date().toISOString()
                             });
-                            
-                            // Ocultar loading y mostrar notificación
-                            if (loadingOverlay) {
-                                LoadingSystem.hideOverlay();
-                            }
-                            NotificationSystem.success('Gasto Creado', 'El gasto se ha creado correctamente');
-                            AccessibilitySystem.announceToScreenReader('Gasto creado correctamente');
+                            showNotification('Gasto Creado', 'El gasto se ha creado correctamente', 'success');
                         }
                         
                         await loadExpenses();
                         return true;
                     } catch (error) {
                         console.error('❌ Error guardando gasto:', error);
-                        
-                        // Ocultar loading y mostrar error
-                        if (typeof LoadingSystem !== 'undefined') {
-                            LoadingSystem.hideOverlay();
-                        }
-                        NotificationSystem.error('Error', 'No se pudo guardar el gasto');
-                        AccessibilitySystem.announceError('Error guardando gasto');
+                        showNotification('Error', 'No se pudo guardar el gasto', 'error');
                         return false;
                     }
                 };
@@ -1809,54 +1710,6 @@
                         
                         // Hacer disponible globalmente para AdminPanel
                         window.firebaseDb = firestoreDb;
-                        
-                        // Inicializar sistemas de optimización
-                        if (typeof FirebaseCache !== 'undefined') {
-                            FirebaseCache.init();
-                        }
-                        if (typeof MemoryManager !== 'undefined') {
-                            MemoryManager.init();
-                        }
-                        
-                        // Inicializar sistemas de UX/UI
-                        if (typeof NotificationSystem !== 'undefined') {
-                            NotificationSystem.init();
-                        }
-                        if (typeof LoadingSystem !== 'undefined') {
-                            LoadingSystem.init();
-                        }
-                        if (typeof AccessibilitySystem !== 'undefined') {
-                            AccessibilitySystem.init();
-                        }
-                        
-                        // Inicializar sistemas de testing y documentación
-                        if (typeof TestingFramework !== 'undefined') {
-                            TestingFramework.init();
-                            TestingFramework.registerDefaultTests();
-                            
-                            // Ejecutar tests automáticamente en desarrollo
-                            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                                setTimeout(() => {
-                                    // Registrar test personalizado
-                                    TestingFramework.registerTest(
-                                        'Custom App Test',
-                                        async () => {
-                                            return true;
-                                        },
-                                        { category: 'custom', critical: false }
-                                    );
-                                    TestingFramework.runAllTests();
-                                }, 2000);
-                            }
-                        }
-                        if (typeof DocumentationSystem !== 'undefined') {
-                            DocumentationSystem.init();
-                            
-                            // Generar documentación automáticamente
-                            setTimeout(() => {
-                                DocumentationSystem.generateDocumentation();
-                            }, 1000);
-                        }
                         
 
 
@@ -10480,7 +10333,7 @@ Equipo Expertia Medical Solutions"
                                             <h2 className="text-xl font-semibold">Configuración de Gastos</h2>
                                         </div>
                                         
-                                        <OptimizedExpenseSettings />
+                                        <ExpenseSettings />
                                     </div>
                                 )}
                             </div>

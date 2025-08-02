@@ -36,10 +36,6 @@
     <script src="./js/loading-system.js"></script>
     <script src="./js/accessibility-system.js"></script>
 
-    <!-- 🧪 FASE 5: TESTING Y DOCUMENTACIÓN -->
-    <script src="./js/testing-framework.js"></script>
-    <script src="./js/documentation-system.js"></script>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
@@ -1827,35 +1823,6 @@
                         }
                         if (typeof AccessibilitySystem !== 'undefined') {
                             AccessibilitySystem.init();
-                        }
-                        
-                        // Inicializar sistemas de testing y documentación
-                        if (typeof TestingFramework !== 'undefined') {
-                            TestingFramework.init();
-                            TestingFramework.registerDefaultTests();
-                            
-                            // Ejecutar tests automáticamente en desarrollo
-                            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                                setTimeout(() => {
-                                    // Registrar test personalizado
-                                    TestingFramework.registerTest(
-                                        'Custom App Test',
-                                        async () => {
-                                            return true;
-                                        },
-                                        { category: 'custom', critical: false }
-                                    );
-                                    TestingFramework.runAllTests();
-                                }, 2000);
-                            }
-                        }
-                        if (typeof DocumentationSystem !== 'undefined') {
-                            DocumentationSystem.init();
-                            
-                            // Generar documentación automáticamente
-                            setTimeout(() => {
-                                DocumentationSystem.generateDocumentation();
-                            }, 1000);
                         }
                         
 

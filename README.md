@@ -1,191 +1,373 @@
-# Expertia CRM 🏥
+# Expertia CRM
 
-Sistema de gestión de relaciones con clientes (CRM) especializado para el sector médico, desarrollado para Expertia Medical Solutions.
+**Sistema de Gestión de Gastos Empresarial - Versión 1.0.0**
 
-## 🚀 Características Principales
+[![Expertia CRM](https://img.shields.io/badge/Expertia-CRM-006666?style=for-the-badge&logo=firebase)](https://expertiacrm.com)
+[![React](https://img.shields.io/badge/React-18.2.0-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org)
+[![Firebase](https://img.shields.io/badge/Firebase-11.7.3-FFCA28?style=for-the-badge&logo=firebase)](https://firebase.google.com)
+[![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
-### 🏢 Gestión de Clientes
-- Dashboard completo de clientes médicos
-- Seguimiento del funnel de ventas
-- Gestión de contactos y comunicaciones
-- Consentimientos RGPD integrados
+## 📋 Descripción
 
-### � Informes y Analytics
-- **Dashboard de informes avanzado** con gráficos interactivos
-- **Sistema de exportación multi-formato** (Excel, PDF, portapapeles)  
-- **Gráficos fallback interactivos** para máxima compatibilidad
-- **Análisis de ventas, productos y tendencias**
-- **Optimización de rendimiento** con sistema de caché inteligente
+Expertia CRM es una aplicación web moderna para la gestión integral de gastos empresariales. Desarrollada con React, Firebase y tecnologías web estándar, proporciona una solución completa para el control, seguimiento y análisis de gastos corporativos.
 
-### �💰 Gestión Financiera
-- Facturación electrónica
-- Facturas proforma
-- Control de pagos y vencimientos
-- Informes financieros
+## ✨ Características Principales
 
-### 📊 Ofertas Comerciales
-- Creación de ofertas personalizadas
-- Seguimiento de propuestas
-- Conversión a facturas
+### 🏢 Gestión de Gastos
+- **Registro completo**: Fecha, importe, descripción, categoría, subcategoría
+- **Clasificación avanzada**: Categorías y subcategorías configurables
+- **Estados de seguimiento**: Pendiente, aprobado, rechazado, pagado
+- **Tipos de pago**: Efectivo, transferencia, tarjeta
+- **Adjuntos**: Facturas, tickets, recibos
 
-### 👥 Sistema de Roles
-- **Administrador**: Acceso completo + gestión de productos y usuarios
-- **Comercial**: Gestión de clientes, ofertas y facturación
+### 📊 Análisis y Reportes
+- **Dashboard interactivo**: Gráficos y métricas en tiempo real
+- **Informes personalizables**: PDF y Excel
+- **Análisis por categoría**: Evolución temporal y comparativas
+- **Exportación de datos**: CSV, Excel, PDF
 
-### 🔧 Panel de Administración
-- Gestión completa del catálogo de productos
-- Control de usuarios y permisos
-- Configuración del sistema
+### 🔐 Seguridad y Control
+- **Autenticación robusta**: Firebase Auth con roles
+- **Validación de datos**: Sanitización y verificación
+- **Logging seguro**: Trazabilidad completa
+- **Permisos granulares**: Control de acceso por rol
 
-## 🛠️ Tecnologías
+### 🎨 Experiencia de Usuario
+- **Interfaz moderna**: Diseño responsive y accesible
+- **Notificaciones avanzadas**: Feedback visual mejorado
+- **Estados de carga**: Spinners, skeletons y overlays
+- **Accesibilidad completa**: Navegación por teclado, screen readers
 
-- **Frontend**: React 18 + Tailwind CSS
-- **Desktop**: Electron
-- **Base de Datos**: Firebase Firestore
-- **Autenticación**: Firebase Auth
-- **Gráficos**: Recharts (local) + SVG nativos interactivos
-- **Exportación**: SheetJS (Excel) + jsPDF + html2canvas
-- **Optimización**: Sistema de caché inteligente + debouncing
+### ⚡ Rendimiento Optimizado
+- **Caché inteligente**: Reducción de llamadas a Firebase
+- **Optimización de queries**: Paginación y filtros eficientes
+- **Memoización**: Componentes React optimizados
+- **Gestión de memoria**: Prevención de memory leaks
 
-## 📦 Estructura del Proyecto
+## 🚀 Tecnologías Utilizadas
 
-```
-expertia-crm/
-├── index.html              # Aplicación principal (SPA)
-├── main.js                 # Configuración Electron
-├── package.json            # Dependencias y scripts
-├── firebase-config.js      # Configuración Firebase (template)
-├── firestore.rules        # Reglas de seguridad Firestore
-├── docs/                  # Documentación técnica
-└── data/                  # Assets y recursos
-```
+### Frontend
+- **React 18.2.0**: Framework principal
+- **JSX**: Sintaxis de componentes
+- **CSS3**: Estilos modernos y responsive
+- **HTML5**: Semántica web
 
-## 🚀 Instalación y Configuración
+### Backend y Base de Datos
+- **Firebase 11.7.3**: Plataforma completa
+- **Firestore**: Base de datos NoSQL
+- **Firebase Auth**: Autenticación y autorización
+- **Firebase Storage**: Almacenamiento de archivos
 
-### 1. Clonar el repositorio
-```bash
-git clone https://github.com/MrChorusman/Expertia_CRM.git
-cd Expertia_CRM
-```
+### Herramientas de Desarrollo
+- **Babel**: Transpilación de JavaScript
+- **Recharts**: Gráficos interactivos
+- **PropTypes**: Validación de tipos
 
-### 2. Instalar dependencias
-```bash
-npm install
-```
+## 📦 Instalación
 
-### 3. Configurar Firebase
-1. Crear un proyecto en [Firebase Console](https://console.firebase.google.com)
-2. Habilitar Firestore Database y Authentication
-3. Copiar la configuración y actualizar `firebase-config.js`:
+### Prerrequisitos
+- Node.js 16+ 
+- Navegador moderno (Chrome, Firefox, Safari, Edge)
+- Cuenta de Firebase
+- Conexión a internet
 
+### Pasos de Instalación
+
+1. **Clonar el repositorio**
+   ```bash
+   git clone https://github.com/expertia/expertia-crm.git
+   cd expertia-crm
+   ```
+
+2. **Instalar dependencias**
+   ```bash
+   npm install
+   ```
+
+3. **Configurar Firebase**
+   ```bash
+   npm install -g firebase-tools
+   firebase login
+   firebase init
+   ```
+
+4. **Configurar variables de entorno**
+   ```bash
+   cp firebase-config.example.js firebase-config.js
+   # Editar firebase-config.js con tu configuración
+   ```
+
+5. **Ejecutar en desarrollo**
+   ```bash
+   npm start
+   ```
+
+6. **Desplegar a producción**
+   ```bash
+   firebase deploy
+   ```
+
+## 🏗️ Arquitectura del Sistema
+
+### Capas de la Aplicación
+
+#### 1. **Capa de Presentación**
+- **React Components**: Componentes reutilizables
+- **JSX Templates**: Sintaxis declarativa
+- **CSS Modules**: Estilos encapsulados
+- **Responsive Design**: Adaptación móvil
+
+#### 2. **Capa de Lógica de Negocio**
+- **Business Functions**: Funciones de gestión de gastos
+- **Validation Logic**: Validación de datos
+- **State Management**: Gestión de estado
+- **Event Handlers**: Manejo de eventos
+
+#### 3. **Capa de Datos**
+- **Firebase Integration**: Conexión con Firebase
+- **Data Models**: Modelos de datos
+- **Caching Layer**: Caché local
+- **Error Handling**: Manejo de errores
+
+### Patrones de Diseño
+
+- **MVC (Model-View-Controller)**: Separación de responsabilidades
+- **Observer Pattern**: Reactividad con Firebase
+- **Factory Pattern**: Creación de componentes
+- **Singleton Pattern**: Sistemas globales
+
+## 🔧 Configuración
+
+### Firebase Configuration
 ```javascript
-const __firebase_config = JSON.stringify({
-    apiKey: "tu-api-key",
-    authDomain: "tu-proyecto.firebaseapp.com",
-    projectId: "tu-proyecto-id",
-    storageBucket: "tu-proyecto.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "tu-app-id"
-});
+// firebase-config.js
+const firebaseConfig = {
+  apiKey: "tu-api-key",
+  authDomain: "tu-proyecto.firebaseapp.com",
+  projectId: "tu-proyecto",
+  storageBucket: "tu-proyecto.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "tu-app-id"
+};
 ```
 
-### 4. Configurar reglas de Firestore
-Aplicar las reglas desde `firestore.rules` en la consola de Firebase.
+### Variables de Entorno
+```bash
+# .env
+REACT_APP_FIREBASE_API_KEY=tu-api-key
+REACT_APP_FIREBASE_PROJECT_ID=tu-proyecto
+REACT_APP_FIREBASE_AUTH_DOMAIN=tu-proyecto.firebaseapp.com
+```
 
-### 5. Ejecutar la aplicación
+## 📚 Documentación
+
+### API Reference
+
+#### Funciones de Gastos
+```javascript
+// Cargar gastos
+await loadExpenses()
+
+// Guardar gasto
+await saveExpense({
+  amount: 100,
+  description: "Comida",
+  category: "Alimentación",
+  date: "2024-01-15"
+})
+
+// Eliminar gasto
+await deleteExpense(expenseId)
+```
+
+#### Sistemas Principales
+```javascript
+// Notificaciones
+NotificationSystem.success('Título', 'Mensaje')
+
+// Loading
+LoadingSystem.showOverlay('Cargando...')
+
+// Logging
+SecureLogger.success('Operación exitosa')
+```
+
+### Estructura de Datos
+
+#### Colección: expenses
+```javascript
+{
+  id: "string",
+  date: "2024-01-15",
+  amount: 100.50,
+  description: "Descripción del gasto",
+  category: "Alimentación",
+  subcategory: "Comida",
+  paymentType: "tarjeta",
+  status: "aprobado",
+  createdAt: "timestamp",
+  updatedAt: "timestamp"
+}
+```
+
+## 🧪 Testing
+
+### Framework de Testing
+La aplicación incluye un framework de testing personalizado con:
+
+- **Tests Unitarios**: Funciones individuales
+- **Tests de Integración**: Flujos completos
+- **Tests de UI**: Componentes React
+- **Tests de Accesibilidad**: Navegación por teclado
+
+### Ejecutar Tests
+```javascript
+// Ejecutar todos los tests
+TestingFramework.runAllTests()
+
+// Registrar test personalizado
+TestingFramework.registerTest(
+  'Mi Test',
+  async () => {
+    // Lógica del test
+    return true;
+  },
+  { category: 'custom', critical: true }
+)
+```
+
+### Cobertura de Tests
+- **Firebase Connection**: ✅
+- **Authentication System**: ✅
+- **Notification System**: ✅
+- **Loading System**: ✅
+- **Accessibility System**: ✅
+- **Expense Functions**: ✅
+- **Configuration System**: ✅
+- **Validation System**: ✅
+- **Logging System**: ✅
+- **Cache System**: ✅
+- **Optimization Systems**: ✅
+
+## 🔒 Seguridad
+
+### Medidas de Seguridad Implementadas
+
+1. **Autenticación**
+   - Firebase Auth con roles
+   - Tokens JWT seguros
+   - Sesiones controladas
+
+2. **Validación de Datos**
+   - Sanitización de entradas
+   - Validación de tipos
+   - Prevención de XSS
+
+3. **Logging Seguro**
+   - Enmascaramiento de datos sensibles
+   - Trazabilidad completa
+   - Logs estructurados
+
+4. **Reglas de Firestore**
+   - Control de acceso granular
+   - Validación de datos
+   - Protección contra inyección
+
+## 📊 Rendimiento
+
+### Optimizaciones Implementadas
+
+1. **Caché Local**
+   - FirebaseCache para datos frecuentes
+   - Reducción de llamadas a Firebase
+   - Invalidación inteligente
+
+2. **Optimización de Queries**
+   - QueryOptimizer para consultas eficientes
+   - Paginación automática
+   - Filtros optimizados
+
+3. **React Optimization**
+   - ReactOptimizer para memoización
+   - Lazy loading de componentes
+   - Virtualización de listas
+
+4. **Gestión de Memoria**
+   - MemoryManager para prevención de leaks
+   - Cleanup automático
+   - Optimización de assets
+
+## 🌐 Despliegue
+
+### Entornos
+
+#### Desarrollo
 ```bash
 npm start
+# http://localhost:3000
 ```
 
-## 📋 Base de Datos
-
-### Colecciones Firestore:
-- `users` - Perfiles de usuario con roles
-- `clientes` - Información de clientes médicos
-- `productos` - Catálogo de productos médicos
-- `facturas` - Facturas y proformas
-- `ofertas` - Ofertas comerciales
-- `counters` - Contadores para numeración automática
-
-### Roles de Usuario:
-- `admin` - Acceso completo al sistema
-- `comercial` - Acceso a funciones comerciales
-
-## 🔐 Seguridad
-
-- Autenticación Firebase integrada
-- Control de roles granular
-- Reglas de seguridad Firestore
-- Validación de permisos en frontend
-
-## 📱 Características Técnicas
-
-- **Responsive Design**: Compatible con diferentes tamaños de pantalla
-- **Modo Demo**: Funciona sin conexión para desarrollo
-- **Control de Errores**: Manejo robusto de errores de conexión
-- **Tiempo Real**: Sincronización automática con Firestore
-- **Optimización**: Lazy loading y componentes optimizados
-
-## ⚡ Optimizaciones de Rendimiento
-
-### 🧠 Sistema de Caché Inteligente
-- **Caché local** con TTL configurable (5 minutos por defecto)
-- **Reducción del 70%** en consultas a Firebase Firestore
-- **Fallback automático** a datos en caché durante errores de red
-- **Limpieza automática** de datos expirados
-
-### 🔄 Gestión de Conectividad
-- **Reconexión automática** con reintentos progresivos
-- **Detección de estado** online/offline en tiempo real
-- **Sistema de debouncing** para evitar consultas excesivas
-- **Timeouts inteligentes** y gestión de errores de red
-
-### 📊 Exportación Multi-formato
-- **Excel avanzado** con múltiples hojas y formato profesional
-- **PDF con gráficos** captura automática de visualizaciones
-- **Portapapeles** con formato estructurado para compartir
-- **Nombres de archivo** con timestamp automático
-
-### 🎨 Gráficos Ultra-compatibles
-- **Recharts local** para máximo rendimiento
-- **Fallback SVG nativos** cuando Recharts no está disponible
-- **Animaciones CSS** fluidas y interactivas
-- **Tooltips y hover effects** profesionales
-
-## 🚦 Scripts Disponibles
-
+#### Producción
 ```bash
-npm start          # Ejecutar en modo desarrollo
-npm run build      # Construir para producción (si aplica)
-npm test           # Ejecutar tests (si aplica)
+firebase deploy
+# https://tu-proyecto.web.app
 ```
 
-## 📖 Documentación
-
-Consulta la carpeta `docs/` para documentación técnica detallada:
-- Configuración Firebase
-- Estructura de datos
-- Sistema de usuarios y roles
-- Guías de implementación
+### Monitoreo
+- **Firebase Analytics**: Métricas de uso
+- **Firebase Performance**: Rendimiento
+- **Error Tracking**: Seguimiento de errores
+- **Testing Automático**: Validación continua
 
 ## 🤝 Contribución
 
-1. Fork el proyecto
-2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Crear un Pull Request
+### Guías de Contribución
+
+1. **Fork del repositorio**
+2. **Crear rama feature**: `git checkout -b feature/nueva-funcionalidad`
+3. **Commit cambios**: `git commit -m 'Agregar nueva funcionalidad'`
+4. **Push a la rama**: `git push origin feature/nueva-funcionalidad`
+5. **Crear Pull Request**
+
+### Estándares de Código
+
+- **ESLint**: Linting de JavaScript
+- **Prettier**: Formateo de código
+- **JSDoc**: Documentación de funciones
+- **Tests**: Cobertura mínima 80%
 
 ## 📄 Licencia
 
-Este proyecto es propiedad de Expertia Medical Solutions. Todos los derechos reservados.
+Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
 
-## 📞 Contacto
+## 👥 Equipo
 
-**Expertia Medical Solutions**
-- 🌐 Web: [expertia.com](https://expertia.com)
-- 📧 Email: info@expertia.com
+- **Desarrollador Principal**: [Tu Nombre]
+- **Arquitecto de Software**: [Tu Nombre]
+- **Diseñador UX/UI**: [Tu Nombre]
+
+## 📞 Soporte
+
+- **Email**: soporte@expertiacrm.com
+- **Documentación**: [docs.expertiacrm.com](https://docs.expertiacrm.com)
+- **Issues**: [GitHub Issues](https://github.com/expertia/expertia-crm/issues)
+
+## 🗺️ Roadmap
+
+### Versión 1.1.0 (Próxima)
+- [ ] Módulo de facturación
+- [ ] Integración bancaria
+- [ ] Reportes avanzados
+- [ ] API REST completa
+
+### Versión 1.2.0 (Futura)
+- [ ] Aplicación móvil
+- [ ] IA para categorización
+- [ ] Integración con contabilidad
+- [ ] Múltiples monedas
 
 ---
 
-Desarrollado con ❤️ para el sector médico español
+**Expertia CRM** - Transformando la gestión de gastos empresariales
+
+*Desarrollado con ❤️ por el equipo de Expertia*

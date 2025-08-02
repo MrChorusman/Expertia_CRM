@@ -31,15 +31,6 @@
     <script src="./js/react-optimizer.js"></script>
     <script src="./js/memory-manager.js"></script>
 
-    <!-- 🎨 FASE 4: UX/UI Y EXPERIENCIA DE USUARIO -->
-    <script src="./js/notification-system.js"></script>
-    <script src="./js/loading-system.js"></script>
-    <script src="./js/accessibility-system.js"></script>
-
-    <!-- 🧪 FASE 5: TESTING Y DOCUMENTACIÓN -->
-    <script src="./js/testing-framework.js"></script>
-    <script src="./js/documentation-system.js"></script>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
@@ -172,20 +163,20 @@
                             setSaved(true);
                             setTimeout(() => setSaved(false), AppConstants.UI.NOTIFICATION_TIMEOUT);
                             SecureLogger.success('Configuraciones de gastos guardadas en Firebase');
-                            NotificationSystem.success(
-                                'Configuraciones Guardadas',
+                            SharedUtils.showNotification(
+                                AppConstants.MESSAGES.SUCCESS.SAVE,
                                 'Las configuraciones de gastos se han guardado correctamente',
-                                { position: NotificationSystem.config.POSITIONS.TOP_RIGHT }
+                                AppConstants.NOTIFICATIONS.TYPES.SUCCESS
                             );
                         } else {
                             throw new Error('Error al guardar configuraciones');
                         }
                     } catch (error) {
                         SecureLogger.error('Error guardando configuraciones de gastos', error);
-                        NotificationSystem.error(
-                            'Error al Guardar',
+                        SharedUtils.showNotification(
+                            AppConstants.MESSAGES.ERROR.SAVE,
                             'No se pudieron guardar las configuraciones de gastos',
-                            { position: NotificationSystem.config.POSITIONS.TOP_RIGHT }
+                            AppConstants.NOTIFICATIONS.TYPES.ERROR
                         );
                     } finally {
                         setLoading(false);
@@ -1429,14 +1420,6 @@
                     try {
                         console.log('🔄 Iniciando carga de gastos optimizada...');
                         
-                        // Usar LoadingSystem para mostrar estado de carga
-                        let loadingOverlay = null;
-                        if (typeof LoadingSystem !== 'undefined') {
-                            loadingOverlay = LoadingSystem.showOverlay('Cargando gastos...');
-                            const spinner = LoadingSystem.createSpinner('lg');
-                            AccessibilitySystem.announceLoading('Cargando gastos');
-                        }
-                        
                         // Usar QueryOptimizer para optimizar la consulta
                         if (typeof QueryOptimizer !== 'undefined') {
                             const result = await QueryOptimizer.executeQuery('expenses', {
@@ -1448,12 +1431,6 @@
                             if (result && result.data) {
                                 setExpenses(result.data);
                                 console.log(`✅ Cargados ${result.data.length} gastos (optimizado)`);
-                                
-                                // Ocultar loading y anunciar éxito
-                                if (loadingOverlay) {
-                                    LoadingSystem.hideOverlay();
-                                }
-                                AccessibilitySystem.announceToScreenReader(`Cargados ${result.data.length} gastos`);
                                 return;
                             }
                         }
@@ -1626,13 +1603,6 @@
                 
                 const saveExpense = async (expenseData) => {
                     try {
-                        // Usar LoadingSystem para mostrar estado de carga
-                        let loadingOverlay = null;
-                        if (typeof LoadingSystem !== 'undefined') {
-                            loadingOverlay = LoadingSystem.showOverlay('Guardando gasto...');
-                            AccessibilitySystem.announceLoading('Guardando gasto');
-                        }
-                        
                         const firestoreDb = getFirestoreInstance();
                         if (!firestoreDb) {
                             throw new Error('Firebase no disponible');
@@ -1648,13 +1618,7 @@
                                 ...expenseData,
                                 updatedAt: new Date().toISOString()
                             });
-                            
-                            // Ocultar loading y mostrar notificación
-                            if (loadingOverlay) {
-                                LoadingSystem.hideOverlay();
-                            }
-                            NotificationSystem.success('Gasto Actualizado', 'El gasto se ha actualizado correctamente');
-                            AccessibilitySystem.announceToScreenReader('Gasto actualizado correctamente');
+                            showNotification('Gasto Actualizado', 'El gasto se ha actualizado correctamente', 'success');
                         } else {
                             // Crear nuevo gasto
                             await addDoc(expensesRef, {
@@ -1662,26 +1626,14 @@
                                 createdAt: new Date().toISOString(),
                                 updatedAt: new Date().toISOString()
                             });
-                            
-                            // Ocultar loading y mostrar notificación
-                            if (loadingOverlay) {
-                                LoadingSystem.hideOverlay();
-                            }
-                            NotificationSystem.success('Gasto Creado', 'El gasto se ha creado correctamente');
-                            AccessibilitySystem.announceToScreenReader('Gasto creado correctamente');
+                            showNotification('Gasto Creado', 'El gasto se ha creado correctamente', 'success');
                         }
                         
                         await loadExpenses();
                         return true;
                     } catch (error) {
                         console.error('❌ Error guardando gasto:', error);
-                        
-                        // Ocultar loading y mostrar error
-                        if (typeof LoadingSystem !== 'undefined') {
-                            LoadingSystem.hideOverlay();
-                        }
-                        NotificationSystem.error('Error', 'No se pudo guardar el gasto');
-                        AccessibilitySystem.announceError('Error guardando gasto');
+                        showNotification('Error', 'No se pudo guardar el gasto', 'error');
                         return false;
                     }
                 };
@@ -1816,46 +1768,6 @@
                         }
                         if (typeof MemoryManager !== 'undefined') {
                             MemoryManager.init();
-                        }
-                        
-                        // Inicializar sistemas de UX/UI
-                        if (typeof NotificationSystem !== 'undefined') {
-                            NotificationSystem.init();
-                        }
-                        if (typeof LoadingSystem !== 'undefined') {
-                            LoadingSystem.init();
-                        }
-                        if (typeof AccessibilitySystem !== 'undefined') {
-                            AccessibilitySystem.init();
-                        }
-                        
-                        // Inicializar sistemas de testing y documentación
-                        if (typeof TestingFramework !== 'undefined') {
-                            TestingFramework.init();
-                            TestingFramework.registerDefaultTests();
-                            
-                            // Ejecutar tests automáticamente en desarrollo
-                            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                                setTimeout(() => {
-                                    // Registrar test personalizado
-                                    TestingFramework.registerTest(
-                                        'Custom App Test',
-                                        async () => {
-                                            return true;
-                                        },
-                                        { category: 'custom', critical: false }
-                                    );
-                                    TestingFramework.runAllTests();
-                                }, 2000);
-                            }
-                        }
-                        if (typeof DocumentationSystem !== 'undefined') {
-                            DocumentationSystem.init();
-                            
-                            // Generar documentación automáticamente
-                            setTimeout(() => {
-                                DocumentationSystem.generateDocumentation();
-                            }, 1000);
                         }
                         
 
