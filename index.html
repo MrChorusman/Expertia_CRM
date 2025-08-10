@@ -8,9 +8,9 @@
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="./recharts.min.js"></script>
     <!-- PropTypes para Recharts -->
     <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+    <script src="./recharts.min.js"></script>
     <script>
         // Asegurar que PropTypes esté disponible globalmente
         if (typeof window.PropTypes === 'undefined') {
@@ -138,24 +138,22 @@
                             return;
                         }
                         
-                        // Verificar que las funciones de Firebase estén disponibles
-                        if (!window.firebase || !window.firebase.doc || !window.firebase.getDoc || !window.firebase.getFirestore) {
+                        // Verificar que las funciones de Firebase y la instancia db global estén disponibles
+                        if (!window.firebase || !window.firebase.doc || !window.firebase.getDoc) {
                             console.log('⚠️ Funciones de Firebase no disponibles, reintentando...');
                             setTimeout(loadExpenseSettingsFromFirebase, 200);
                             return;
                         }
-                        
-                        const { doc, getDoc, getFirestore } = window.firebase;
-                        const firestoreDb = getFirestore(window.authManager.app);
-                        
-                        // Verificar que la instancia de Firestore sea válida
-                        if (!firestoreDb) {
-                            console.log('⚠️ Instancia de Firestore no válida, reintentando...');
+                        const { doc, getDoc } = window.firebase;
+                        const db = window.firebaseDb;
+                        // Verificar que la instancia de Firestore global sea válida
+                        if (!db) {
+                            console.log('⚠️ Instancia global de Firestore no disponible, reintentando...');
                             setTimeout(loadExpenseSettingsFromFirebase, 200);
                             return;
                         }
                         
-                        const settingsRef = doc(firestoreDb, 'system_settings', 'main');
+                        const settingsRef = doc(db, 'system_settings', 'main');
                         const settingsDoc = await getDoc(settingsRef);
                         if (settingsDoc.exists()) {
                             const data = settingsDoc.data();
@@ -176,24 +174,34 @@
                             throw new Error('Firebase no disponible');
                         }
                         
-                        // Verificar que las funciones de Firebase estén disponibles
-                        if (!window.firebase || !window.firebase.doc || !window.firebase.updateDoc || !window.firebase.getFirestore) {
+                        // Verificar que las funciones de Firebase y la instancia db global estén disponibles
+                        if (!window.firebase || !window.firebase.doc || !window.firebase.setDoc) {
                             throw new Error('Funciones de Firebase no disponibles');
                         }
                         
-                        const { doc, updateDoc, getFirestore } = window.firebase;
-                        const firestoreDb = getFirestore(window.authManager.app);
-                        
-                        // Verificar que la instancia de Firestore sea válida
-                        if (!firestoreDb) {
-                            throw new Error('Instancia de Firestore no válida');
+                        const { doc, setDoc } = window.firebase;
+                        const db = window.firebaseDb;
+                        if (!db) {
+                            throw new Error('Instancia global de Firestore no disponible');
                         }
-                        
-                        const settingsRef = doc(firestoreDb, 'system_settings', 'main');
-                        await updateDoc(settingsRef, {
-                            expenses: expenseConfig
-                        });
+                        const settingsRef = doc(db, 'system_settings', 'main');
+                        // Usar setDoc con merge para crear/actualizar sin fallar si el documento no existe
+                        await setDoc(
+                            settingsRef,
+                            {
+                                expenses: expenseConfig,
+                                updatedAt: new Date(),
+                                updatedBy: window.authManager?.currentUser?.uid || null
+                            },
+                            { merge: true }
+                        );
+                        // Recargar configuración global para reflejar cambios inmediatamente en los formularios
+                        if (typeof window.loadAppConfig === 'function') {
+                            await window.loadAppConfig();
+                            console.log('🔄 Configuración global recargada tras guardar gastos');
+                        }
                         setSaved(true);
+                        setHasUnsavedChanges(false);
                         setTimeout(() => setSaved(false), 3000);
                         console.log('✅ Configuraciones de gastos guardadas en Firebase');
                         showNotification('Configuraciones Guardadas', 'Las configuraciones de gastos se han guardado correctamente', 'success');
@@ -10026,12 +10034,7 @@ Equipo Expertia Medical Solutions"
                                     >
                                         Configuración del Sistema
                                     </button>
-                                    <button 
-                                        onClick={() => setActiveTab('expenses')}
-                                        className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'expenses' ? 'border-[#006666] text-[#006666]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                                    >
-                                        Configuración de Gastos
-                                    </button>
+                                    
                                 </nav>
                             </div>
                             
@@ -10217,15 +10220,7 @@ Equipo Expertia Medical Solutions"
                                     </div>
                                 )}
                                 
-                                {activeTab === 'expenses' && (
-                                    <div>
-                                        <div className="flex justify-between items-center mb-6">
-                                            <h2 className="text-xl font-semibold">Configuración de Gastos</h2>
-                                        </div>
-                                        
-                                        <ExpenseSettings />
-                                    </div>
-                                )}
+                                
                             </div>
                         </div>
                         
@@ -10279,6 +10274,7 @@ Equipo Expertia Medical Solutions"
             // Componente de Configuraciones del Sistema
             function SystemSettings() {
                 const [activeSection, setActiveSection] = useState('company');
+                const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
                 const [settings, setSettings] = useState({
                     // Configuraciones de empresa
                     company: {
@@ -10411,6 +10407,7 @@ Equipo Expertia Medical Solutions"
                             [key]: value
                         }
                     }));
+                    setHasUnsavedChanges(true);
                 };
                 
                 const handleSave = async () => {
@@ -10482,6 +10479,7 @@ Equipo Expertia Medical Solutions"
                     { id: 'security', label: 'Seguridad', icon: 'shield' },
                     { id: 'notifications', label: 'Notificaciones', icon: 'bell' },
                     { id: 'integrations', label: 'Integraciones', icon: 'plug' },
+                    { id: 'expenses', label: 'Gastos', icon: 'credit-card' },
                     { id: 'products', label: 'Productos', icon: 'package' },
                     { id: 'sales', label: 'Ventas', icon: 'trending-up' },
                     { id: 'invoice', label: 'Facturación', icon: 'file-text' },
@@ -10523,6 +10521,12 @@ Equipo Expertia Medical Solutions"
                         'file-text': (
                             <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"/>
+                            </svg>
+                        ),
+                        'credit-card': (
+                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M3 4h14a2 2 0 012 2v1H1V6a2 2 0 012-2z"/>
+                                <path d="M1 9h18v5a2 2 0 01-2 2H3a2 2 0 01-2-2V9zm3 3h4a1 1 0 010 2H4a1 1 0 110-2z"/>
                             </svg>
                         ),
                         database: (
@@ -11426,6 +11430,17 @@ Equipo Expertia Medical Solutions"
                                     </div>
                                 )}
                                 
+                                {/* Configuración de Gastos (movida dentro de Configuración del Sistema) */}
+                                {activeSection === 'expenses' && (
+                                    <div>
+                                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                                            {getSectionIcon('credit-card')}
+                                            Configuración de Gastos
+                                        </h3>
+                                        <ExpenseSettings />
+                                    </div>
+                                )}
+
                                 {/* Configuraciones de Facturas */}
                                 {activeSection === 'invoice' && (
                                     <div>
@@ -11664,7 +11679,28 @@ Equipo Expertia Medical Solutions"
                                     <button
                                         type="button"
                                         className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                                        onClick={() => window.location.reload()}
+                                        onClick={() => {
+                                            const proceed = !hasUnsavedChanges || confirm('Tienes cambios sin guardar. ¿Deseas descartarlos y volver a la pantalla de bienvenida?');
+                                            if (!proceed) return;
+                                            try {
+                                                // Deshacer cambios locales restaurando desde appConfig persistida
+                                                if (typeof loadSettingsFromFirebase === 'function') {
+                                                    loadSettingsFromFirebase();
+                                                }
+                                                setHasUnsavedChanges(false);
+                                                // Volver a Bienvenida desde Admin Panel
+                                                if (typeof setActiveTab === 'function') {
+                                                    setActiveTab('users');
+                                                }
+                                                if (typeof setActiveView === 'function') {
+                                                    setActiveView('welcome');
+                                                } else if (typeof window.showWelcomeScreen === 'function') {
+                                                    window.showWelcomeScreen();
+                                                }
+                                            } catch (e) {
+                                                console.warn('Cancel fallback:', e);
+                                            }
+                                        }}
                                     >
                                         Cancelar
                                     </button>
@@ -12783,8 +12819,8 @@ Equipo Expertia Medical Solutions"
         function showAuthScreen() {
             const root = document.getElementById('root');
             root.innerHTML = `
-                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-width: 400px; width: 100%; margin: 1rem;">
+                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: url('./imagen_fondo_manos.webp') center/cover no-repeat fixed;">
+                    <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-width: 400px; width: 100%; margin: 1rem; margin-bottom: 15vh;">
                         <div style="text-align: center; margin-bottom: 2rem;">
                             <h1 style="font-size: 1.5rem; font-weight: bold; color: #1a202c; margin-bottom: 0.5rem;">Expertia CRM</h1>
                             <p style="color: #718096;">Bienvenido</p>
@@ -12838,7 +12874,7 @@ Equipo Expertia Medical Solutions"
         function showLoginScreen() {
             const root = document.getElementById('root');
             root.innerHTML = `
-                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: url('./data/bg-auth.jpg') center/cover no-repeat fixed;">
                     <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-width: 400px; width: 100%; margin: 1rem;">
                         <div style="text-align: center; margin-bottom: 2rem;">
                             <h1 style="font-size: 1.5rem; font-weight: bold; color: #1a202c; margin-bottom: 0.5rem;">Iniciar Sesión</h1>
@@ -12895,7 +12931,7 @@ Equipo Expertia Medical Solutions"
         function showRegisterScreen() {
             const root = document.getElementById('root');
             root.innerHTML = `
-                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: url('./data/bg-auth.jpg') center/cover no-repeat fixed;">
                     <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-width: 400px; width: 100%; margin: 1rem;">
                         <div style="text-align: center; margin-bottom: 2rem;">
                             <h1 style="font-size: 1.5rem; font-weight: bold; color: #1a202c; margin-bottom: 0.5rem;">Registrarse</h1>
@@ -13149,7 +13185,7 @@ Equipo Expertia Medical Solutions"
                 ">
                     <!-- Header con icono y gradiente sutil -->
                     <div style="
-                        background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%);
+                        background: rgba(0,0,0,0.6);
                         padding: 2rem 1.5rem 1rem 1.5rem;
                         text-align: center;
                         position: relative;
