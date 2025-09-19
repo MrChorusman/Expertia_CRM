@@ -12,7 +12,17 @@
       "docs/**",
       "README.md",
       "*.md",
-      "functions/**"
+      "functions/**",
+      "dist/**",
+      "archive/**",
+      "backup/**",
+      "**/*.exe",
+      "**/*.dmg",
+      "**/*.AppImage",
+      "**/*.zip",
+      "**/*.blockmap",
+      "**/win-unpacked/**",
+      "**/mac/**"
     ],
     "rewrites": [
       {
