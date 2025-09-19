@@ -8,7 +8,17 @@
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- PropTypes para Recharts -->
+    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
     <script src="./recharts.min.js"></script>
+    <script>
+        // Asegurar que PropTypes esté disponible globalmente
+        if (typeof window.PropTypes === 'undefined') {
+            console.warn('⚠️ PropTypes no disponible, cargando desde CDN...');
+        } else {
+            console.log('✅ PropTypes cargado correctamente');
+        }
+    </script>
     
     <!-- 🚀 MEJORA 3/4: Librerías para exportación Excel/PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -63,12 +73,12 @@
             console.log('Recharts disponible:', typeof window.Recharts !== 'undefined');
             console.log('Firebase disponible:', typeof window.firebase !== 'undefined');
             
-            // Inicialización mejorada de Recharts
-            if (typeof window.Recharts !== 'undefined') {
+            // Inicialización mejorada de Recharts con verificación de PropTypes
+            if (typeof window.Recharts !== 'undefined' && typeof window.PropTypes !== 'undefined') {
                 console.log('✅ Recharts cargado exitosamente desde archivo local');
                 window.rechartsAvailable = true;
             } else {
-                console.warn('⚠️ Recharts no disponible, usando gráficos fallback');
+                console.warn('⚠️ Recharts no disponible o PropTypes faltante, usando gráficos fallback');
                 window.rechartsAvailable = false;
             }
             
@@ -79,6 +89,479 @@
             }
 
             const { useState, useEffect, useMemo } = React;
+            
+            // Componente de Configuraciones de Gastos
+            function ExpenseSettings() {
+                const [expenseConfig, setExpenseConfig] = useState({
+                    categories: ['Alimentación', 'Transporte', 'Material de Oficina', 'Servicios', 'Equipamiento', 'Marketing', 'Formación', 'Otros'],
+                    subcategories: {
+                        'Alimentación': ['Comidas', 'Bebidas', 'Catering'],
+                        'Transporte': ['Gasolina', 'Taxi', 'Transporte público', 'Parking'],
+                        'Material de Oficina': ['Papelería', 'Equipos', 'Software'],
+                        'Servicios': ['Limpieza', 'Mantenimiento', 'Consultoría'],
+                        'Equipamiento': ['Mobiliario', 'Tecnología', 'Herramientas'],
+                        'Marketing': ['Publicidad', 'Eventos', 'Material promocional'],
+                        'Formación': ['Cursos', 'Certificaciones', 'Conferencias'],
+                        'Otros': ['Varios']
+                    },
+                    paymentTypes: ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque', 'Otros'],
+                    statuses: ['Pendiente', 'Aprobado', 'Rechazado', 'Pagado'],
+                    tags: ['Urgente', 'Recurrente', 'Importante', 'Reembolsable']
+                });
+                const [loading, setLoading] = useState(false);
+                const [saved, setSaved] = useState(false);
+                const [newCategory, setNewCategory] = useState('');
+                const [newSubcategory, setNewSubcategory] = useState('');
+                const [selectedCategory, setSelectedCategory] = useState('');
+                const [newPaymentType, setNewPaymentType] = useState('');
+                const [newStatus, setNewStatus] = useState('');
+                const [newTag, setNewTag] = useState('');
+
+                useEffect(() => {
+                    // Esperar a que Firebase esté disponible
+                    const checkFirebaseAndLoad = () => {
+                        if (window.authManager && window.authManager.app) {
+                            loadExpenseSettingsFromFirebase();
+                        } else {
+                            // Reintentar después de un breve delay
+                            setTimeout(checkFirebaseAndLoad, 100);
+                        }
+                    };
+                    checkFirebaseAndLoad();
+                }, []);
+
+                const loadExpenseSettingsFromFirebase = async () => {
+                    try {
+                        console.log('📥 Cargando configuraciones de gastos desde Firebase...');
+                        if (!window.authManager || !window.authManager.app) {
+                            console.log('⚠️ Firebase no disponible, usando configuraciones por defecto');
+                            return;
+                        }
+                        
+                        // Verificar que las funciones de Firebase y la instancia db global estén disponibles
+                        if (!window.firebase || !window.firebase.doc || !window.firebase.getDoc) {
+                            console.log('⚠️ Funciones de Firebase no disponibles, reintentando...');
+                            setTimeout(loadExpenseSettingsFromFirebase, 200);
+                            return;
+                        }
+                        const { doc, getDoc } = window.firebase;
+                        const db = window.firebaseDb;
+                        // Verificar que la instancia de Firestore global sea válida
+                        if (!db) {
+                            console.log('⚠️ Instancia global de Firestore no disponible, reintentando...');
+                            setTimeout(loadExpenseSettingsFromFirebase, 200);
+                            return;
+                        }
+                        
+                        const settingsRef = doc(db, 'system_settings', 'main');
+                        const settingsDoc = await getDoc(settingsRef);
+                        if (settingsDoc.exists()) {
+                            const data = settingsDoc.data();
+                            if (data.expenses) {
+                                setExpenseConfig(data.expenses);
+                                console.log('✅ Configuraciones de gastos cargadas desde Firebase');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ Error cargando configuraciones de gastos:', error);
+                    }
+                };
+
+                const saveExpenseSettingsToFirebase = async () => {
+                    try {
+                        setLoading(true);
+                        if (!window.authManager || !window.authManager.app) {
+                            throw new Error('Firebase no disponible');
+                        }
+                        
+                        // Verificar que las funciones de Firebase y la instancia db global estén disponibles
+                        if (!window.firebase || !window.firebase.doc || !window.firebase.setDoc) {
+                            throw new Error('Funciones de Firebase no disponibles');
+                        }
+                        
+                        const { doc, setDoc } = window.firebase;
+                        const db = window.firebaseDb;
+                        if (!db) {
+                            throw new Error('Instancia global de Firestore no disponible');
+                        }
+                        const settingsRef = doc(db, 'system_settings', 'main');
+                        // Usar setDoc con merge para crear/actualizar sin fallar si el documento no existe
+                        await setDoc(
+                            settingsRef,
+                            {
+                                expenses: expenseConfig,
+                                updatedAt: new Date(),
+                                updatedBy: window.authManager?.currentUser?.uid || null
+                            },
+                            { merge: true }
+                        );
+                        // Recargar configuración global para reflejar cambios inmediatamente en los formularios
+                        if (typeof window.loadAppConfig === 'function') {
+                            await window.loadAppConfig();
+                            console.log('🔄 Configuración global recargada tras guardar gastos');
+                        }
+                        setSaved(true);
+                        setHasUnsavedChanges(false);
+                        setTimeout(() => setSaved(false), 3000);
+                        console.log('✅ Configuraciones de gastos guardadas en Firebase');
+                        showNotification('Configuraciones Guardadas', 'Las configuraciones de gastos se han guardado correctamente', 'success');
+                    } catch (error) {
+                        console.error('❌ Error guardando configuraciones de gastos:', error);
+                        showNotification('Error', 'No se pudieron guardar las configuraciones de gastos', 'error');
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                const addCategory = () => {
+                    if (newCategory.trim() && !expenseConfig.categories.includes(newCategory.trim())) {
+                        setExpenseConfig(prev => ({
+                            ...prev,
+                            categories: [...prev.categories, newCategory.trim()]
+                        }));
+                        setNewCategory('');
+                    }
+                };
+
+                const removeCategory = (category) => {
+                    setExpenseConfig(prev => {
+                        const updated = { ...prev };
+                        updated.categories = updated.categories.filter(c => c !== category);
+                        if (updated.subcategories[category]) delete updated.subcategories[category];
+                        return updated;
+                    });
+                };
+
+                const addSubcategory = () => {
+                    if (selectedCategory && newSubcategory.trim()) {
+                        setExpenseConfig(prev => {
+                            const updated = { ...prev };
+                            if (!updated.subcategories[selectedCategory]) updated.subcategories[selectedCategory] = [];
+                            if (!updated.subcategories[selectedCategory].includes(newSubcategory.trim())) {
+                                updated.subcategories[selectedCategory].push(newSubcategory.trim());
+                            }
+                            return updated;
+                        });
+                        setNewSubcategory('');
+                    }
+                };
+
+                const removeSubcategory = (category, subcategory) => {
+                    setExpenseConfig(prev => {
+                        const updated = { ...prev };
+                        if (updated.subcategories[category]) {
+                            updated.subcategories[category] = updated.subcategories[category].filter(s => s !== subcategory);
+                        }
+                        return updated;
+                    });
+                };
+
+                const addPaymentType = () => {
+                    if (newPaymentType.trim() && !expenseConfig.paymentTypes.includes(newPaymentType.trim())) {
+                        setExpenseConfig(prev => ({
+                            ...prev,
+                            paymentTypes: [...prev.paymentTypes, newPaymentType.trim()]
+                        }));
+                        setNewPaymentType('');
+                    }
+                };
+
+                const removePaymentType = (paymentType) => {
+                    setExpenseConfig(prev => ({
+                        ...prev,
+                        paymentTypes: prev.paymentTypes.filter(pt => pt !== paymentType)
+                    }));
+                };
+
+                const addStatus = () => {
+                    if (newStatus.trim() && !expenseConfig.statuses.includes(newStatus.trim())) {
+                        setExpenseConfig(prev => ({
+                            ...prev,
+                            statuses: [...prev.statuses, newStatus.trim()]
+                        }));
+                        setNewStatus('');
+                    }
+                };
+
+                const removeStatus = (status) => {
+                    setExpenseConfig(prev => ({
+                        ...prev,
+                        statuses: prev.statuses.filter(s => s !== status)
+                    }));
+                };
+
+                const addTag = () => {
+                    if (newTag.trim() && !expenseConfig.tags.includes(newTag.trim())) {
+                        setExpenseConfig(prev => ({
+                            ...prev,
+                            tags: [...prev.tags, newTag.trim()]
+                        }));
+                        setNewTag('');
+                    }
+                };
+
+                const removeTag = (tag) => {
+                    setExpenseConfig(prev => ({
+                        ...prev,
+                        tags: prev.tags.filter(t => t !== tag)
+                    }));
+                };
+
+                return (
+                    <div className="space-y-6">
+                        {/* Botón de debug */}
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <h5 className="font-medium text-yellow-800 mb-2">Debug - Configuración de Gastos</h5>
+                            <button
+                                onClick={() => {
+                                    console.log('=== DEBUG EXPENSE CONFIG ===');
+                                    console.log('expenseConfig:', expenseConfig);
+                                    console.log('categorías:', expenseConfig.categories);
+                                    console.log('subcategorías:', expenseConfig.subcategories);
+                                    console.log('selectedCategory:', selectedCategory);
+                                }}
+                                className="px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700"
+                            >
+                                Ver en consola
+                            </button>
+                        </div>
+                        
+                        <div className="border border-gray-200 rounded-lg p-6">
+                            <h4 className="font-semibold text-gray-900 mb-4">Categorías de Gastos</h4>
+                            <div className="space-y-4">
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={newCategory}
+                                        onChange={(e) => setNewCategory(e.target.value)}
+                                        placeholder="Nueva categoría"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-transparent"
+                                    />
+                                    <button
+                                        onClick={addCategory}
+                                        className="px-4 py-2 bg-[#006666] text-white rounded-lg hover:bg-[#005555]"
+                                    >
+                                        Agregar
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {expenseConfig.categories.map(category => (
+                                        <div key={category} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                                            <span className="text-sm">{category}</span>
+                                            <button
+                                                onClick={() => removeCategory(category)}
+                                                className="text-red-600 hover:text-red-800 text-sm"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border border-gray-200 rounded-lg p-6">
+                            <h4 className="font-semibold text-gray-900 mb-4">Subcategorías</h4>
+                            <div className="space-y-4">
+                                <div className="flex gap-2">
+                                    <select
+                                        value={selectedCategory}
+                                        onChange={(e) => {
+                                            console.log('Categoría seleccionada:', e.target.value);
+                                            console.log('Subcategorías disponibles:', expenseConfig.subcategories[e.target.value]);
+                                            setSelectedCategory(e.target.value);
+                                        }}
+                                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-transparent"
+                                    >
+                                        <option value="">Selecciona una categoría</option>
+                                        {expenseConfig.categories.map(category => (
+                                            <option key={category} value={category}>{category}</option>
+                                        ))}
+                                    </select>
+                                    <input
+                                        type="text"
+                                        value={newSubcategory}
+                                        onChange={(e) => setNewSubcategory(e.target.value)}
+                                        placeholder="Nueva subcategoría"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-transparent"
+                                    />
+                                    <button
+                                        onClick={addSubcategory}
+                                        disabled={!selectedCategory}
+                                        className="px-4 py-2 bg-[#006666] text-white rounded-lg hover:bg-[#005555] disabled:opacity-50"
+                                    >
+                                        Agregar
+                                    </button>
+                                </div>
+                                
+                                {/* Mostrar información de debug */}
+                                {selectedCategory && (
+                                    <div className="text-sm text-gray-600 p-2 bg-blue-50 rounded">
+                                        Categoría seleccionada: <strong>{selectedCategory}</strong><br/>
+                                        Subcategorías: {expenseConfig.subcategories[selectedCategory] ? 
+                                            expenseConfig.subcategories[selectedCategory].length + ' encontradas' : 
+                                            'Ninguna encontrada'}
+                                    </div>
+                                )}
+                                
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {selectedCategory && expenseConfig.subcategories && expenseConfig.subcategories[selectedCategory] && expenseConfig.subcategories[selectedCategory].map(subcategory => (
+                                        <div key={subcategory} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                                            <span className="text-sm">{subcategory}</span>
+                                            <button
+                                                onClick={() => removeSubcategory(selectedCategory, subcategory)}
+                                                className="text-red-600 hover:text-red-800 text-sm"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedCategory && (!expenseConfig.subcategories[selectedCategory] || expenseConfig.subcategories[selectedCategory].length === 0) && (
+                                        <div className="col-span-full text-center text-gray-500 py-4">
+                                            No hay subcategorías para "{selectedCategory}". Agrega una nueva subcategoría.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border border-gray-200 rounded-lg p-6">
+                            <h4 className="font-semibold text-gray-900 mb-4">Tipos de Pago</h4>
+                            <div className="space-y-4">
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={newPaymentType}
+                                        onChange={(e) => setNewPaymentType(e.target.value)}
+                                        placeholder="Nuevo tipo de pago"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-transparent"
+                                    />
+                                    <button
+                                        onClick={addPaymentType}
+                                        className="px-4 py-2 bg-[#006666] text-white rounded-lg hover:bg-[#005555]"
+                                    >
+                                        Agregar
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {expenseConfig.paymentTypes.map(paymentType => (
+                                        <div key={paymentType} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                                            <span className="text-sm">{paymentType}</span>
+                                            <button
+                                                onClick={() => removePaymentType(paymentType)}
+                                                className="text-red-600 hover:text-red-800 text-sm"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border border-gray-200 rounded-lg p-6">
+                            <h4 className="font-semibold text-gray-900 mb-4">Estados</h4>
+                            <div className="space-y-4">
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={newStatus}
+                                        onChange={(e) => setNewStatus(e.target.value)}
+                                        placeholder="Nuevo estado"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-transparent"
+                                    />
+                                    <button
+                                        onClick={addStatus}
+                                        className="px-4 py-2 bg-[#006666] text-white rounded-lg hover:bg-[#005555]"
+                                    >
+                                        Agregar
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {expenseConfig.statuses.map(status => (
+                                        <div key={status} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                                            <span className="text-sm">{status}</span>
+                                            <button
+                                                onClick={() => removeStatus(status)}
+                                                className="text-red-600 hover:text-red-800 text-sm"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border border-gray-200 rounded-lg p-6">
+                            <h4 className="font-semibold text-gray-900 mb-4">Etiquetas</h4>
+                            <div className="space-y-4">
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={newTag}
+                                        onChange={(e) => setNewTag(e.target.value)}
+                                        placeholder="Nueva etiqueta"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-transparent"
+                                    />
+                                    <button
+                                        onClick={addTag}
+                                        className="px-4 py-2 bg-[#006666] text-white rounded-lg hover:bg-[#005555]"
+                                    >
+                                        Agregar
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {expenseConfig.tags.map(tag => (
+                                        <div key={tag} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                                            <span className="text-sm">{tag}</span>
+                                            <button
+                                                onClick={() => removeTag(tag)}
+                                                className="text-red-600 hover:text-red-800 text-sm"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button
+                                onClick={saveExpenseSettingsToFirebase}
+                                disabled={loading}
+                                className="px-6 py-3 bg-[#006666] text-white rounded-lg hover:bg-[#005555] disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {loading ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        Guardando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Guardar Configuraciones
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        {saved && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    <span className="text-green-800 font-medium">Configuraciones guardadas correctamente</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
             
             // Hacer Recharts opcional para evitar bloqueos
             let BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line;
@@ -392,6 +875,8 @@
             const InfoIcon = ({ width = 24, height = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
             const ArrowRightIcon = ({ width = 20, height = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>;
 
+            const CreditCardIcon = ({ width = 16, height = 16 }) => <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>;
+
             // --- Constantes de la aplicación ---
             const FUNNEL_TAGS = { 'Lead': 'bg-gray-200 text-gray-800', 'Primer Contacto': 'bg-blue-200 text-blue-800', 'Interesado': 'bg-cyan-200 text-cyan-800', 'Demo Realizada': 'bg-indigo-200 text-indigo-800', 'Negociación': 'bg-purple-200 text-purple-800', 'En Cierre': 'bg-orange-200 text-orange-800', 'Ganado': 'bg-green-200 text-green-800', 'Perdido': 'bg-red-200 text-red-800' };
             const CONTACT_PREFERENCES = { 'Email': <MailIcon />, 'Teléfono': <PhoneIcon />, 'WhatsApp': <MessageSquareIcon />, 'Visita Comercial': <BuildingIcon /> };
@@ -475,6 +960,7 @@
                 const [invoices, setInvoices] = useState([]);
                 const [products, setProducts] = useState([]);
                 const [offers, setOffers] = useState([]);
+                const [expenses, setExpenses] = useState([]);
                 const [activeView, setActiveView] = useState('welcome');
                 const [selectedItem, setSelectedItem] = useState(null);
                 const [isLoading, setIsLoading] = useState(true);
@@ -556,6 +1042,22 @@
                                     sources: ['Web', 'Teléfono', 'Email', 'Referencia', 'Presencial', 'Redes Sociales'],
                                     funnelStages: ['Lead', 'Contactado', 'Interesado', 'Propuesta', 'Negociación', 'Cliente', 'Perdido', 'Seguimiento'],
                                     priorities: ['Alta', 'Media', 'Baja']
+                                },
+                                expenses: {
+                                    categories: ['Alimentación', 'Transporte', 'Material de Oficina', 'Servicios', 'Equipamiento', 'Marketing', 'Formación', 'Otros'],
+                                    subcategories: {
+                                        'Alimentación': ['Comidas', 'Bebidas', 'Catering'],
+                                        'Transporte': ['Gasolina', 'Taxi', 'Transporte público', 'Parking'],
+                                        'Material de Oficina': ['Papelería', 'Equipos', 'Software'],
+                                        'Servicios': ['Limpieza', 'Mantenimiento', 'Consultoría'],
+                                        'Equipamiento': ['Mobiliario', 'Tecnología', 'Herramientas'],
+                                        'Marketing': ['Publicidad', 'Eventos', 'Material promocional'],
+                                        'Formación': ['Cursos', 'Certificaciones', 'Conferencias'],
+                                        'Otros': ['Varios']
+                                    },
+                                    paymentTypes: ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque', 'Otros'],
+                                    statuses: ['Pendiente', 'Aprobado', 'Rechazado', 'Pagado'],
+                                    tags: ['Urgente', 'Recurrente', 'Importante', 'Reembolsable']
                                 }
                             };
                             setAppConfig(defaultConfig);
@@ -578,6 +1080,22 @@
                                 sources: ['Web', 'Teléfono', 'Email', 'Referencia', 'Presencial', 'Redes Sociales'],
                                 funnelStages: ['Lead', 'Contactado', 'Interesado', 'Propuesta', 'Negociación', 'Cliente', 'Perdido', 'Seguimiento'],
                                 priorities: ['Alta', 'Media', 'Baja']
+                            },
+                            expenses: {
+                                categories: ['Alimentación', 'Transporte', 'Material de Oficina', 'Servicios', 'Equipamiento', 'Marketing', 'Formación', 'Otros'],
+                                subcategories: {
+                                    'Alimentación': ['Comidas', 'Bebidas', 'Catering'],
+                                    'Transporte': ['Gasolina', 'Taxi', 'Transporte público', 'Parking'],
+                                    'Material de Oficina': ['Papelería', 'Equipos', 'Software'],
+                                    'Servicios': ['Limpieza', 'Mantenimiento', 'Consultoría'],
+                                    'Equipamiento': ['Mobiliario', 'Tecnología', 'Herramientas'],
+                                    'Marketing': ['Publicidad', 'Eventos', 'Material promocional'],
+                                    'Formación': ['Cursos', 'Certificaciones', 'Conferencias'],
+                                    'Otros': ['Varios']
+                                },
+                                paymentTypes: ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque', 'Otros'],
+                                statuses: ['Pendiente', 'Aprobado', 'Rechazado', 'Pagado'],
+                                tags: ['Urgente', 'Recurrente', 'Importante', 'Reembolsable']
                             }
                         };
                         setAppConfig(fallbackConfig);
@@ -587,6 +1105,44 @@
                 // Función para obtener valores de configuración con fallback
                 const getConfigValue = (section, key, defaultValue) => {
                     return appConfig?.[section]?.[key] || defaultValue;
+                };
+                
+                // Funciones para obtener configuraciones de gastos dinámicamente
+                const getExpenseConfig = () => {
+                    const defaultSubcategories = {
+                        'Alimentación': ['Comidas', 'Bebidas', 'Catering'],
+                        'Transporte': ['Gasolina', 'Taxi', 'Transporte público', 'Parking'],
+                        'Material de Oficina': ['Papelería', 'Equipos', 'Software'],
+                        'Servicios': ['Limpieza', 'Mantenimiento', 'Consultoría'],
+                        'Equipamiento': ['Mobiliario', 'Tecnología', 'Herramientas'],
+                        'Marketing': ['Publicidad', 'Eventos', 'Material promocional'],
+                        'Formación': ['Cursos', 'Certificaciones', 'Conferencias'],
+                        'Otros': ['Varios']
+                    };
+                    
+                    return {
+                        categories: getConfigValue('expenses', 'categories', ['Alimentación', 'Transporte', 'Material de Oficina', 'Servicios', 'Equipamiento', 'Marketing', 'Formación', 'Otros']),
+                        subcategories: getConfigValue('expenses', 'subcategories', defaultSubcategories),
+                        paymentTypes: getConfigValue('expenses', 'paymentTypes', ['Efectivo', 'Transferencia', 'Tarjeta', 'Cheque', 'Otros']),
+                        statuses: getConfigValue('expenses', 'statuses', ['Pendiente', 'Aprobado', 'Rechazado', 'Pagado']),
+                        tags: getConfigValue('expenses', 'tags', ['Urgente', 'Recurrente', 'Importante', 'Reembolsable'])
+                    };
+                };
+
+                const getExpenseStatuses = () => {
+                    const statuses = getExpenseConfig().statuses;
+                    const statusClasses = {
+                        'Pendiente': 'bg-gray-200 text-gray-800',
+                        'Aprobado': 'bg-green-200 text-green-800',
+                        'Rechazado': 'bg-red-200 text-red-800',
+                        'Pagado': 'bg-blue-200 text-blue-800'
+                    };
+                    
+                    const result = {};
+                    statuses.forEach(status => {
+                        result[status] = statusClasses[status] || 'bg-gray-200 text-gray-800';
+                    });
+                    return result;
                 };
                 
                 // Función para obtener todas las configuraciones (incluye fallbacks)
@@ -870,6 +1426,104 @@
                 window.deleteSeries = deleteSeries;
                 window.getOfferCount = getOfferCount;
                 window.updateOfferCounter = updateOfferCounter;
+                
+                // Funciones para gestión de gastos
+                const loadExpenses = async () => {
+                    if (!db) return;
+                    
+                    try {
+                        const { collection, getDocs, query, orderBy } = window.firebase;
+                        const expensesRef = collection(db, 'expenses');
+                        
+                        // Verificar si orderBy está disponible
+                        if (typeof orderBy === 'function') {
+                            const q = query(expensesRef, orderBy('date', 'desc'));
+                            const snapshot = await getDocs(q);
+                            
+                            const expensesData = [];
+                            snapshot.forEach(doc => {
+                                expensesData.push({ id: doc.id, ...doc.data() });
+                            });
+                            
+                            setExpenses(expensesData);
+                            console.log(`✅ Cargados ${expensesData.length} gastos correctamente`);
+                        } else {
+                            // Fallback sin ordenación
+                            const snapshot = await getDocs(expensesRef);
+                            
+                            const expensesData = [];
+                            snapshot.forEach(doc => {
+                                expensesData.push({ id: doc.id, ...doc.data() });
+                            });
+                            
+                            // Ordenar localmente por fecha
+                            expensesData.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+                            
+                            setExpenses(expensesData);
+                            console.log(`✅ Cargados ${expensesData.length} gastos correctamente (ordenación local)`);
+                        }
+                    } catch (error) {
+                        console.error('❌ Error cargando gastos:', error);
+                        showNotification('Error', 'No se pudieron cargar los gastos', 'error');
+                    }
+                };
+
+                const saveExpense = async (expenseData) => {
+                    if (!db) return;
+                    
+                    try {
+                        const { collection, addDoc, updateDoc, doc } = window.firebase;
+                        const expensesRef = collection(db, 'expenses');
+                        
+                        if (expenseData.id) {
+                            // Actualizar gasto existente
+                            const expenseRef = doc(db, 'expenses', expenseData.id);
+                            await updateDoc(expenseRef, {
+                                ...expenseData,
+                                updatedAt: new Date().toISOString()
+                            });
+                            showNotification('Gasto Actualizado', 'El gasto se ha actualizado correctamente', 'success');
+                        } else {
+                            // Crear nuevo gasto
+                            await addDoc(expensesRef, {
+                                ...expenseData,
+                                createdAt: new Date().toISOString(),
+                                updatedAt: new Date().toISOString()
+                            });
+                            showNotification('Gasto Creado', 'El gasto se ha creado correctamente', 'success');
+                        }
+                        
+                        await loadExpenses();
+                        return true;
+                    } catch (error) {
+                        console.error('❌ Error guardando gasto:', error);
+                        showNotification('Error', 'No se pudo guardar el gasto', 'error');
+                        return false;
+                    }
+                };
+
+                const deleteExpense = async (expense) => {
+                    if (!db) return;
+                    
+                    try {
+                        const { doc, deleteDoc } = window.firebase;
+                        const expenseRef = doc(db, 'expenses', expense.id);
+                        await deleteDoc(expenseRef);
+                        
+                        showNotification('Gasto Eliminado', 'El gasto se ha eliminado correctamente', 'success');
+                        await loadExpenses();
+                    } catch (error) {
+                        console.error('❌ Error eliminando gasto:', error);
+                        showNotification('Error', 'No se pudo eliminar el gasto', 'error');
+                    }
+                };
+
+                // Hacer funciones de gastos disponibles globalmente
+                window.loadExpenses = loadExpenses;
+                window.saveExpense = saveExpense;
+                window.deleteExpense = deleteExpense;
+                window.getExpenseConfig = getExpenseConfig;
+                window.getExpenseStatuses = getExpenseStatuses;
 
                 // Función para mostrar confirmación personalizada
                 const showConfirm = (title, message, onConfirm, type = 'warning') => {
@@ -1024,6 +1678,7 @@
                         console.log('Condiciones cumplidas para cargar configuración - db:', !!db, 'user:', !!user);
                         loadAppConfig();
                         loadCounters();
+                        loadExpenses();
                     } else {
                         console.log('Esperando condiciones para cargar configuración - db:', !!db, 'user:', !!user);
                     }
@@ -1765,6 +2420,70 @@
                                 showConfirm={showConfirm}
                                 showNotification={showNotification}
                             />;
+                        case 'expenses': 
+                            return <ExpensesDashboard 
+                                expenses={expenses} 
+                                onAddExpense={() => { setSelectedItem(null); setActiveView('createExpense'); }} 
+                                onViewExpense={(expense) => { setSelectedItem(expense); setActiveView('viewExpense'); }} 
+                                onEditExpense={(expense) => { setSelectedItem(expense); setActiveView('editExpense'); }} 
+                                onDeleteExpense={(expense) => {
+                                    showConfirm(
+                                        'Eliminar Gasto',
+                                        `¿Estás seguro de que quieres eliminar el gasto "${expense.description}"? Esta acción no se puede deshacer.`,
+                                        async () => {
+                                            await deleteExpense(expense);
+                                        },
+                                        'danger'
+                                    );
+                                }}
+                                searchTerm={searchTerm} 
+                                setSearchTerm={setSearchTerm} 
+                                filterStatus={filterTag} 
+                                setFilterStatus={setFilterTag} 
+                            />;
+                        case 'createExpense': 
+                            return <ExpenseForm 
+                                expense={null}
+                                onSave={async (expenseData) => {
+                                    const success = await saveExpense(expenseData);
+                                    if (success) {
+                                        setActiveView('expenses');
+                                    }
+                                }} 
+                                onCancel={() => setActiveView('expenses')} 
+                                clients={clients}
+                                userProfile={userProfile}
+                            />;
+                        case 'editExpense': 
+                            return <ExpenseForm 
+                                expense={selectedItem}
+                                onSave={async (expenseData) => {
+                                    const success = await saveExpense(expenseData);
+                                    if (success) {
+                                        setActiveView('expenses');
+                                    }
+                                }} 
+                                onCancel={() => setActiveView('expenses')} 
+                                clients={clients}
+                                userProfile={userProfile}
+                            />;
+                        case 'viewExpense': 
+                            return <ExpenseDetail 
+                                expense={selectedItem} 
+                                onEdit={(expense) => { setSelectedItem(expense); setActiveView('editExpense'); }} 
+                                onDelete={(expense) => {
+                                    showConfirm(
+                                        'Eliminar Gasto',
+                                        `¿Estás seguro de que quieres eliminar el gasto "${expense.description}"? Esta acción no se puede deshacer.`,
+                                        async () => {
+                                            await deleteExpense(expense);
+                                            setActiveView('expenses');
+                                        },
+                                        'danger'
+                                    );
+                                }}
+                                onBack={() => setActiveView('expenses')} 
+                            />;
                         case 'createInvoice': 
                             return <InvoiceForm 
                                 clients={clients} 
@@ -2033,6 +2752,9 @@
                                     </span>
                                     <span onClick={() => setActiveView('accounting')} className={navItemClass('accounting')}>
                                         <DollarSignIcon /> Contabilidad
+                                    </span>
+                                    <span onClick={() => setActiveView('expenses')} className={navItemClass('expenses')}>
+                                        <CreditCardIcon width={16} height={16} /> Gastos
                                     </span>
                                     <span onClick={() => setActiveView('reports')} className={navItemClass('reports')}>
                                         <TrendingUpIcon width={16} height={16} /> Informes
@@ -4040,6 +4762,773 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
             }
             
             // === SISTEMA DE CONTABILIDAD COMPLETO ===
+            
+            // === SISTEMA DE GESTIÓN DE GASTOS COMPLETO ===
+            
+            // Componente principal del dashboard de gastos
+            function ExpensesDashboard({ expenses, onAddExpense, onViewExpense, onEditExpense, onDeleteExpense, searchTerm, setSearchTerm, filterStatus, setFilterStatus }) {
+                const [sortField, setSortField] = useState('date');
+                const [sortDirection, setSortDirection] = useState('desc');
+                const [viewMode, setViewMode] = useState('list'); // 'list', 'kanban', 'calendar'
+
+                // Obtener configuraciones dinámicas
+                const expenseConfig = getExpenseConfig();
+                const expenseStatuses = getExpenseStatuses();
+
+                // Obtener estados únicos para el filtro
+                const uniqueStatuses = useMemo(() => {
+                    const statuses = [...new Set(expenses.map(expense => expense.status).filter(Boolean))];
+                    return statuses.sort();
+                }, [expenses]);
+
+                // Función de ordenación
+                const sortedExpenses = useMemo(() => {
+                    return [...expenses].sort((a, b) => {
+                        let aValue = a[sortField];
+                        let bValue = b[sortField];
+                        
+                        if (sortField === 'date') {
+                            aValue = new Date(aValue);
+                            bValue = new Date(bValue);
+                        } else if (sortField === 'amount') {
+                            aValue = parseFloat(aValue) || 0;
+                            bValue = parseFloat(bValue) || 0;
+                        } else {
+                            aValue = String(aValue || '').toLowerCase();
+                            bValue = String(bValue || '').toLowerCase();
+                        }
+                        
+                        if (sortDirection === 'asc') {
+                            return aValue > bValue ? 1 : -1;
+                        } else {
+                            return aValue < bValue ? 1 : -1;
+                        }
+                    });
+                }, [expenses, sortField, sortDirection]);
+
+                // Filtrar gastos
+                const filteredExpenses = useMemo(() => {
+                    return sortedExpenses.filter(expense => {
+                        const matchesSearch = !searchTerm || 
+                            expense.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            expense.supplier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            expense.category?.toLowerCase().includes(searchTerm.toLowerCase());
+                        
+                        const matchesStatus = filterStatus === 'all' || expense.status === filterStatus;
+                        
+                        return matchesSearch && matchesStatus;
+                    });
+                }, [sortedExpenses, searchTerm, filterStatus]);
+
+                // Calcular estadísticas
+                const stats = useMemo(() => {
+                    const total = expenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+                    const pending = expenses.filter(exp => exp.status === 'Pendiente').reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+                    const approved = expenses.filter(exp => exp.status === 'Aprobado').reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+                    const paid = expenses.filter(exp => exp.status === 'Pagado').reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+                    
+                    return { total, pending, approved, paid };
+                }, [expenses]);
+
+                return (
+                    <div className="space-y-6">
+                        {/* Header con estadísticas */}
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h1 className="text-3xl font-bold text-gray-900">Gestión de Gastos</h1>
+                                <button
+                                    onClick={onAddExpense}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                                >
+                                    <PlusIcon width={16} height={16} />
+                                    Nuevo Gasto
+                                </button>
+                            </div>
+                            
+                            {/* Estadísticas */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div className="text-sm text-blue-600 font-medium">Total Gastos</div>
+                                    <div className="text-2xl font-bold text-blue-900">€{stats.total.toFixed(2)}</div>
+                                </div>
+                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                    <div className="text-sm text-yellow-600 font-medium">Pendientes</div>
+                                    <div className="text-2xl font-bold text-yellow-900">€{stats.pending.toFixed(2)}</div>
+                                </div>
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <div className="text-sm text-green-600 font-medium">Aprobados</div>
+                                    <div className="text-2xl font-bold text-green-900">€{stats.approved.toFixed(2)}</div>
+                                </div>
+                                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                    <div className="text-sm text-purple-600 font-medium">Pagados</div>
+                                    <div className="text-2xl font-bold text-purple-900">€{stats.paid.toFixed(2)}</div>
+                                </div>
+                            </div>
+
+                            {/* Filtros y búsqueda */}
+                            <div className="flex flex-col md:flex-row gap-4 mb-6">
+                                <div className="flex-1">
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar gastos..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <select
+                                        value={filterStatus}
+                                        onChange={(e) => setFilterStatus(e.target.value)}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        <option value="all">Todos los estados</option>
+                                        {uniqueStatuses.map(status => (
+                                            <option key={status} value={status}>{status}</option>
+                                        ))}
+                                    </select>
+                                    <select
+                                        value={`${sortField}-${sortDirection}`}
+                                        onChange={(e) => {
+                                            const [field, direction] = e.target.value.split('-');
+                                            setSortField(field);
+                                            setSortDirection(direction);
+                                        }}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        <option value="date-desc">Fecha (más reciente)</option>
+                                        <option value="date-asc">Fecha (más antigua)</option>
+                                        <option value="amount-desc">Importe (mayor)</option>
+                                        <option value="amount-asc">Importe (menor)</option>
+                                        <option value="description-asc">Descripción A-Z</option>
+                                        <option value="description-desc">Descripción Z-A</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Modo de vista */}
+                            <div className="flex gap-2 mb-4">
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`px-3 py-1 rounded-lg text-sm font-medium ${viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}
+                                >
+                                    Lista
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('kanban')}
+                                    className={`px-3 py-1 rounded-lg text-sm font-medium ${viewMode === 'kanban' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}
+                                >
+                                    Kanban
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('calendar')}
+                                    className={`px-3 py-1 rounded-lg text-sm font-medium ${viewMode === 'calendar' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}
+                                >
+                                    Calendario
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Lista de gastos */}
+                        {viewMode === 'list' && (
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proveedor</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Importe</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {filteredExpenses.map(expense => (
+                                                <tr key={expense.id} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {new Date(expense.date).toLocaleDateString('es-ES')}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-gray-900">
+                                                        <div className="max-w-xs truncate" title={expense.description}>
+                                                            {expense.description}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {expense.category}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {expense.supplier}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                        €{parseFloat(expense.amount || 0).toFixed(2)}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${expenseStatuses[expense.status] || 'bg-gray-200 text-gray-800'}`}>
+                                                            {expense.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {expense.userName}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        <div className="flex justify-end gap-2">
+                                                            <button
+                                                                onClick={() => onViewExpense(expense)}
+                                                                className="text-blue-600 hover:text-blue-900"
+                                                            >
+                                                                Ver
+                                                            </button>
+                                                            <button
+                                                                onClick={() => onEditExpense(expense)}
+                                                                className="text-green-600 hover:text-green-900"
+                                                            >
+                                                                Editar
+                                                            </button>
+                                                            <button
+                                                                onClick={() => onDeleteExpense(expense)}
+                                                                className="text-red-600 hover:text-red-900"
+                                                            >
+                                                                Eliminar
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {filteredExpenses.length === 0 && (
+                                    <div className="text-center py-12">
+                                        <CreditCardIcon width={48} height={48} className="mx-auto text-gray-400 mb-4" />
+                                        <h3 className="text-lg font-medium text-gray-900 mb-2">No hay gastos</h3>
+                                        <p className="text-gray-500 mb-4">Comienza registrando tu primer gasto</p>
+                                        <button
+                                            onClick={onAddExpense}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                                        >
+                                            Crear Primer Gasto
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Vista Kanban */}
+                        {viewMode === 'kanban' && (
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                {expenseConfig.statuses.map(status => (
+                                    <div key={status} className="bg-gray-50 rounded-lg p-4">
+                                        <h3 className="font-semibold text-gray-900 mb-4">{status}</h3>
+                                        <div className="space-y-3">
+                                            {filteredExpenses.filter(exp => exp.status === status).map(expense => (
+                                                <div key={expense.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div className="text-sm font-medium text-gray-900 truncate">
+                                                            {expense.description}
+                                                        </div>
+                                                        <div className="text-sm font-bold text-gray-900">
+                                                            €{parseFloat(expense.amount || 0).toFixed(2)}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 mb-2">
+                                                        {expense.category} • {expense.supplier}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 mb-3">
+                                                        {new Date(expense.date).toLocaleDateString('es-ES')}
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        <button
+                                                            onClick={() => onViewExpense(expense)}
+                                                            className="text-xs text-blue-600 hover:text-blue-900"
+                                                        >
+                                                            Ver
+                                                        </button>
+                                                        <button
+                                                            onClick={() => onEditExpense(expense)}
+                                                            className="text-xs text-green-600 hover:text-green-900"
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Vista Calendario */}
+                        {viewMode === 'calendar' && (
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                                <div className="text-center text-gray-500">
+                                    Vista de calendario en desarrollo...
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            // Componente de formulario de gastos
+            function ExpenseForm({ expense, onSave, onCancel, clients, userProfile }) {
+                const [formData, setFormData] = useState({
+                    date: expense?.date || new Date().toISOString().split('T')[0],
+                    description: expense?.description || '',
+                    amount: expense?.amount || '',
+                    category: expense?.category || '',
+                    subcategory: expense?.subcategory || '',
+                    paymentType: expense?.paymentType || '',
+                    supplier: expense?.supplier || '',
+                    clientId: expense?.clientId || '',
+                    notes: expense?.notes || '',
+                    status: expense?.status || 'Pendiente',
+                    tags: expense?.tags || []
+                });
+
+                const [errors, setErrors] = useState({});
+                const [isSubmitting, setIsSubmitting] = useState(false);
+
+                // Obtener configuraciones dinámicas
+                const expenseConfig = getExpenseConfig();
+
+                const handleSubmit = async (e) => {
+                    e.preventDefault();
+                    
+                    // Validación
+                    const newErrors = {};
+                    if (!formData.description.trim()) newErrors.description = 'La descripción es obligatoria';
+                    if (!formData.amount || parseFloat(formData.amount) <= 0) newErrors.amount = 'El importe debe ser mayor a 0';
+                    if (!formData.category) newErrors.category = 'La categoría es obligatoria';
+                    if (!formData.supplier.trim()) newErrors.supplier = 'El proveedor es obligatorio';
+
+                    if (Object.keys(newErrors).length > 0) {
+                        setErrors(newErrors);
+                        return;
+                    }
+
+                    setIsSubmitting(true);
+                    try {
+                        const expenseData = {
+                            ...formData,
+                            amount: parseFloat(formData.amount),
+                            userId: userProfile?.id || userProfile?.uid,
+                            userName: userProfile?.name,
+                            createdAt: expense?.createdAt || new Date().toISOString(),
+                            updatedAt: new Date().toISOString()
+                        };
+
+                        await onSave(expenseData);
+                    } catch (error) {
+                        console.error('Error guardando gasto:', error);
+                        showNotification('Error', 'No se pudo guardar el gasto', 'error');
+                    } finally {
+                        setIsSubmitting(false);
+                    }
+                };
+
+                const handleInputChange = (field, value) => {
+                    setFormData(prev => ({ ...prev, [field]: value }));
+                    if (errors[field]) {
+                        setErrors(prev => ({ ...prev, [field]: '' }));
+                    }
+                };
+
+                return (
+                    <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div className="px-6 py-4 border-b border-gray-200">
+                            <h2 className="text-2xl font-bold text-gray-900">
+                                {expense ? 'Editar Gasto' : 'Nuevo Gasto'}
+                            </h2>
+                        </div>
+                        
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Fecha */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Fecha del Gasto *
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.date}
+                                        onChange={(e) => handleInputChange('date', e.target.value)}
+                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.date ? 'border-red-500' : 'border-gray-300'}`}
+                                    />
+                                    {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
+                                </div>
+
+                                {/* Importe */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Importe (€) *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.amount}
+                                        onChange={(e) => handleInputChange('amount', e.target.value)}
+                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.amount ? 'border-red-500' : 'border-gray-300'}`}
+                                        placeholder="0.00"
+                                    />
+                                    {errors.amount && <p className="text-red-500 text-sm mt-1">{errors.amount}</p>}
+                                </div>
+
+                                {/* Descripción */}
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Descripción *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.description}
+                                        onChange={(e) => handleInputChange('description', e.target.value)}
+                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
+                                        placeholder="Descripción del gasto"
+                                    />
+                                    {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+                                </div>
+
+                                {/* Categoría */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Categoría *
+                                    </label>
+                                    <select
+                                        value={formData.category}
+                                        onChange={(e) => handleInputChange('category', e.target.value)}
+                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.category ? 'border-red-500' : 'border-gray-300'}`}
+                                    >
+                                        <option value="">Seleccionar categoría</option>
+                                        {expenseConfig.categories.map(category => (
+                                            <option key={category} value={category}>{category}</option>
+                                        ))}
+                                    </select>
+                                    {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category}</p>}
+                                </div>
+
+                                {/* Subcategoría */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Subcategoría
+                                    </label>
+                                    <select
+                                        value={formData.subcategory}
+                                        onChange={(e) => handleInputChange('subcategory', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        <option value="">Seleccionar subcategoría</option>
+                                        {formData.category && expenseConfig.subcategories[formData.category]?.map(subcategory => (
+                                            <option key={subcategory} value={subcategory}>{subcategory}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Tipo de Pago */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Tipo de Pago
+                                    </label>
+                                    <select
+                                        value={formData.paymentType}
+                                        onChange={(e) => handleInputChange('paymentType', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        <option value="">Seleccionar tipo</option>
+                                        {expenseConfig.paymentTypes.map(type => (
+                                            <option key={type} value={type}>{type}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Proveedor */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Proveedor/Beneficiario *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.supplier}
+                                        onChange={(e) => handleInputChange('supplier', e.target.value)}
+                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.supplier ? 'border-red-500' : 'border-gray-300'}`}
+                                        placeholder="Nombre del proveedor"
+                                    />
+                                    {errors.supplier && <p className="text-red-500 text-sm mt-1">{errors.supplier}</p>}
+                                </div>
+
+                                {/* Cliente (opcional) */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Cliente (opcional)
+                                    </label>
+                                    <select
+                                        value={formData.clientId}
+                                        onChange={(e) => handleInputChange('clientId', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        <option value="">Sin cliente</option>
+                                        {clients.map(client => (
+                                            <option key={client.id} value={client.id}>{client.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Estado */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Estado
+                                    </label>
+                                    <select
+                                        value={formData.status}
+                                        onChange={(e) => handleInputChange('status', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        {expenseConfig.statuses.map(status => (
+                                            <option key={status} value={status}>{status}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Notas */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Notas Adicionales
+                                </label>
+                                <textarea
+                                    value={formData.notes}
+                                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                                    rows={4}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Notas adicionales sobre el gasto..."
+                                />
+                            </div>
+
+                            {/* Botones */}
+                            <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={onCancel}
+                                    className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    {isSubmitting ? 'Guardando...' : (expense ? 'Actualizar Gasto' : 'Crear Gasto')}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                );
+            }
+
+            // Componente de detalle de gasto
+            function ExpenseDetail({ expense, onEdit, onDelete, onBack }) {
+                const expenseStatuses = getExpenseStatuses();
+                const settings = getSettings();
+
+                const handlePrintExpense = () => {
+                    const printWindow = window.open('', '_blank');
+                    const printContent = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>Gasto - ${expense.description}</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; margin: 20px; }
+                                .header { text-align: center; margin-bottom: 30px; }
+                                .company-info { margin-bottom: 20px; }
+                                .expense-details { margin-bottom: 30px; }
+                                .expense-details table { width: 100%; border-collapse: collapse; }
+                                .expense-details th, .expense-details td { 
+                                    border: 1px solid #ddd; padding: 8px; text-align: left; 
+                                }
+                                .expense-details th { background-color: #f8f9fa; }
+                                .total { font-weight: bold; font-size: 18px; margin-top: 20px; }
+                                .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="header">
+                                <h1>${settings.company?.name || 'Expertia Medical Solutions'}</h1>
+                                <p>${settings.company?.address || 'Dirección de la empresa'}</p>
+                                <p>Tel: ${settings.company?.phone || ''} | Email: ${settings.company?.email || ''}</p>
+                            </div>
+                            
+                            <div class="expense-details">
+                                <h2>Detalle de Gasto</h2>
+                                <table>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <td>${new Date(expense.date).toLocaleDateString('es-ES')}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Descripción</th>
+                                        <td>${expense.description}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Categoría</th>
+                                        <td>${expense.category}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Subcategoría</th>
+                                        <td>${expense.subcategory || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Proveedor</th>
+                                        <td>${expense.supplier}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Tipo de Pago</th>
+                                        <td>${expense.paymentType || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Estado</th>
+                                        <td>${expense.status}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Registrado por</th>
+                                        <td>${expense.userName}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Notas</th>
+                                        <td>${expense.notes || '-'}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <div class="total">
+                                <strong>Importe Total: €${parseFloat(expense.amount || 0).toFixed(2)}</strong>
+                            </div>
+                            
+                            <div class="footer">
+                                <p>Documento generado el ${new Date().toLocaleDateString('es-ES')} a las ${new Date().toLocaleTimeString('es-ES')}</p>
+                            </div>
+                        </body>
+                        </html>
+                    `;
+                    
+                    printWindow.document.write(printContent);
+                    printWindow.document.close();
+                    printWindow.print();
+                };
+
+                return (
+                    <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div className="px-6 py-4 border-b border-gray-200">
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-2xl font-bold text-gray-900">Detalle del Gasto</h2>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handlePrintExpense}
+                                        className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                                    >
+                                        Imprimir
+                                    </button>
+                                    <button
+                                        onClick={() => onEdit(expense)}
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                    >
+                                        Editar
+                                    </button>
+                                    <button
+                                        onClick={() => onDelete(expense)}
+                                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                                    >
+                                        Eliminar
+                                    </button>
+                                    <button
+                                        onClick={onBack}
+                                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                                    >
+                                        Volver
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Información General</h3>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Fecha:</span>
+                                            <span className="ml-2 text-gray-900">{new Date(expense.date).toLocaleDateString('es-ES')}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Descripción:</span>
+                                            <span className="ml-2 text-gray-900">{expense.description}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Categoría:</span>
+                                            <span className="ml-2 text-gray-900">{expense.category}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Subcategoría:</span>
+                                            <span className="ml-2 text-gray-900">{expense.subcategory || '-'}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Proveedor:</span>
+                                            <span className="ml-2 text-gray-900">{expense.supplier}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Tipo de Pago:</span>
+                                            <span className="ml-2 text-gray-900">{expense.paymentType || '-'}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Estado:</span>
+                                            <span className="ml-2">
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${expenseStatuses[expense.status] || 'bg-gray-200 text-gray-800'}`}>
+                                                    {expense.status}
+                                                </span>
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Registrado por:</span>
+                                            <span className="ml-2 text-gray-900">{expense.userName}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Importe:</span>
+                                            <span className="ml-2 text-lg font-bold text-gray-900">€{parseFloat(expense.amount || 0).toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Información Adicional</h3>
+                                    <div className="space-y-3">
+                                        {expense.notes && (
+                                            <div>
+                                                <span className="text-sm font-medium text-gray-500">Notas:</span>
+                                                <p className="mt-1 text-gray-900">{expense.notes}</p>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Fecha de creación:</span>
+                                            <span className="ml-2 text-gray-900">{new Date(expense.createdAt).toLocaleDateString('es-ES')}</span>
+                                        </div>
+                                        {expense.updatedAt && expense.updatedAt !== expense.createdAt && (
+                                            <div>
+                                                <span className="text-sm font-medium text-gray-500">Última actualización:</span>
+                                                <span className="ml-2 text-gray-900">{new Date(expense.updatedAt).toLocaleDateString('es-ES')}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
             function AccountingDashboard({ invoices, clients, onCreateInvoice, onViewInvoice, onDeleteInvoice, showConfirm, showNotification }) {
                 // Estados para filtros y ordenación
                 const [searchTerm, setSearchTerm] = useState('');
@@ -6343,8 +7832,29 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                         return () => clearTimeout(timer);
                     }, []);
 
-                    const maxValue = Math.max(...data.map(d => d.Ventas));
-                    const totalValue = data.reduce((sum, item) => sum + item.Ventas, 0);
+                    // Validar datos
+                    if (!data || !Array.isArray(data) || data.length === 0) {
+                        return (
+                            <div className="bg-white p-6 rounded-lg shadow-lg">
+                                <h3 className="text-xl font-semibold mb-4 text-gray-800">{title}</h3>
+                                <p className="text-gray-500 text-center py-8">No hay datos disponibles</p>
+                            </div>
+                        );
+                    }
+
+                    // Filtrar datos válidos
+                    const validData = data.filter(d => d && d.Ventas && !isNaN(d.Ventas));
+                    if (validData.length === 0) {
+                        return (
+                            <div className="bg-white p-6 rounded-lg shadow-lg">
+                                <h3 className="text-xl font-semibold mb-4 text-gray-800">{title}</h3>
+                                <p className="text-gray-500 text-center py-8">No hay datos válidos disponibles</p>
+                            </div>
+                        );
+                    }
+
+                    const maxValue = Math.max(...validData.map(d => d.Ventas));
+                    const totalValue = validData.reduce((sum, item) => sum + item.Ventas, 0);
                     
                     return (
                         <div className={`bg-white p-6 rounded-lg shadow-lg transition-all duration-500 transform ${
@@ -6361,7 +7871,7 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                             </h3>
                             
                             <div className="space-y-3">
-                                {data.slice(0, 6).map((item, index) => {
+                                {validData.slice(0, 6).map((item, index) => {
                                     const percentage = (item.Ventas / maxValue) * 100;
                                     const isHovered = hoveredIndex === index;
                                     const marketShare = ((item.Ventas / totalValue) * 100).toFixed(1);
@@ -6445,11 +7955,11 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                             </div>
                             
                             {/* Añadir estilos de animación */}
-                            <style jsx>{`
-                                ${data.map((_, index) => `
+                            <style>{`
+                                ${validData.map((_, index) => `
                                     @keyframes growBar-${index} {
                                         from { width: 0%; }
-                                        to { width: ${(data[index].Ventas / maxValue) * 100}%; }
+                                        to { width: ${(validData[index].Ventas / maxValue) * 100}%; }
                                     }
                                 `).join('')}
                             `}</style>
@@ -6622,7 +8132,7 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                                 </div>
                             </div>
                             
-                            <style jsx>{`
+                            <style>{`
                                 @keyframes fadeInSegment {
                                     from { opacity: 0; transform: scale(0.8); }
                                     to { opacity: 1; transform: scale(1); }
@@ -6642,19 +8152,38 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                         return () => clearTimeout(timer);
                     }, []);
 
-                    if (!data || data.length === 0) return null;
+                    // Validar datos
+                    if (!data || !Array.isArray(data) || data.length === 0) {
+                        return (
+                            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                                <h3 className="text-lg font-medium mb-4 text-gray-800">{title}</h3>
+                                <p className="text-gray-500 text-center py-8">No hay datos disponibles</p>
+                            </div>
+                        );
+                    }
 
-                    const maxValue = Math.max(...data.map(d => d.Ventas));
-                    const minValue = Math.min(...data.map(d => d.Ventas));
-                    const range = maxValue - minValue;
+                    // Filtrar datos válidos
+                    const validData = data.filter(d => d && d.Ventas && !isNaN(d.Ventas));
+                    if (validData.length === 0) {
+                        return (
+                            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                                <h3 className="text-lg font-medium mb-4 text-gray-800">{title}</h3>
+                                <p className="text-gray-500 text-center py-8">No hay datos válidos disponibles</p>
+                            </div>
+                        );
+                    }
+
+                    const maxValue = Math.max(...validData.map(d => d.Ventas));
+                    const minValue = Math.min(...validData.map(d => d.Ventas));
+                    const range = maxValue - minValue || 1; // Evitar división por cero
                     
                     const createPath = () => {
                         const width = 280;
                         const height = 120;
                         const padding = 20;
                         
-                        return data.map((item, index) => {
-                            const x = padding + (index * (width - 2 * padding)) / (data.length - 1);
+                        return validData.map((item, index) => {
+                            const x = padding + (index * (width - 2 * padding)) / (validData.length - 1);
                             const y = padding + ((maxValue - item.Ventas) / range) * (height - 2 * padding);
                             return { x, y, value: item.Ventas, name: item.name };
                         });
@@ -8505,6 +10034,7 @@ Equipo Expertia Medical Solutions"
                                     >
                                         Configuración del Sistema
                                     </button>
+                                    
                                 </nav>
                             </div>
                             
@@ -8689,6 +10219,8 @@ Equipo Expertia Medical Solutions"
                                         <SystemSettings />
                                     </div>
                                 )}
+                                
+                                
                             </div>
                         </div>
                         
@@ -8742,6 +10274,7 @@ Equipo Expertia Medical Solutions"
             // Componente de Configuraciones del Sistema
             function SystemSettings() {
                 const [activeSection, setActiveSection] = useState('company');
+                const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
                 const [settings, setSettings] = useState({
                     // Configuraciones de empresa
                     company: {
@@ -8874,6 +10407,7 @@ Equipo Expertia Medical Solutions"
                             [key]: value
                         }
                     }));
+                    setHasUnsavedChanges(true);
                 };
                 
                 const handleSave = async () => {
@@ -8945,6 +10479,7 @@ Equipo Expertia Medical Solutions"
                     { id: 'security', label: 'Seguridad', icon: 'shield' },
                     { id: 'notifications', label: 'Notificaciones', icon: 'bell' },
                     { id: 'integrations', label: 'Integraciones', icon: 'plug' },
+                    { id: 'expenses', label: 'Gastos', icon: 'credit-card' },
                     { id: 'products', label: 'Productos', icon: 'package' },
                     { id: 'sales', label: 'Ventas', icon: 'trending-up' },
                     { id: 'invoice', label: 'Facturación', icon: 'file-text' },
@@ -8986,6 +10521,12 @@ Equipo Expertia Medical Solutions"
                         'file-text': (
                             <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"/>
+                            </svg>
+                        ),
+                        'credit-card': (
+                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M3 4h14a2 2 0 012 2v1H1V6a2 2 0 012-2z"/>
+                                <path d="M1 9h18v5a2 2 0 01-2 2H3a2 2 0 01-2-2V9zm3 3h4a1 1 0 010 2H4a1 1 0 110-2z"/>
                             </svg>
                         ),
                         database: (
@@ -9889,6 +11430,17 @@ Equipo Expertia Medical Solutions"
                                     </div>
                                 )}
                                 
+                                {/* Configuración de Gastos (movida dentro de Configuración del Sistema) */}
+                                {activeSection === 'expenses' && (
+                                    <div>
+                                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                                            {getSectionIcon('credit-card')}
+                                            Configuración de Gastos
+                                        </h3>
+                                        <ExpenseSettings />
+                                    </div>
+                                )}
+
                                 {/* Configuraciones de Facturas */}
                                 {activeSection === 'invoice' && (
                                     <div>
@@ -10127,7 +11679,28 @@ Equipo Expertia Medical Solutions"
                                     <button
                                         type="button"
                                         className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                                        onClick={() => window.location.reload()}
+                                        onClick={() => {
+                                            const proceed = !hasUnsavedChanges || confirm('Tienes cambios sin guardar. ¿Deseas descartarlos y volver a la pantalla de bienvenida?');
+                                            if (!proceed) return;
+                                            try {
+                                                // Deshacer cambios locales restaurando desde appConfig persistida
+                                                if (typeof loadSettingsFromFirebase === 'function') {
+                                                    loadSettingsFromFirebase();
+                                                }
+                                                setHasUnsavedChanges(false);
+                                                // Volver a Bienvenida desde Admin Panel
+                                                if (typeof setActiveTab === 'function') {
+                                                    setActiveTab('users');
+                                                }
+                                                if (typeof setActiveView === 'function') {
+                                                    setActiveView('welcome');
+                                                } else if (typeof window.showWelcomeScreen === 'function') {
+                                                    window.showWelcomeScreen();
+                                                }
+                                            } catch (e) {
+                                                console.warn('Cancel fallback:', e);
+                                            }
+                                        }}
                                     >
                                         Cancelar
                                     </button>
@@ -11152,32 +12725,7 @@ Equipo Expertia Medical Solutions"
                     console.log('🔧 AuthManager disponible con métodos:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.authManager)));
                 }
                 
-                // Cargar Firebase Analyzer después de que AuthManager esté disponible
-                if (!window.FirebaseAnalyzer) {
-                    console.log('🔍 Cargando Firebase Analyzer...');
-                    const analyzerScript = document.createElement('script');
-                    analyzerScript.src = `./firebase-analyzer.js?t=${Date.now()}`;
-                    document.head.appendChild(analyzerScript);
-                    
-                    await new Promise((resolve) => {
-                        const timeout = setTimeout(() => {
-                            console.log('⚠️ Firebase Analyzer no disponible, continuando sin él');
-                            resolve();
-                        }, 2000); // Timeout de 2 segundos
-                        
-                        analyzerScript.onload = () => {
-                            clearTimeout(timeout);
-                            console.log('✅ Firebase Analyzer cargado');
-                            resolve();
-                        };
-                        
-                        analyzerScript.onerror = () => {
-                            clearTimeout(timeout);
-                            console.log('⚠️ Error cargando Firebase Analyzer, continuando sin él');
-                            resolve();
-                        };
-                    });
-                }
+                // Firebase Analyzer movido a archive/tools/ para limpieza del código principal
                 
                 // Inicializar autenticación
                 await window.authManager.init();
@@ -11271,8 +12819,8 @@ Equipo Expertia Medical Solutions"
         function showAuthScreen() {
             const root = document.getElementById('root');
             root.innerHTML = `
-                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-width: 400px; width: 100%; margin: 1rem;">
+                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: url('./imagen_fondo_manos.webp') center/cover no-repeat fixed;">
+                    <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-width: 400px; width: 100%; margin: 1rem; margin-bottom: 15vh;">
                         <div style="text-align: center; margin-bottom: 2rem;">
                             <h1 style="font-size: 1.5rem; font-weight: bold; color: #1a202c; margin-bottom: 0.5rem;">Expertia CRM</h1>
                             <p style="color: #718096;">Bienvenido</p>
@@ -11326,7 +12874,7 @@ Equipo Expertia Medical Solutions"
         function showLoginScreen() {
             const root = document.getElementById('root');
             root.innerHTML = `
-                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: url('./data/bg-auth.jpg') center/cover no-repeat fixed;">
                     <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-width: 400px; width: 100%; margin: 1rem;">
                         <div style="text-align: center; margin-bottom: 2rem;">
                             <h1 style="font-size: 1.5rem; font-weight: bold; color: #1a202c; margin-bottom: 0.5rem;">Iniciar Sesión</h1>
@@ -11383,7 +12931,7 @@ Equipo Expertia Medical Solutions"
         function showRegisterScreen() {
             const root = document.getElementById('root');
             root.innerHTML = `
-                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: url('./data/bg-auth.jpg') center/cover no-repeat fixed;">
                     <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-width: 400px; width: 100%; margin: 1rem;">
                         <div style="text-align: center; margin-bottom: 2rem;">
                             <h1 style="font-size: 1.5rem; font-weight: bold; color: #1a202c; margin-bottom: 0.5rem;">Registrarse</h1>
@@ -11637,7 +13185,7 @@ Equipo Expertia Medical Solutions"
                 ">
                     <!-- Header con icono y gradiente sutil -->
                     <div style="
-                        background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%);
+                        background: rgba(0,0,0,0.6);
                         padding: 2rem 1.5rem 1rem 1.5rem;
                         text-align: center;
                         position: relative;
@@ -12652,6 +14200,7 @@ Equipo Expertia Medical Solutions"
         }
         */
         
+
         // Se llama a la función de inicialización después de que la ventana completa se haya cargado.
         window.onload = initAuthAndApp;
     </script>
