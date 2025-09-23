@@ -2669,7 +2669,6 @@
                             <div className="text-center mb-8">
                                 <h1 className="text-3xl font-bold text-gray-900 mb-2">¡Bienvenido, {userProfile?.name}!</h1>
                                 <p className="text-lg text-gray-600">{currentDate}</p>
-                                <p className="text-sm text-gray-500 mt-2">Sistema CRM - Expertia Medical Solutions</p>
                             </div>
                             
                             {/* Métricas principales */}
@@ -2750,15 +2749,8 @@
                             {/* Pie de la pantalla de bienvenida */}
                             <div className="text-center mt-8 py-6">
                                 <p className="text-sm text-gray-500">
-                                    Expertia Medical Solutions - Sistema CRM para equipos médicos
+                                    Expertia Business Suite - Sistema CRM para equipos médicos
                                 </p>
-                                <button 
-                                    onClick={() => onNavigate('dashboard')}
-                                    className="mt-4 inline-flex items-center px-6 py-2 bg-[#006666] text-white rounded-md hover:bg-[#005555] transition-colors"
-                                >
-                                    <BarChartIcon width={20} height={20} className="mr-2" />
-                                    Ir al Dashboard Principal
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -3257,6 +3249,8 @@
                     lastContact: client.lastContact || new Date().toISOString().split('T')[0],
                     // Nuevos campos
                     nif: client.nif || '',
+                    cifNifType: client.cifNifType || 'NIF',
+                    cifNifNumber: client.cifNifNumber || '',
                     website: client.website || '',
                     sector: client.sector || '',
                     employeeCount: client.employeeCount || '',
@@ -3399,6 +3393,35 @@
                                 <FormField label="Empresa/Clínica" name="company" value={formData.company} onChange={handleChange} required />
                                 <FormField label="Email" name="email" type="email" value={formData.email} onChange={handleChange} required />
                                 <FormField label="Teléfono" name="phone" value={formData.phone} onChange={handleChange} />
+                                
+                                {/* Campo CIF/NIF */}
+                                <div className="md:col-span-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Tipo de Identificación
+                                            </label>
+                                            <select
+                                                name="cifNifType"
+                                                value={formData.cifNifType}
+                                                onChange={handleChange}
+                                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#006666] focus:ring-[#006666] sm:text-sm p-3"
+                                            >
+                                                <option value="NIF">NIF</option>
+                                                <option value="CIF">CIF</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <FormField 
+                                                label={`Número de ${formData.cifNifType}`} 
+                                                name="cifNifNumber" 
+                                                value={formData.cifNifNumber} 
+                                                onChange={handleChange}
+                                                placeholder={`Introduce el ${formData.cifNifType}`}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </fieldset>
 
                             <fieldset className="border p-4 rounded-md">
@@ -6909,7 +6932,8 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                     <div class="client-details">
                                         <h4>Facturar a:</h4>
                                         ${client ? `
-                                            <p><strong>${client.clinic || client.name}</strong></p>
+                                            <p><strong>${client.company || client.name}</strong></p>
+                                            ${client.cifNifType && client.cifNifNumber ? `<p><strong>${client.cifNifType}:</strong> ${client.cifNifNumber}</p>` : ''}
                                             <p>${client.address || 'Dirección no especificada'}</p>
                                             <p>${client.postalCode || ''} ${client.city || ''}</p>
                                             <p>Att: ${client.name}</p>
@@ -7031,6 +7055,7 @@ Detalles de la factura:
 - Fecha: ${invoice.invoiceDate}
 - Importe: ${(invoice.total || 0).toFixed(2)} €
 - Estado: ${invoice.status}
+${client.cifNifType && client.cifNifNumber ? `- ${client.cifNifType}: ${client.cifNifNumber}` : ''}
 
 Si tiene alguna pregunta sobre esta factura, no dude en contactarnos.
 
@@ -7070,7 +7095,12 @@ Website: ${settings.company.website} `;
                                 <h4 className="font-semibold text-gray-600 mb-2">Facturar a:</h4>
                                 {client ? (
                                     <>
-                                        <p className="font-bold">{client.clinic}</p>
+                                        <p className="font-bold">{client.company}</p>
+                                        {client.cifNifType && client.cifNifNumber && (
+                                            <p className="text-sm text-gray-600">
+                                                {client.cifNifType}: {client.cifNifNumber}
+                                            </p>
+                                        )}
                                         <p>{formatAddress(client.address)}</p>
                                         <p>{client.postalCode} {client.city}</p>
                                         <p>Att: {client.name}</p>
@@ -13317,7 +13347,7 @@ Equipo Expertia Medical Solutions"
                                         </svg>
                                     </button>
                                 </div>
-                            </div>
+                                </div>
                             
                             <!-- Recordar usuario -->
                             <div style="display: flex; align-items: center; margin-bottom: 1.5rem;">
@@ -13416,14 +13446,14 @@ Equipo Expertia Medical Solutions"
                             <div style="margin-bottom: 1.5rem;">
                                 <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Contraseña</label>
                                 <div class="password-toggle-container">
-                                    <input 
-                                        type="password" 
-                                        id="auth-password" 
-                                        required
+                                <input 
+                                    type="password" 
+                                    id="auth-password" 
+                                    required
                                         class="password-input"
-                                        style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; box-sizing: border-box;"
-                                        placeholder="Tu contraseña"
-                                    >
+                                    style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; box-sizing: border-box;"
+                                    placeholder="Tu contraseña"
+                                >
                                     <button 
                                         type="button" 
                                         class="password-toggle-btn"
@@ -13511,17 +13541,17 @@ Equipo Expertia Medical Solutions"
                             <div style="margin-bottom: 1.5rem;">
                                 <label style="display: block; font-size: 0.9rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Contraseña</label>
                                 <div class="password-toggle-container">
-                                    <input 
-                                        type="password" 
-                                        id="auth-password" 
-                                        required
+                                <input 
+                                    type="password" 
+                                    id="auth-password" 
+                                    required
                                         class="password-input"
                                         style="width: 100%; padding: 0.875rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; box-sizing: border-box; transition: border-color 0.3s ease;"
-                                        placeholder="Mínimo 6 caracteres"
+                                    placeholder="Mínimo 6 caracteres"
                                         onfocus="this.style.borderColor='#10b981'; clearPasswordError();"
                                         onblur="this.style.borderColor='#d1d5db'"
                                         oninput="clearPasswordError();"
-                                    >
+                                >
                                     <button 
                                         type="button" 
                                         class="password-toggle-btn"
@@ -13540,17 +13570,17 @@ Equipo Expertia Medical Solutions"
                             <div style="margin-bottom: 1.5rem;">
                                 <label style="display: block; font-size: 0.9rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Confirmar Contraseña</label>
                                 <div class="password-toggle-container">
-                                    <input 
-                                        type="password" 
-                                        id="auth-password-confirm" 
-                                        required
+                                <input 
+                                    type="password" 
+                                    id="auth-password-confirm" 
+                                    required
                                         class="password-input"
                                         style="width: 100%; padding: 0.875rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; box-sizing: border-box; transition: border-color 0.3s ease;"
-                                        placeholder="Repite tu contraseña"
+                                    placeholder="Repite tu contraseña"
                                         onfocus="this.style.borderColor='#10b981'; clearPasswordError();"
                                         onblur="this.style.borderColor='#d1d5db'"
                                         oninput="clearPasswordError();"
-                                    >
+                                >
                                     <button 
                                         type="button" 
                                         class="password-toggle-btn"
@@ -13803,10 +13833,10 @@ Equipo Expertia Medical Solutions"
                 
                 // Verificar si el email se envió correctamente
                 showAuthStatus('[OK]  Cuenta creada. Se ha enviado un email de verificación a ' + sanitizedEmail + '. Por favor, verifica tu correo antes de continuar.', 'success');
-                
-                // Mostrar pantalla de verificación
-                showEmailVerificationScreen(sanitizedEmail);
-                return;
+                    
+                    // Mostrar pantalla de verificación
+                    showEmailVerificationScreen(sanitizedEmail);
+                    return;
                 
                 // Obtener perfil para mostrar información del rol
                 const userProfile = await window.authManager.getUserProfile();
