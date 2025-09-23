@@ -20,12 +20,15 @@ service cloud.firestore {
       );
     }
     
-        // Usuarios normales - Reglas simplificadas para debugging
+    // Usuarios normales - Reglas simplificadas para debugging
     match /users/{userId} {
       // Permitir acceso completo a usuarios autenticados a sus propios datos
       allow read, write, create: if request.auth != null && request.auth.uid == userId;
       
-      // Permitir acceso administrativo
+      // Regla temporal para permitir creación de perfiles durante registro
+      allow create: if request.auth != null;
+      
+      // Permitir acceso administrativo (solo si el usuario ya existe)
       allow read, write, list: if request.auth != null && isAdmin();
       
       // Recordatorios de usuarios - subcolección

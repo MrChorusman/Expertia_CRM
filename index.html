@@ -14,9 +14,9 @@
     <script>
         // Asegurar que PropTypes esté disponible globalmente
         if (typeof window.PropTypes === 'undefined') {
-            console.warn('⚠️ PropTypes no disponible, cargando desde CDN...');
+            console.warn('[WARNING]  PropTypes no disponible, cargando desde CDN...');
         } else {
-            console.log('✅ PropTypes cargado correctamente');
+            console.log('[OK]  PropTypes cargado correctamente');
         }
     </script>
     
@@ -36,12 +36,42 @@
             #invoice-printable, #invoice-printable * { visibility: visible; }
             #invoice-printable { position: absolute; left: 0; top: 0; width: 100%; }
         }
+        
+        /* Estilos para toggle de contraseña */
+        .password-toggle-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .password-toggle-btn {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            color: #6b7280;
+            font-size: 18px;
+            transition: color 0.3s ease;
+            z-index: 10;
+        }
+        
+        .password-toggle-btn:hover {
+            color: #374151;
+        }
+        
+        .password-input {
+            padding-right: 45px !important;
+        }
     </style>
 </head>
 <body>
     <div id="root">
         <div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family: Inter, sans-serif; color: #4A5568;">
-            Cargando Expertia CRM...
+            Cargando Expertia Business Suite, un momento por favor...
         </div>
     </div>
 
@@ -75,10 +105,10 @@
             
             // Inicialización mejorada de Recharts con verificación de PropTypes
             if (typeof window.Recharts !== 'undefined' && typeof window.PropTypes !== 'undefined') {
-                console.log('✅ Recharts cargado exitosamente desde archivo local');
+                console.log('[OK]  Recharts cargado exitosamente desde archivo local');
                 window.rechartsAvailable = true;
             } else {
-                console.warn('⚠️ Recharts no disponible o PropTypes faltante, usando gráficos fallback');
+                console.warn('[WARNING]  Recharts no disponible o PropTypes faltante, usando gráficos fallback');
                 window.rechartsAvailable = false;
             }
             
@@ -134,13 +164,13 @@
                     try {
                         console.log('📥 Cargando configuraciones de gastos desde Firebase...');
                         if (!window.authManager || !window.authManager.app) {
-                            console.log('⚠️ Firebase no disponible, usando configuraciones por defecto');
+                            console.log('[WARNING]  Firebase no disponible, usando configuraciones por defecto');
                             return;
                         }
                         
                         // Verificar que las funciones de Firebase y la instancia db global estén disponibles
                         if (!window.firebase || !window.firebase.doc || !window.firebase.getDoc) {
-                            console.log('⚠️ Funciones de Firebase no disponibles, reintentando...');
+                            console.log('[WARNING]  Funciones de Firebase no disponibles, reintentando...');
                             setTimeout(loadExpenseSettingsFromFirebase, 200);
                             return;
                         }
@@ -148,7 +178,7 @@
                         const db = window.firebaseDb;
                         // Verificar que la instancia de Firestore global sea válida
                         if (!db) {
-                            console.log('⚠️ Instancia global de Firestore no disponible, reintentando...');
+                            console.log('[WARNING]  Instancia global de Firestore no disponible, reintentando...');
                             setTimeout(loadExpenseSettingsFromFirebase, 200);
                             return;
                         }
@@ -159,11 +189,11 @@
                             const data = settingsDoc.data();
                             if (data.expenses) {
                                 setExpenseConfig(data.expenses);
-                                console.log('✅ Configuraciones de gastos cargadas desde Firebase');
+                                console.log('[OK]  Configuraciones de gastos cargadas desde Firebase');
                             }
                         }
                     } catch (error) {
-                        console.error('❌ Error cargando configuraciones de gastos:', error);
+                        console.error('[ERROR]  Error cargando configuraciones de gastos:', error);
                     }
                 };
 
@@ -198,15 +228,15 @@
                         // Recargar configuración global para reflejar cambios inmediatamente en los formularios
                         if (typeof window.loadAppConfig === 'function') {
                             await window.loadAppConfig();
-                            console.log('🔄 Configuración global recargada tras guardar gastos');
+                            console.log('[INFO]  Configuración global recargada tras guardar gastos');
                         }
                         setSaved(true);
                         setHasUnsavedChanges(false);
                         setTimeout(() => setSaved(false), 3000);
-                        console.log('✅ Configuraciones de gastos guardadas en Firebase');
+                        console.log('[OK]  Configuraciones de gastos guardadas en Firebase');
                         showNotification('Configuraciones Guardadas', 'Las configuraciones de gastos se han guardado correctamente', 'success');
                     } catch (error) {
-                        console.error('❌ Error guardando configuraciones de gastos:', error);
+                        console.error('[ERROR]  Error guardando configuraciones de gastos:', error);
                         showNotification('Error', 'No se pudieron guardar las configuraciones de gastos', 'error');
                     } finally {
                         setLoading(false);
@@ -1006,9 +1036,9 @@
                 
                 // Función para cargar configuración desde system_settings
                 const loadAppConfig = async () => {
-                    console.log('🔄 loadAppConfig llamada, db:', db ? 'disponible' : 'no disponible');
+                    console.log('[INFO]  loadAppConfig llamada, db:', db ? 'disponible' : 'no disponible');
                     if (!db) {
-                        console.log('⚠️ db no disponible, saltando carga de configuración');
+                        console.log('[WARNING]  db no disponible, saltando carga de configuración');
                         return;
                     }
                     
@@ -1022,15 +1052,15 @@
                         }
                         
                         const settingsRef = doc(db, 'system_settings', 'main');
-                        console.log('🔍 Obteniendo documento...');
+                        console.log('[DEBUG]  Obteniendo documento...');
                         const settingsDoc = await getDoc(settingsRef);
                         
                         if (settingsDoc.exists()) {
                             const config = settingsDoc.data();
                             setAppConfig(config);
-                            console.log('🔧 Configuración de sistema cargada:', Object.keys(config));
+                            console.log('[CONFIG]  Configuración de sistema cargada:', Object.keys(config));
                         } else {
-                            console.log('⚠️ No se encontró configuración del sistema, usando valores por defecto');
+                            console.log('[WARNING]  No se encontró configuración del sistema, usando valores por defecto');
                             const defaultConfig = {
                                 invoice: {
                                     series: ['EXP', 'ALQ', 'PROF'],
@@ -1064,11 +1094,11 @@
                                 }
                             };
                             setAppConfig(defaultConfig);
-                            console.log('✅ Configuración por defecto cargada');
+                            console.log('[OK]  Configuración por defecto cargada');
                         }
                     } catch (error) {
-                        console.error('❌ Error cargando configuración:', error);
-                        console.log('🔄 Usando configuración por defecto debido al error');
+                        console.error('[ERROR]  Error cargando configuración:', error);
+                        console.log('[INFO]  Usando configuración por defecto debido al error');
                         const fallbackConfig = {
                             invoice: {
                                 series: ['EXP', 'ALQ', 'PROF'],
@@ -1260,12 +1290,12 @@
                 // Función para cargar contadores desde /counters
                 const loadCounters = async () => {
                     if (!db) {
-                        console.log('⚠️ db no disponible, saltando carga de contadores');
+                        console.log('[WARNING]  db no disponible, saltando carga de contadores');
                         return;
                     }
                     
                     try {
-                        console.log('📊 Cargando contadores desde /counters...');
+                        console.log('[DATA]  Cargando contadores desde /counters...');
                         const { collection, getDocs } = window.firebase;
                         const countersCollection = collection(db, 'counters');
                         const countersSnapshot = await getDocs(countersCollection);
@@ -1276,9 +1306,9 @@
                         });
                         
                         setCounters(countersData);
-                        console.log('✅ Contadores cargados:', Object.keys(countersData));
+                        console.log('[OK]  Contadores cargados:', Object.keys(countersData));
                     } catch (error) {
-                        console.error('❌ Error cargando contadores:', error);
+                        console.error('[ERROR]  Error cargando contadores:', error);
                         // Fallback con contadores por defecto
                         const fallbackCounters = {
                             'EXP': { id: 'EXP', current: 1, description: 'Facturas EXP' },
@@ -1287,7 +1317,7 @@
                             'offers': { id: 'offers', count: 1, description: 'Ofertas' }
                         };
                         setCounters(fallbackCounters);
-                        console.log('📝 Usando contadores por defecto');
+                        console.log('[INFO]  Usando contadores por defecto');
                     }
                 };
                 
@@ -1306,7 +1336,7 @@
                 // Función para actualizar contador
                 const updateCounter = async (seriesId, newValue) => {
                     if (!db) {
-                        console.log('⚠️ db no disponible, no se puede actualizar contador');
+                        console.log('[WARNING]  db no disponible, no se puede actualizar contador');
                         return;
                     }
                     
@@ -1396,7 +1426,7 @@
                 // Función para actualizar contador de ofertas
                 const updateOfferCounter = async (newValue) => {
                     if (!db) {
-                        console.log('⚠️ db no disponible, no se puede actualizar contador de ofertas');
+                        console.log('[WARNING]  db no disponible, no se puede actualizar contador de ofertas');
                         return;
                     }
                     
@@ -1482,7 +1512,7 @@
                             console.log(`✅ Cargados ${expensesData.length} gastos correctamente (ordenación local)`);
                         }
                     } catch (error) {
-                        console.error('❌ Error cargando gastos:', error);
+                        console.error('[ERROR]  Error cargando gastos:', error);
                         showNotification('Error', 'No se pudieron cargar los gastos', 'error');
                     }
                 };
@@ -1515,7 +1545,7 @@
                         await loadExpenses();
                         return true;
                     } catch (error) {
-                        console.error('❌ Error guardando gasto:', error);
+                        console.error('[ERROR]  Error guardando gasto:', error);
                         showNotification('Error', 'No se pudo guardar el gasto', 'error');
                         return false;
                     }
@@ -1532,7 +1562,7 @@
                         showNotification('Gasto Eliminado', 'El gasto se ha eliminado correctamente', 'success');
                         await loadExpenses();
                     } catch (error) {
-                        console.error('❌ Error eliminando gasto:', error);
+                        console.error('[ERROR]  Error eliminando gasto:', error);
                         showNotification('Error', 'No se pudo eliminar el gasto', 'error');
                     }
                 };
@@ -2111,7 +2141,7 @@
                         const rectificativaSeries = `REC${originalSeries}`;
                         const rectificativaNumber = `REC${originalInvoiceNumber}`;
                         
-                        console.log('📋 Generando rectificativa:', {
+                        console.log('[PROCESS]  Generando rectificativa:', {
                             original: {
                                 fullNumber: originalInvoiceNumber,
                                 series: originalSeries
@@ -2151,7 +2181,7 @@
                             }))
                         };
 
-                        console.log('📋 Creando factura rectificativa:', {
+                        console.log('[PROCESS]  Creando factura rectificativa:', {
                             original: {
                                 fullNumber: originalInvoiceNumber,
                                 series: originalSeries
@@ -2199,7 +2229,7 @@
                     console.log('💾 Guardando pago:', paymentData);
                     console.log('💾 Ruta de guardado:', `facturas/${invoice.id}/payments`);
                         await addDoc(collection(db, `facturas/${invoice.id}/payments`), paymentData);
-                    console.log('✅ Pago guardado correctamente');
+                    console.log('[OK]  Pago guardado correctamente');
                     
                     // Actualizar la factura principal
                     await handleSave('facturas', updatedInvoice, updatedInvoice.id);
@@ -6777,14 +6807,14 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 useEffect(() => { 
                     if (!db || !userId || !invoice.id) return; 
                     const paymentsPath = `facturas/${invoice.id}/payments`; 
-                    console.log('🔍 Cargando pagos desde:', paymentsPath);
+                    console.log('[DEBUG]  Cargando pagos desde:', paymentsPath);
                     const q = query(collection(db, paymentsPath)); 
                     const unsubscribe = onSnapshot(q, (snapshot) => { 
-                        console.log('📊 Pagos encontrados:', snapshot.docs.length);
-                        console.log('📊 Datos de pagos:', snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                        console.log('[DATA]  Pagos encontrados:', snapshot.docs.length);
+                        console.log('[DATA]  Datos de pagos:', snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
                         setPayments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); 
                     }, (error) => {
-                        console.error('❌ Error cargando pagos:', error);
+                        console.error('[ERROR]  Error cargando pagos:', error);
                     }); 
                     return () => unsubscribe(); 
                 }, [db, userId, invoice.id]);
@@ -7740,7 +7770,7 @@ Website: ${settings.company.website}`;
                         if (data.topProducts && data.topProducts.length > 0) {
                             pdf.setFontSize(14);
                             pdf.setFont('helvetica', 'bold');
-                            pdf.text('🏆 TOP PRODUCTOS', 15, 105);
+                            pdf.text('TOP PRODUCTOS', 15, 105);
                             
                             pdf.setFontSize(10);
                             pdf.setFont('helvetica', 'normal');
@@ -10069,7 +10099,7 @@ Equipo Expertia Medical Solutions"
                         
                         // Si no existe el método, lo agregamos directamente
                         if (typeof window.authManager.getAllUsers !== 'function') {
-                            console.log('🔧 Agregando método getAllUsers al authManager...');
+                            console.log('[CONFIG]  Agregando método getAllUsers al authManager...');
                             
                             window.authManager.getAllUsers = async function() {
                                 try {
@@ -10096,7 +10126,7 @@ Equipo Expertia Medical Solutions"
                                     const usersSnapshot = await getDocs(q);
                                     
                                     if (usersSnapshot.empty) {
-                                        console.log('📝 No hay usuarios adicionales en la base de datos');
+                                        console.log('[INFO]  No hay usuarios adicionales en la base de datos');
                                         
                                         // Retornar al menos el usuario actual
                                         return [{
@@ -10131,10 +10161,10 @@ Equipo Expertia Medical Solutions"
                                     return users;
                                     
                                 } catch (error) {
-                                    console.error('❌ Error obteniendo usuarios desde Firebase:', error);
+                                    console.error('[ERROR]  Error obteniendo usuarios desde Firebase:', error);
                                     
                                     // Fallback: intentar con datos de demostración
-                                    console.log('🔄 Usando datos de demostración como fallback...');
+                                    console.log('[INFO]  Usando datos de demostración como fallback...');
                                     
                                     if (this.currentUser) {
                                         return [{
@@ -10211,7 +10241,7 @@ Equipo Expertia Medical Solutions"
                     try {
                         switch (action) {
                             case 'edit':
-                                console.log('🔧 Editar usuario:', userId);
+                                console.log('[CONFIG]  Editar usuario:', userId);
                                 setEditingUser(userData);
                                 setShowEditModal(true);
                                 break;
@@ -10685,7 +10715,7 @@ Equipo Expertia Medical Solutions"
                         console.log('📥 Cargando configuraciones desde Firebase...');
                         
                         if (!window.authManager || !window.authManager.app) {
-                            console.log('⚠️ Firebase no disponible, usando configuraciones por defecto');
+                            console.log('[WARNING]  Firebase no disponible, usando configuraciones por defecto');
                             return;
                         }
                         
@@ -10702,7 +10732,7 @@ Equipo Expertia Medical Solutions"
                         
                         if (settingsDoc.exists()) {
                             const firebaseSettings = settingsDoc.data();
-                            console.log('✅ Configuraciones cargadas desde Firebase');
+                            console.log('[OK]  Configuraciones cargadas desde Firebase');
                             
                             // Mantener estructura por defecto y sobrescribir con datos de Firebase
                             setSettings(prevSettings => ({
@@ -10712,12 +10742,12 @@ Equipo Expertia Medical Solutions"
                                 updatedAt: firebaseSettings.updatedAt?.toDate?.() || firebaseSettings.updatedAt
                             }));
                         } else {
-                            console.log('📝 No hay configuraciones guardadas, usando valores por defecto');
+                            console.log('[INFO]  No hay configuraciones guardadas, usando valores por defecto');
                         }
                         
                     } catch (error) {
-                        console.error('❌ Error cargando configuraciones desde Firebase:', error);
-                        console.log('📝 Usando configuraciones por defecto');
+                        console.error('[ERROR]  Error cargando configuraciones desde Firebase:', error);
+                        console.log('[INFO]  Usando configuraciones por defecto');
                     }
                 };
                 
@@ -10764,12 +10794,12 @@ Equipo Expertia Medical Solutions"
                         // Guardar en Firebase usando setDoc para crear o actualizar
                         await setDoc(settingsRef, settingsData, { merge: true });
                         
-                        console.log('✅ [DEBUG] Configuraciones guardadas exitosamente en Firebase');
+                        console.log('[OK]  [DEBUG] Configuraciones guardadas exitosamente en Firebase');
                         
                         // IMPORTANTE: Recargar la configuración global de la aplicación
                         if (window.loadAppConfig && typeof window.loadAppConfig === 'function') {
                             await window.loadAppConfig();
-                            console.log('🔄 Configuración global recargada');
+                            console.log('[INFO]  Configuración global recargada');
                         }
                         
                         setSaved(true);
@@ -10784,7 +10814,7 @@ Equipo Expertia Medical Solutions"
                         );
                         
                     } catch (error) {
-                        console.error('❌ [DEBUG] Error guardando configuraciones en Firebase:', error);
+                        console.error('[ERROR]  [DEBUG] Error guardando configuraciones en Firebase:', error);
                         showNotification(
                             'Error al Guardar',
                             'No se pudieron guardar las configuraciones: ' + error.message,
@@ -11335,7 +11365,7 @@ Equipo Expertia Medical Solutions"
                                                     onClick={() => {
                                                         if (window.analyzeFirebaseSettings) {
                                                             window.analyzeFirebaseSettings().then(result => {
-                                                                console.log('🔍 Análisis completado:', result);
+                                                                console.log('[DEBUG]  Análisis completado:', result);
                                                                 showNotification(
                                                                     'Análisis Completado',
                                                                     'Revisa la consola del navegador (F12) para ver los detalles completos del análisis de la base de datos.',
@@ -12190,12 +12220,12 @@ Equipo Expertia Medical Solutions"
                         };
                         
                         const docRef = await addDoc(invitationsRef, invitationData);
-                        console.log('✅ Invitación creada con ID:', docRef.id);
+                        console.log('[OK]  Invitación creada con ID:', docRef.id);
                         
                         // TODO: Enviar email real de invitación
                         // await sendInvitationEmail(formData.email, invitationData.inviteToken);
                         
-                        console.log('✅ Invitación enviada exitosamente');
+                        console.log('[OK]  Invitación enviada exitosamente');
                         alert(`✅ Invitación enviada a ${formData.email}\n\n` +
                             `📧 Se ha creado la invitación en la base de datos\n` +
                             `👤 Nombre: ${formData.name || 'Sin especificar'}\n` +
@@ -12210,7 +12240,7 @@ Equipo Expertia Medical Solutions"
                         onUserInvited();
                         
                     } catch (error) {
-                        console.error('❌ Error creando invitación:', error);
+                        console.error('[ERROR]  Error creando invitación:', error);
                         setError('Error enviando la invitación: ' + error.message);
                     } finally {
                         setLoading(false);
@@ -12441,7 +12471,7 @@ Equipo Expertia Medical Solutions"
                         const currentData = userDoc.data();
                         if (formData.email.toLowerCase() !== currentData.email.toLowerCase()) {
                             // TODO: Implementar cambio de email con re-verificación
-                            console.log('⚠️ Cambio de email detectado - funcionalidad avanzada');
+                            console.log('[WARNING]  Cambio de email detectado - funcionalidad avanzada');
                             updateData.email = formData.email.toLowerCase();
                             updateData.emailChangeRequested = true;
                             updateData.emailChangeRequestedAt = new Date();
@@ -12450,7 +12480,7 @@ Equipo Expertia Medical Solutions"
                         // Actualizar en Firebase
                         await updateDoc(userRef, updateData);
                         
-                        console.log('✅ Usuario actualizado exitosamente en Firebase');
+                        console.log('[OK]  Usuario actualizado exitosamente en Firebase');
                         
                         // Mostrar confirmación con notificación moderna
                         const changes = [];
@@ -12470,7 +12500,7 @@ Equipo Expertia Medical Solutions"
                         onUserUpdated();
                         
                     } catch (error) {
-                        console.error('❌ Error actualizando usuario en Firebase:', error);
+                        console.error('[ERROR]  Error actualizando usuario en Firebase:', error);
                         setError('Error actualizando el usuario: ' + error.message);
                     } finally {
                         setLoading(false);
@@ -12989,17 +13019,19 @@ Equipo Expertia Medical Solutions"
         // Función para crear perfil de usuario faltante
         async function createMissingUserProfile(currentUser) {
             console.log('🛠️ Creando perfil para usuario:', currentUser.email);
+            console.log('👤 UID:', currentUser.uid);
+            console.log('📧 Email verificado:', currentUser.emailVerified);
             
             try {
                 const { getFirestore, doc, setDoc, collection, getDocs } = 
                     await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
                 
                 const db = getFirestore(window.authManager.app);
+                console.log('🔥 Firestore inicializado para creación de perfil');
                 
-                // Verificar si es el primer usuario (aunque es poco probable en este punto)
-                const usersCollection = collection(db, 'users');
-                const usersSnapshot = await getDocs(usersCollection);
-                const isFirstUser = usersSnapshot.empty;
+                // Verificar si es el primer usuario (simplificado para evitar errores de Firestore)
+                let isFirstUser = false;
+                console.log('🏆 Asumiendo usuario comercial (verificación de primer usuario deshabilitada temporalmente)');
                 
                 // Crear perfil básico
                 const userProfile = {
@@ -13011,28 +13043,45 @@ Equipo Expertia Medical Solutions"
                     createdAt: new Date().toISOString(),
                     isFirstUser: isFirstUser,
                     provider: currentUser.providerData[0]?.providerId || 'email',
-                    active: true
+                    active: true,
+                    emailVerified: currentUser.emailVerified
                 };
+                
+                console.log('📄 Datos del perfil a crear:', userProfile);
                 
                 // Intentar crear el documento
                 await setDoc(doc(db, 'users', currentUser.uid), userProfile);
                 
-                console.log('✅ Perfil de usuario creado exitosamente:', userProfile);
+                console.log('[OK]  Perfil de usuario creado exitosamente:', userProfile);
                 return userProfile;
                 
             } catch (error) {
-                console.error('❌ Error creando perfil de usuario:', error);
+                console.error('[ERROR]  Error creando perfil de usuario:', error);
+                console.error('🔍 Código de error:', error.code);
+                console.error('📝 Mensaje:', error.message);
                 throw error;
             }
         }
 
         // Sistema de autenticación integrado
         async function initAuthAndApp() {
+            // Verificar si el usuario viene de un email de verificación
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('verified') === 'true') {
+                console.log('[OK]  Usuario viene de verificación de email exitosa');
+                showAuthStatus('[OK]  Email verificado correctamente. Ya puedes iniciar sesión.', 'success');
+                // Limpiar la URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            
+            // Inicializar seguridad
+            initializeCSRF();
+            
             // Primero cargar nuestro sistema de autenticación
             try {
                 // Crear instancia del AuthManager
                 if (!window.authManager) {
-                    console.log('🔄 Cargando sistema de autenticación...');
+                    console.log('[INFO]  Cargando sistema de autenticación...');
                     // Importar el código de auth-simple.js si no está disponible
                     const script = document.createElement('script');
                     script.src = `./auth-simple.js?t=${Date.now()}`; // Cache busting
@@ -13041,11 +13090,11 @@ Equipo Expertia Medical Solutions"
                     // Esperar a que se cargue
                     await new Promise((resolve, reject) => {
                         script.onload = () => {
-                            console.log('✅ Script de autenticación cargado');
+                            console.log('[OK]  Script de autenticación cargado');
                             resolve();
                         };
                         script.onerror = () => {
-                            console.error('❌ Error cargando script de autenticación');
+                            console.error('[ERROR]  Error cargando script de autenticación');
                             reject(new Error('Error cargando script de autenticación'));
                         };
                         
@@ -13060,7 +13109,7 @@ Equipo Expertia Medical Solutions"
                         throw new Error('AuthManager no se inicializó correctamente');
                     }
                     
-                    console.log('🔧 AuthManager disponible con métodos:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.authManager)));
+                    console.log('[CONFIG]  AuthManager disponible con métodos:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.authManager)));
                 }
                 
                 // Firebase Analyzer movido a archive/tools/ para limpieza del código principal
@@ -13072,13 +13121,34 @@ Equipo Expertia Medical Solutions"
                 const currentUser = window.authManager.getCurrentUser();
                 
                 if (currentUser) {
-                    console.log('✅ Usuario autenticado, obteniendo perfil...');
+                    console.log('[OK]  Usuario autenticado encontrado:', currentUser.email);
+                    console.log('👤 UID:', currentUser.uid);
+                    console.log('📧 Email verificado:', currentUser.emailVerified);
+                    console.log('[DEBUG]  Estado de autenticación:', window.authManager.isLoggedIn());
                     
                     // Obtener perfil completo del usuario con manejo de errores mejorado
                     try {
                         const userProfile = await window.authManager.getUserProfile();
                         if (userProfile) {
                             console.log('👤 Perfil cargado:', userProfile.name, '- Rol:', userProfile.role);
+                            console.log('📧 Email verificado en perfil:', userProfile.emailVerified);
+                            
+                            // 🔒 PUNTO DE SEGURIDAD CRÍTICO: Verificar que el email esté verificado
+                            if (!currentUser.emailVerified) {
+                                console.log('🚫 Acceso denegado: Email no verificado');
+                                console.log('[DEBUG]  Estado del usuario:', {
+                                    uid: currentUser.uid,
+                                    email: currentUser.email,
+                                    emailVerified: currentUser.emailVerified,
+                                    provider: currentUser.providerData[0]?.providerId
+                                });
+                                showAuthStatus('[ERROR]  Tu email no ha sido verificado. Por favor, revisa tu correo y haz clic en el enlace de verificación.', 'error');
+                                showEmailVerificationScreen(currentUser.email);
+                                return;
+                            }
+                            
+                            // 🔒 VERIFICACIÓN ADICIONAL: Confirmar que realmente está verificado
+                            console.log('[OK]  Email verificado correctamente, permitiendo acceso a la aplicación');
                             
                             // Mostrar mensaje de bienvenida específico según el rol
                             if (userProfile.isFirstUser) {
@@ -13087,21 +13157,32 @@ Equipo Expertia Medical Solutions"
                             
                             startApp();
                         } else {
-                            console.log('Perfil no encontrado, intentando crear...');
+                            console.log('[WARNING]  Perfil no encontrado, intentando crear...');
                             await createMissingUserProfile(currentUser);
                             
                             // Reintentar obtener perfil
                             const newProfile = await window.authManager.getUserProfile();
                             if (newProfile) {
-                                console.log('Perfil creado y cargado:', newProfile.name, '- Rol:', newProfile.role);
+                                console.log('[OK]  Perfil creado y cargado:', newProfile.name, '- Rol:', newProfile.role);
+                                
+                                // 🔒 PUNTO DE SEGURIDAD: Verificar que el email esté verificado
+                                if (!currentUser.emailVerified) {
+                                    console.log('🚫 Acceso denegado: Email no verificado');
+                                    showAuthStatus('[ERROR]  Tu email no ha sido verificado. Por favor, revisa tu correo y haz clic en el enlace de verificación.', 'error');
+                                    showEmailVerificationScreen(currentUser.email);
+                                    return;
+                                }
+                                
                                 startApp();
                             } else {
-                                console.error('❌ No se pudo crear el perfil del usuario');
+                                console.error('[ERROR]  No se pudo crear el perfil del usuario');
                                 showAuthScreen();
                             }
                         }
                     } catch (error) {
-                        console.error('❌ Error obteniendo perfil del usuario:', error);
+                        console.error('[ERROR]  Error obteniendo perfil del usuario:', error);
+                        console.error('🔍 Código de error:', error.code);
+                        console.error('📝 Mensaje:', error.message);
                         
                         // Si es error de permisos, intentar crear perfil
                         if (error.message.includes('permissions') || error.message.includes('Missing or insufficient permissions')) {
@@ -13112,13 +13193,24 @@ Equipo Expertia Medical Solutions"
                                 // Reintentar obtener perfil
                                 const newProfile = await window.authManager.getUserProfile();
                                 if (newProfile) {
-                                    console.log('✅ Perfil creado exitosamente:', newProfile.name, '- Rol:', newProfile.role);
+                                    console.log('[OK]  Perfil creado exitosamente:', newProfile.name, '- Rol:', newProfile.role);
+                                    
+                                    // 🔒 PUNTO DE SEGURIDAD: Verificar que el email esté verificado
+                                    if (!currentUser.emailVerified) {
+                                        console.log('🚫 Acceso denegado: Email no verificado');
+                                        showAuthStatus('[ERROR]  Tu email no ha sido verificado. Por favor, revisa tu correo y haz clic en el enlace de verificación.', 'error');
+                                        showEmailVerificationScreen(currentUser.email);
+                                        return;
+                                    }
+                                    
                                     startApp();
                                 } else {
                                     throw new Error('No se pudo obtener el perfil después de crearlo');
                                 }
                             } catch (createError) {
-                                console.error('❌ Error creando perfil de usuario:', createError);
+                                console.error('[ERROR]  Error creando perfil de usuario:', createError);
+                                console.error('🔍 Código de error:', createError.code);
+                                console.error('📝 Mensaje:', createError.message);
                                 showAuthScreen();
                             }
                         } else {
@@ -13134,13 +13226,13 @@ Equipo Expertia Medical Solutions"
                 if (window.authManager && window.authManager.isLoggedIn()) {
                     console.log('');
                     console.log('🔥 === HERRAMIENTAS DE ANÁLISIS DE FIREBASE ===');
-                    console.log('📊 Para analizar la tabla system_settings, usa:');
+                    console.log('[DATA]  Para analizar la tabla system_settings, usa:');
                     console.log('   analyzeFirebaseSettings()');
                     console.log('💾 Para exportar configuraciones:');
                     console.log('   exportFirebaseSettings()');
                     console.log('🗄️ Para crear backup:');
                     console.log('   backupFirebaseSettings()');
-                    console.log('🔍 Para analizar referencias hardcodeadas:');
+                    console.log('[DEBUG]  Para analizar referencias hardcodeadas:');
                     console.log('   analyzeConfigReferences()');
                     console.log('===============================================');
                     console.log('');
@@ -13153,56 +13245,146 @@ Equipo Expertia Medical Solutions"
             }
         }
         
-        // Función para mostrar pantalla de selección inicial
+        // Función para mostrar pantalla de login principal
         function showAuthScreen() {
             const root = document.getElementById('root');
             root.innerHTML = `
-                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: url('./imagen_fondo_manos.webp') center/cover no-repeat fixed;">
-                    <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-width: 400px; width: 100%; margin: 1rem; margin-bottom: 15vh;">
-                        <div style="text-align: center; margin-bottom: 2rem;">
-                            <h1 style="font-size: 1.5rem; font-weight: bold; color: #1a202c; margin-bottom: 0.5rem;">Expertia CRM</h1>
-                            <p style="color: #718096;">Bienvenido</p>
+                <div style="min-height: 100vh; display: flex; background: url('./imagen_fondo_manos.webp') center/cover no-repeat fixed;">
+                    <!-- Panel izquierdo - Formulario -->
+                    <div style="width: 40%; min-height: 100vh; background: white; display: flex; flex-direction: column; justify-content: center; padding: 3rem 4rem; box-shadow: 2px 0 10px rgba(0,0,0,0.1);">
+                        <!-- Logo -->
+                        <div style="text-align: center; margin-bottom: 3rem;">
+                            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 1rem;">
+                                    <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
+                                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                                    </svg>
+                                </div>
+                                <h1 style="font-size: 1.75rem; font-weight: 700; color: #1a202c; margin: 0;">Expertia Business Suite</h1>
+                            </div>
                         </div>
                         
-                        <div style="display: flex; flex-direction: column; gap: 1rem;">
-                            <button 
-                                onclick="showLoginScreen()"
-                                style="width: 100%; background: #3b82f6; color: white; padding: 0.875rem; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 1rem;"
-                            >
-                                Iniciar Sesión
-                            </button>
-                            
-                            <button 
-                                onclick="showRegisterScreen()"
-                                style="width: 100%; background: #10b981; color: white; padding: 0.875rem; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 1rem;"
-                            >
-                                Registrarse
-                            </button>
-                            
-                            <div style="position: relative; margin: 1rem 0;">
-                                <div style="position: absolute; inset: 0; display: flex; align-items: center;">
-                                    <div style="width: 100%; border-top: 1px solid #e5e7eb;"></div>
-                                </div>
-                                <div style="position: relative; display: flex; justify-content: center; text-transform: uppercase;">
-                                    <span style="background: white; padding: 0 1rem; color: #6b7280; font-size: 0.875rem;">O</span>
+                        <!-- Título -->
+                        <h2 style="font-size: 2rem; font-weight: 600; color: #1a202c; text-align: center; margin-bottom: 0.5rem;">Login</h2>
+                        
+                        <!-- Enlace crear cuenta -->
+                        <p style="text-align: center; color: #6b7280; margin-bottom: 2rem; font-size: 0.95rem;">
+                            ¿No tienes cuenta? 
+                            <a href="#" onclick="showRegisterScreen(); return false;" style="color: #f59e0b; text-decoration: none; font-weight: 500;">Crear cuenta ahora</a>
+                        </p>
+                        
+                        <!-- Formulario -->
+                        <form id="login-form" onsubmit="event.preventDefault(); handleLogin();">
+                            <!-- Email -->
+                            <div style="margin-bottom: 1.5rem;">
+                                <label style="display: block; font-size: 0.9rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Email</label>
+                                <div style="position: relative;">
+                                    <input 
+                                        type="email" 
+                                        id="auth-email" 
+                                        required
+                                        style="width: 100%; padding: 0.875rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; box-sizing: border-box; transition: border-color 0.3s ease;"
+                                        placeholder="tu@email.com"
+                                        onfocus="this.style.borderColor='#3b82f6'"
+                                        onblur="this.style.borderColor='#d1d5db'"
+                                    >
                                 </div>
                             </div>
                             
+                            <!-- Contraseña -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.9rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Contraseña</label>
+                                <div class="password-toggle-container">
+                                    <input 
+                                        type="password" 
+                                        id="auth-password" 
+                                        required
+                                        class="password-input"
+                                        style="width: 100%; padding: 0.875rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; box-sizing: border-box; transition: border-color 0.3s ease;"
+                                        placeholder="Tu contraseña"
+                                        onfocus="this.style.borderColor='#3b82f6'"
+                                        onblur="this.style.borderColor='#d1d5db'"
+                                    >
+                                    <button 
+                                        type="button" 
+                                        class="password-toggle-btn"
+                                        onclick="togglePasswordVisibility('auth-password')"
+                                        title="Mostrar contraseña"
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                            <line x1="1" y1="1" x2="23" y2="23"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Recordar usuario -->
+                            <div style="display: flex; align-items: center; margin-bottom: 1.5rem;">
+                                <input 
+                                    type="checkbox" 
+                                    id="remember-me"
+                                    style="margin-right: 0.5rem; width: 16px; height: 16px; accent-color: #3b82f6;"
+                                >
+                                <label for="remember-me" style="font-size: 0.9rem; color: #374151; cursor: pointer;">Recordar usuario</label>
+                            </div>
+                            
+                            <!-- Botón Login -->
                             <button 
-                                onclick="handleGoogleLogin()"
-                                style="width: 100%; background: white; color: #374151; padding: 0.875rem; border: 1px solid #d1d5db; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"
+                                type="submit"
+                                style="width: 100%; background: #f59e0b; color: white; padding: 0.875rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: background-color 0.3s ease; margin-bottom: 1rem;"
+                                onmouseover="this.style.backgroundColor='#d97706'"
+                                onmouseout="this.style.backgroundColor='#f59e0b'"
                             >
-                                <svg width="20" height="20" viewBox="0 0 24 24">
-                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                                </svg>
-                                Continuar con Google
+                                Iniciar Sesión
                             </button>
+                        </form>
+                        
+                        <!-- Separador -->
+                        <div style="text-align: center; margin: 1.5rem 0; position: relative;">
+                            <div style="height: 1px; background: #e5e7eb; width: 100%;"></div>
+                            <span style="background: white; padding: 0 1rem; color: #6b7280; font-size: 0.875rem; position: absolute; top: -8px; left: 50%; transform: translateX(-50%);">o</span>
+                        </div>
+                        
+                        <!-- Botón Login con Google -->
+                        <button 
+                            type="button"
+                            onclick="handleGoogleLogin()"
+                            style="width: 100%; background: white; color: #374151; padding: 0.875rem; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: all 0.3s ease; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 0.75rem;"
+                            onmouseover="this.style.borderColor='#d1d5db'; this.style.backgroundColor='#f9fafb'"
+                            onmouseout="this.style.borderColor='#e5e7eb'; this.style.backgroundColor='white'"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                            Continuar con Google
+                        </button>
+                        
+                        <!-- Olvidó contraseña -->
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <a href="#" onclick="showPasswordRecoveryScreen(); return false;" style="color: #f59e0b; text-decoration: none; font-size: 0.9rem; font-weight: 500;">¿Olvidó su contraseña?</a>
+                        </div>
+                        
+                        <!-- Enlaces legales -->
+                        <div style="text-align: center; margin-top: auto; padding-top: 2rem;">
+                            <p style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.5rem;">Copyright © 2025 de Expertia Software Solutions</p>
+                            <div style="display: flex; justify-content: center; gap: 1rem;">
+                                <a href="terminos-servicio.html" target="_blank" style="color: #6b7280; text-decoration: none; font-size: 0.8rem;">Términos de Servicio</a>
+                                <span style="color: #d1d5db;">|</span>
+                                <a href="politica-privacidad.html" target="_blank" style="color: #6b7280; text-decoration: none; font-size: 0.8rem;">Política de Privacidad</a>
+                            </div>
                         </div>
                         
                         <div id="auth-status" style="margin-top: 1rem; padding: 0.75rem; border-radius: 6px; display: none;"></div>
+                    </div>
+                    
+                    <!-- Panel derecho - Imagen de fondo -->
+                    <div style="width: 60%; min-height: 100vh; background: url('./imagen_fondo_manos.webp') center/cover no-repeat; position: relative;">
+                        <!-- Overlay sutil para mejorar legibilidad si es necesario -->
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.1);"></div>
                     </div>
                 </div>
             `;
@@ -13233,13 +13415,27 @@ Equipo Expertia Medical Solutions"
                             
                             <div style="margin-bottom: 1.5rem;">
                                 <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Contraseña</label>
-                                <input 
-                                    type="password" 
-                                    id="auth-password" 
-                                    required
-                                    style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; box-sizing: border-box;"
-                                    placeholder="Tu contraseña"
-                                >
+                                <div class="password-toggle-container">
+                                    <input 
+                                        type="password" 
+                                        id="auth-password" 
+                                        required
+                                        class="password-input"
+                                        style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; box-sizing: border-box;"
+                                        placeholder="Tu contraseña"
+                                    >
+                                    <button 
+                                        type="button" 
+                                        class="password-toggle-btn"
+                                        onclick="togglePasswordVisibility('auth-password')"
+                                        title="Mostrar contraseña"
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                            <line x1="1" y1="1" x2="23" y2="23"/>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             
                             <button 
@@ -13269,65 +13465,189 @@ Equipo Expertia Medical Solutions"
         function showRegisterScreen() {
             const root = document.getElementById('root');
             root.innerHTML = `
-                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: url('./data/bg-auth.jpg') center/cover no-repeat fixed;">
-                    <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-width: 400px; width: 100%; margin: 1rem;">
-                        <div style="text-align: center; margin-bottom: 2rem;">
-                            <h1 style="font-size: 1.5rem; font-weight: bold; color: #1a202c; margin-bottom: 0.5rem;">Registrarse</h1>
-                            <p style="color: #718096;">Crea tu cuenta nueva</p>
+                <div style="min-height: 100vh; display: flex; background: url('./imagen_fondo_manos.webp') center/cover no-repeat fixed;">
+                    <!-- Panel izquierdo - Formulario de Registro -->
+                    <div style="width: 40%; min-height: 100vh; background: white; display: flex; flex-direction: column; justify-content: center; padding: 3rem 4rem; box-shadow: 2px 0 10px rgba(0,0,0,0.1);">
+                        <!-- Logo -->
+                        <div style="text-align: center; margin-bottom: 3rem;">
+                            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 1rem;">
+                                    <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+                                    </svg>
+                                </div>
+                                <h1 style="font-size: 1.75rem; font-weight: 700; color: #1a202c; margin: 0;">Expertia Business Suite</h1>
+                            </div>
                         </div>
                         
+                        <!-- Título -->
+                        <h2 style="font-size: 2rem; font-weight: 600; color: #1a202c; text-align: center; margin-bottom: 0.5rem;">Registrarse</h2>
+                        
+                        <!-- Enlace volver a login -->
+                        <p style="text-align: center; color: #6b7280; margin-bottom: 2rem; font-size: 0.95rem;">
+                            ¿Ya tienes cuenta? 
+                            <a href="#" onclick="showAuthScreen(); return false;" style="color: #f59e0b; text-decoration: none; font-weight: 500;">Iniciar sesión</a>
+                        </p>
+                        
+                        <!-- Formulario de registro -->
                         <form id="register-form" onsubmit="event.preventDefault(); handleRegister();">
-                            <div style="margin-bottom: 1rem;">
-                                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Email</label>
+                            <!-- Email -->
+                            <div style="margin-bottom: 1.5rem;">
+                                <label style="display: block; font-size: 0.9rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Email</label>
+                                <div style="position: relative;">
                                 <input 
                                     type="email" 
                                     id="auth-email" 
                                     required
-                                    style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; box-sizing: border-box;"
+                                        style="width: 100%; padding: 0.875rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; box-sizing: border-box; transition: border-color 0.3s ease;"
                                     placeholder="tu@email.com"
+                                        onfocus="this.style.borderColor='#10b981'"
+                                        onblur="this.style.borderColor='#d1d5db'"
                                 >
+                                </div>
                             </div>
                             
-                            <div style="margin-bottom: 1rem;">
-                                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Contraseña</label>
-                                <input 
-                                    type="password" 
-                                    id="auth-password" 
-                                    required
-                                    style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; box-sizing: border-box;"
-                                    placeholder="Mínimo 6 caracteres"
-                                >
-                            </div>
-                            
+                            <!-- Contraseña -->
                             <div style="margin-bottom: 1.5rem;">
-                                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Confirmar Contraseña</label>
-                                <input 
-                                    type="password" 
-                                    id="auth-password-confirm" 
-                                    required
-                                    style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; box-sizing: border-box;"
-                                    placeholder="Repite tu contraseña"
-                                >
+                                <label style="display: block; font-size: 0.9rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Contraseña</label>
+                                <div class="password-toggle-container">
+                                    <input 
+                                        type="password" 
+                                        id="auth-password" 
+                                        required
+                                        class="password-input"
+                                        style="width: 100%; padding: 0.875rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; box-sizing: border-box; transition: border-color 0.3s ease;"
+                                        placeholder="Mínimo 6 caracteres"
+                                        onfocus="this.style.borderColor='#10b981'; clearPasswordError();"
+                                        onblur="this.style.borderColor='#d1d5db'"
+                                        oninput="clearPasswordError();"
+                                    >
+                                    <button 
+                                        type="button" 
+                                        class="password-toggle-btn"
+                                        onclick="togglePasswordVisibility('auth-password')"
+                                        title="Mostrar contraseña"
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                            <line x1="1" y1="1" x2="23" y2="23"/>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             
+                            <!-- Confirmar Contraseña -->
+                            <div style="margin-bottom: 1.5rem;">
+                                <label style="display: block; font-size: 0.9rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Confirmar Contraseña</label>
+                                <div class="password-toggle-container">
+                                    <input 
+                                        type="password" 
+                                        id="auth-password-confirm" 
+                                        required
+                                        class="password-input"
+                                        style="width: 100%; padding: 0.875rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; box-sizing: border-box; transition: border-color 0.3s ease;"
+                                        placeholder="Repite tu contraseña"
+                                        onfocus="this.style.borderColor='#10b981'; clearPasswordError();"
+                                        onblur="this.style.borderColor='#d1d5db'"
+                                        oninput="clearPasswordError();"
+                                    >
+                                    <button 
+                                        type="button" 
+                                        class="password-toggle-btn"
+                                        onclick="togglePasswordVisibility('auth-password-confirm')"
+                                        title="Mostrar contraseña"
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                            <line x1="1" y1="1" x2="23" y2="23"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Casillas de Aceptación -->
+                            <div style="margin-bottom: 1.5rem;">
+                                <!-- Términos y Condiciones -->
+                                <div style="display: flex; align-items: flex-start; margin-bottom: 1rem;">
+                                    <input 
+                                        type="checkbox" 
+                                        id="accept-terms"
+                                        style="margin-right: 0.75rem; margin-top: 0.125rem; width: 16px; height: 16px; accent-color: #10b981; flex-shrink: 0;"
+                                    >
+                                    <label for="accept-terms" style="font-size: 0.9rem; color: #374151; cursor: pointer; line-height: 1.4;">
+                                        He leído y acepto los <a href="terminos-servicio.html" target="_blank" style="color: #10b981; text-decoration: underline;">Términos y Condiciones</a>
+                                    </label>
+                                </div>
+                                
+                                <!-- Política de Privacidad -->
+                                <div style="display: flex; align-items: flex-start; margin-bottom: 1rem;">
+                                    <input 
+                                        type="checkbox" 
+                                        id="accept-privacy"
+                                        style="margin-right: 0.75rem; margin-top: 0.125rem; width: 16px; height: 16px; accent-color: #10b981; flex-shrink: 0;"
+                                    >
+                                    <label for="accept-privacy" style="font-size: 0.9rem; color: #374151; cursor: pointer; line-height: 1.4;">
+                                        He leído y acepto la <a href="politica-privacidad.html" target="_blank" style="color: #10b981; text-decoration: underline;">Política de Privacidad</a> y consiento el tratamiento de mis datos para la creación y gestión de mi cuenta.
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            
+                            <!-- Botón Crear Cuenta -->
                             <button 
                                 type="submit"
-                                style="width: 100%; background: #10b981; color: white; padding: 0.75rem; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; margin-bottom: 1rem;"
+                                style="width: 100%; background: #10b981; color: white; padding: 0.875rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: background-color 0.3s ease; margin-bottom: 1rem;"
+                                onmouseover="this.style.backgroundColor='#059669'"
+                                onmouseout="this.style.backgroundColor='#10b981'"
                             >
                                 Crear Cuenta
                             </button>
                         </form>
                         
-                        <div style="text-align: center;">
+                        <!-- Botón Volver -->
+                        <div style="text-align: center; margin-bottom: 2rem;">
                             <button 
                                 onclick="showAuthScreen()"
-                                style="background: none; border: none; color: #6b7280; text-decoration: underline; cursor: pointer;"
+                                style="background: none; border: none; color: #6b7280; text-decoration: none; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: color 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin: 0 auto;"
+                                onmouseover="this.style.color='#374151'"
+                                onmouseout="this.style.color='#6b7280'"
                             >
-                                ← Volver
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                                </svg>
+                                Volver al Login
                             </button>
                         </div>
                         
+                        <!-- Información de Protección de Datos (Primera Capa RGPD) -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+                            <h4 style="font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem;">Información sobre Protección de Datos</h4>
+                            <div style="font-size: 0.8rem; color: #4a5568; line-height: 1.4;">
+                                <p style="margin-bottom: 0.25rem;"><strong>Responsable:</strong> Expertia Software Solutions</p>
+                                <p style="margin-bottom: 0.25rem;"><strong>Finalidad:</strong> Gestión de su alta como usuario y prestación de los servicios asociados a su cuenta.</p>
+                                <p style="margin-bottom: 0.25rem;"><strong>Legitimación:</strong> Su consentimiento al marcar la casilla.</p>
+                                <p style="margin-bottom: 0.25rem;"><strong>Destinatarios:</strong> No se cederán datos a terceros, salvo obligación legal.</p>
+                                <p style="margin-bottom: 0;"><strong>Derechos:</strong> Puede acceder, rectificar y suprimir sus datos, así como otros derechos, como se explica en la <a href="politica-privacidad.html" target="_blank" style="color: #10b981; text-decoration: underline;">Política de Privacidad</a>.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Enlaces legales -->
+                        <div style="text-align: center; margin-top: auto; padding-top: 2rem;">
+                            <p style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.5rem;">Copyright © 2025 de Expertia Software Solutions</p>
+                            <div style="display: flex; justify-content: center; gap: 1rem;">
+                                <a href="terminos-servicio.html" target="_blank" style="color: #6b7280; text-decoration: none; font-size: 0.8rem;">Términos de Servicio</a>
+                                <span style="color: #d1d5db;">|</span>
+                                <a href="politica-privacidad.html" target="_blank" style="color: #6b7280; text-decoration: none; font-size: 0.8rem;">Política de Privacidad</a>
+                            </div>
+                        </div>
+                        
                         <div id="auth-status" style="margin-top: 1rem; padding: 0.75rem; border-radius: 6px; display: none;"></div>
+                    </div>
+                    
+                    <!-- Panel derecho - Imagen de fondo -->
+                    <div style="width: 60%; min-height: 100vh; background: url('./imagen_fondo_manos.webp') center/cover no-repeat; position: relative;">
+                        <!-- Overlay sutil para mejorar legibilidad si es necesario -->
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.1);"></div>
                     </div>
                 </div>
             `;
@@ -13338,15 +13658,36 @@ Equipo Expertia Medical Solutions"
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
             
+            // Validaciones de seguridad
             if (!email || !password) {
                 showAuthStatus('Por favor completa todos los campos', 'error');
                 return;
             }
             
+            if (!validateEmail(email)) {
+                showAuthStatus('Por favor introduce un email válido', 'error');
+                return;
+            }
+            
+            if (!validatePassword(password)) {
+                showAuthStatus('La contraseña debe tener entre 6 y 128 caracteres', 'error');
+                return;
+            }
+            
+            // Sanitizar inputs
+            const sanitizedEmail = sanitizeInput(email);
+            const sanitizedPassword = sanitizeInput(password);
+            
             try {
                 showAuthStatus('Iniciando sesión...', 'info');
-                await window.authManager.login(email, password);
-                showAuthStatus('✅ Sesión iniciada, cargando aplicación...', 'success');
+                console.log('[INFO]  Iniciando proceso de login para:', sanitizedEmail);
+                
+                const user = await window.authManager.login(email, password);
+                console.log('[OK]  Usuario logueado exitosamente:', user.email);
+                console.log('👤 UID:', user.uid);
+                console.log('📧 Email verificado:', user.emailVerified);
+                
+                showAuthStatus('[OK]  Sesión iniciada, cargando aplicación...', 'success');
                 
                 // Esperar un momento y luego cargar la aplicación
                 setTimeout(() => {
@@ -13354,25 +13695,51 @@ Equipo Expertia Medical Solutions"
                 }, 1000);
                 
             } catch (error) {
-                console.error('Error de login:', error);
-                let friendlyMessage = '';
+                console.error('[ERROR]  Error de login:', error);
+                console.error('🔍 Código de error:', error.code);
+                console.error('📝 Mensaje:', error.message);
+                const friendlyMessage = getFirebaseErrorMessage(error, 'login');
+                showAuthStatus('[ERROR]  ' + friendlyMessage, 'error');
+            }
+        }
+        
+        // Función para manejar login con Google
+        async function handleGoogleLogin() {
+            try {
+                showAuthStatus('Iniciando sesión con Google...', 'info');
+                console.log('[INFO] Iniciando login con Google...');
                 
-                // Convertir errores de Firebase a mensajes amigables
-                if (error.message.includes('auth/invalid-credential')) {
-                    friendlyMessage = 'Email o contraseña incorrectos';
-                } else if (error.message.includes('auth/user-not-found')) {
-                    friendlyMessage = 'No existe una cuenta con este email';
-                } else if (error.message.includes('auth/wrong-password')) {
-                    friendlyMessage = 'Contraseña incorrecta';
-                } else if (error.message.includes('auth/invalid-email')) {
-                    friendlyMessage = 'El formato del email no es válido';
-                } else if (error.message.includes('auth/too-many-requests')) {
-                    friendlyMessage = 'Demasiados intentos fallidos. Intenta más tarde';
-                } else {
+                const user = await window.authManager.loginWithGoogle();
+                console.log('[OK] Usuario logueado con Google exitosamente:', user.email);
+                console.log('👤 UID:', user.uid);
+                console.log('📧 Email verificado:', user.emailVerified);
+                
+                showAuthStatus('[OK] Sesión iniciada con Google, cargando aplicación...', 'success');
+                
+                // Esperar un momento y luego cargar la aplicación
+                setTimeout(() => {
+                    startApp();
+                }, 1000);
+                
+            } catch (error) {
+                console.error('[ERROR] Error en login con Google:', error);
+                console.error('🔍 Código de error:', error.code);
+                console.error('📝 Mensaje:', error.message);
+                
+                // Manejar errores específicos de Google Auth
+                let friendlyMessage = 'Error al iniciar sesión con Google';
+                
+                if (error.code === 'auth/popup-closed-by-user') {
+                    friendlyMessage = 'Login cancelado por el usuario';
+                } else if (error.code === 'auth/popup-blocked') {
+                    friendlyMessage = 'Popup bloqueado. Permite ventanas emergentes para este sitio';
+                } else if (error.code === 'auth/network-request-failed') {
                     friendlyMessage = 'Error de conexión. Verifica tu internet';
+                } else if (error.code === 'auth/too-many-requests') {
+                    friendlyMessage = 'Demasiados intentos. Inténtalo más tarde';
                 }
                 
-                showAuthStatus('❌ ' + friendlyMessage, 'error');
+                showAuthStatus('[ERROR] ' + friendlyMessage, 'error');
             }
         }
         
@@ -13380,14 +13747,22 @@ Equipo Expertia Medical Solutions"
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
             const passwordConfirm = document.getElementById('auth-password-confirm') ? document.getElementById('auth-password-confirm').value : password;
+            const acceptTerms = document.getElementById('accept-terms') ? document.getElementById('accept-terms').checked : false;
+            const acceptPrivacy = document.getElementById('accept-privacy') ? document.getElementById('accept-privacy').checked : false;
             
+            // Validaciones de seguridad
             if (!email || !password) {
                 showAuthStatus('Por favor completa todos los campos', 'error');
                 return;
             }
             
-            if (password.length < 6) {
-                showAuthStatus('La contraseña debe tener al menos 6 caracteres', 'error');
+            if (!validateEmail(email)) {
+                showAuthStatus('Por favor introduce un email válido', 'error');
+                return;
+            }
+            
+            if (!validatePassword(password)) {
+                showAuthStatus('La contraseña debe tener entre 6 y 128 caracteres', 'error');
                 return;
             }
             
@@ -13396,20 +13771,53 @@ Equipo Expertia Medical Solutions"
                 return;
             }
             
+            if (!acceptTerms) {
+                showAuthStatus('Debe aceptar los Términos y Condiciones para continuar', 'error');
+                return;
+            }
+            
+            if (!acceptPrivacy) {
+                showAuthStatus('Debe aceptar la Política de Privacidad para continuar', 'error');
+                return;
+            }
+            
+            // Sanitizar inputs
+            const sanitizedEmail = sanitizeInput(email);
+            const sanitizedPassword = sanitizeInput(password);
+            
             try {
                 showAuthStatus('Registrando usuario...', 'info');
+                console.log('[INFO]  Iniciando proceso de registro para:', sanitizedEmail);
+                
                 const user = await window.authManager.register(email, password);
+                console.log('[OK]  Usuario registrado exitosamente:', user.email);
+                console.log('👤 UID:', user.uid);
+                console.log('📧 Email verificado:', user.emailVerified);
+                
+                // CRÍTICO: Verificar que el usuario NO esté verificado
+                if (user.emailVerified === true) {
+                    console.error('🚨 PROBLEMA CRÍTICO: Usuario registrado como verificado sin haber verificado el email');
+                    showAuthStatus('[ERROR]  ERROR CRÍTICO: El usuario fue marcado como verificado incorrectamente. Contacta al administrador.', 'error');
+                    return;
+                }
+                
+                // Verificar si el email se envió correctamente
+                showAuthStatus('[OK]  Cuenta creada. Se ha enviado un email de verificación a ' + sanitizedEmail + '. Por favor, verifica tu correo antes de continuar.', 'success');
+                
+                // Mostrar pantalla de verificación
+                showEmailVerificationScreen(sanitizedEmail);
+                return;
                 
                 // Obtener perfil para mostrar información del rol
                 const userProfile = await window.authManager.getUserProfile();
                 if (userProfile) {
                     if (userProfile.isFirstUser) {
-                        showAuthStatus('✅ ¡Cuenta creada como ADMINISTRADOR! Cargando aplicación...', 'success');
+                        showAuthStatus('[OK]  ¡Cuenta creada como ADMINISTRADOR! Términos y Política aceptados. Cargando aplicación...', 'success');
                     } else {
-                        showAuthStatus('✅ Cuenta creada como USUARIO. Cargando aplicación...', 'success');
+                        showAuthStatus('[OK]  Cuenta creada como USUARIO. Términos y Política aceptados. Cargando aplicación...', 'success');
                     }
                 } else {
-                    showAuthStatus('✅ Usuario registrado, cargando aplicación...', 'success');
+                    showAuthStatus('[OK]  Usuario registrado. Términos y Política aceptados. Cargando aplicación...', 'success');
                 }
                 
                 // Esperar un momento y luego cargar la aplicación
@@ -13419,66 +13827,28 @@ Equipo Expertia Medical Solutions"
                 
             } catch (error) {
                 console.error('Error de registro:', error);
-                let friendlyMessage = '';
+                console.error('Tipo de error:', error.constructor.name);
+                console.error('Código de error:', error.code);
+                console.error('Mensaje completo:', error.message);
                 
-                // Convertir errores de Firebase a mensajes amigables
-                if (error.message.includes('auth/email-already-in-use')) {
-                    friendlyMessage = 'Ya existe una cuenta con este email';
-                } else if (error.message.includes('auth/invalid-email')) {
-                    friendlyMessage = 'El formato del email no es válido';
-                } else if (error.message.includes('auth/weak-password')) {
-                    friendlyMessage = 'La contraseña es muy débil';
-                } else if (error.message.includes('auth/operation-not-allowed')) {
-                    friendlyMessage = 'El registro no está habilitado';
-                } else {
-                    friendlyMessage = 'Error de conexión. Verifica tu internet';
+                // Manejar error específico de límite de emails
+                if (error.message.includes('Límite de emails de verificación alcanzado')) {
+                    showAuthStatus('⚠️ Límite de emails alcanzado. Firebase ha bloqueado el envío temporalmente. Espera 1 hora antes de intentar nuevamente.', 'warning');
+                    return;
                 }
                 
-                showAuthStatus('❌ ' + friendlyMessage, 'error');
-            }
-        }
-        
-        // Función para login con Google
-        async function handleGoogleLogin() {
-            try {
-                showAuthStatus('Iniciando sesión con Google...', 'info');
-                const user = await window.authManager.loginWithGoogle();
+                const friendlyMessage = getFirebaseErrorMessage(error, 'register');
                 
-                // Obtener perfil para mostrar información del rol
-                const userProfile = await window.authManager.getUserProfile();
-                if (userProfile) {
-                    if (userProfile.isFirstUser) {
-                        showAuthStatus(' Cargando aplicación...', 'success');
-                    } else {
-                        showAuthStatus('Sesión iniciada con Google, cargando aplicación...', 'success');
-                    }
+                // Si es un error de contraseña, mostrarlo específicamente
+                if (error.code === 'auth/password-does-not-meet-requirements' || 
+                    error.message.includes('password-does-not-meet-requirements')) {
+                    showPasswordError(friendlyMessage);
+                    showAuthStatus('[ERROR]  ' + friendlyMessage, 'error');
                 } else {
-                    showAuthStatus('Sesión iniciada con Google, cargando aplicación...', 'success');
+                    // Limpiar errores de contraseña si no es ese tipo de error
+                    clearPasswordError();
+                    showAuthStatus('[ERROR]  ' + friendlyMessage, 'error');
                 }
-                
-                // Esperar un momento y luego cargar la aplicación
-                setTimeout(() => {
-                    startApp();
-                }, 1500);
-                
-            } catch (error) {
-                console.error('Error de login con Google:', error);
-                let friendlyMessage = '';
-                
-                // Convertir errores de Firebase a mensajes amigables
-                if (error.message.includes('auth/popup-closed-by-user')) {
-                    friendlyMessage = 'Login cancelado por el usuario';
-                } else if (error.message.includes('auth/popup-blocked')) {
-                    friendlyMessage = 'Popup bloqueado. Permite popups en este sitio';
-                } else if (error.message.includes('auth/cancelled-popup-request')) {
-                    friendlyMessage = 'Login cancelado';
-                } else if (error.message.includes('auth/operation-not-allowed')) {
-                    friendlyMessage = 'Login con Google no está habilitado';
-                } else {
-                    friendlyMessage = 'Error de conexión. Verifica tu internet';
-                }
-                
-                showAuthStatus('❌ ' + friendlyMessage, 'error');
             }
         }
         
@@ -14295,7 +14665,7 @@ Equipo Expertia Medical Solutions"
                 // Cerrar sesión en Firebase
                 await window.authManager.logout();
                 
-                console.log('✅ Sesión cerrada exitosamente');
+                console.log('[OK]  Sesión cerrada exitosamente');
                 
                 // Limpiar timers de inactividad
                 clearInactivityTimers();
@@ -14304,7 +14674,7 @@ Equipo Expertia Medical Solutions"
                 showAuthScreen();
                 
             } catch (error) {
-                console.error('❌ Error cerrando sesión:', error);
+                console.error('[ERROR]  Error cerrando sesión:', error);
                 
                 // En caso de error, mostrar mensaje y volver a pantalla de login
                 alert('Error cerrando sesión. Te redirigiremos al login.');
@@ -14376,9 +14746,573 @@ Equipo Expertia Medical Solutions"
             clearInactivityTimers();
         }
         
+        // Funciones de Seguridad - Protección XSS
+        function sanitizeInput(input) {
+            if (typeof input !== 'string') return input;
+            return input
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#x27;')
+                .replace(/\//g, '&#x2F;');
+        }
+
+        function sanitizeHTML(html) {
+            if (typeof html !== 'string') return html;
+            return html
+                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+                .replace(/javascript:/gi, '')
+                .replace(/on\w+\s*=/gi, '');
+        }
+
+        function validateEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email) && email.length <= 254;
+        }
+
+        function validatePassword(password) {
+            return password && password.length >= 6 && password.length <= 128;
+        }
+        
+        // Función para toggle de contraseña
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const button = document.querySelector(`[onclick="togglePasswordVisibility('${inputId}')"]`);
+            
+            if (input && button) {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    button.innerHTML = `
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    `;
+                    button.title = 'Ocultar contraseña';
+                } else {
+                    input.type = 'password';
+                    button.innerHTML = `
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                            <line x1="1" y1="1" x2="23" y2="23"/>
+                        </svg>
+                    `;
+                    button.title = 'Mostrar contraseña';
+                }
+            }
+        }
+
+        // Generador de tokens CSRF
+        function generateCSRFToken() {
+            const array = new Uint8Array(32);
+            crypto.getRandomValues(array);
+            return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Almacenamiento seguro de tokens CSRF
+        let csrfToken = null;
+        
+        function initializeCSRF() {
+            csrfToken = generateCSRFToken();
+            sessionStorage.setItem('csrf_token', csrfToken);
+        }
+
+        function getCSRFToken() {
+            if (!csrfToken) {
+                csrfToken = sessionStorage.getItem('csrf_token');
+                if (!csrfToken) {
+                    initializeCSRF();
+                }
+            }
+            return csrfToken;
+        }
+
+        function validateCSRFToken(token) {
+            return token && token === getCSRFToken();
+        }
+
+        // Función para mostrar errores específicos de contraseña
+        function showPasswordError(message) {
+            // Buscar el campo de contraseña en el formulario de registro
+            const passwordField = document.getElementById('auth-password');
+            const confirmPasswordField = document.getElementById('auth-password-confirm');
+            
+            if (passwordField && confirmPasswordField) {
+                // Crear o actualizar el mensaje de error
+                let errorDiv = document.getElementById('password-error');
+                if (!errorDiv) {
+                    errorDiv = document.createElement('div');
+                    errorDiv.id = 'password-error';
+                    errorDiv.style.marginTop = '0.5rem';
+                    errorDiv.style.padding = '0.75rem';
+                    errorDiv.style.backgroundColor = '#fef2f2';
+                    errorDiv.style.color = '#dc2626';
+                    errorDiv.style.border = '1px solid #fecaca';
+                    errorDiv.style.borderRadius = '6px';
+                    errorDiv.style.fontSize = '0.9rem';
+                    errorDiv.style.lineHeight = '1.4';
+                    
+                    // Insertar después del campo de confirmar contraseña
+                    confirmPasswordField.parentNode.parentNode.insertAdjacentElement('afterend', errorDiv);
+                }
+                
+                // Mostrar el mensaje
+                if (message.includes('\n')) {
+                    errorDiv.innerHTML = message.replace(/\n/g, '<br>');
+                } else {
+                    errorDiv.textContent = message;
+                }
+                
+                errorDiv.style.display = 'block';
+                
+                // Resaltar los campos de contraseña
+                passwordField.style.borderColor = '#dc2626';
+                confirmPasswordField.style.borderColor = '#dc2626';
+                
+                // Scroll al error
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // Función para limpiar errores de contraseña
+        function clearPasswordError() {
+            const errorDiv = document.getElementById('password-error');
+            if (errorDiv) {
+                errorDiv.style.display = 'none';
+            }
+            
+            // Restaurar colores normales de los campos
+            const passwordField = document.getElementById('auth-password');
+            const confirmPasswordField = document.getElementById('auth-password-confirm');
+            
+            if (passwordField) {
+                passwordField.style.borderColor = '#d1d5db';
+            }
+            if (confirmPasswordField) {
+                confirmPasswordField.style.borderColor = '#d1d5db';
+            }
+        }
+
+        // Función centralizada para convertir errores de Firebase a mensajes amigables
+        function getFirebaseErrorMessage(error, context = 'general') {
+            const errorCode = error.code || '';
+            const errorMessage = error.message || '';
+            
+            console.log('[DEBUG]  Analizando error Firebase:', { code: errorCode, message: errorMessage, context });
+            
+            // Errores de autenticación comunes
+            const authErrors = {
+                'auth/invalid-credential': 'Email o contraseña incorrectos',
+                'auth/user-not-found': 'No existe una cuenta con este email',
+                'auth/wrong-password': 'Contraseña incorrecta',
+                'auth/invalid-email': 'El formato del email no es válido',
+                'auth/email-already-in-use': 'Ya existe una cuenta con este email',
+                'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres',
+                'auth/password-does-not-meet-requirements': 'La contraseña no cumple con los requisitos de seguridad',
+                'auth/too-many-requests': 'Demasiados intentos fallidos. Intenta más tarde',
+                'auth/operation-not-allowed': context === 'register' ? 'El registro no está habilitado' : 'Login con Google no está habilitado',
+                'auth/popup-closed-by-user': 'Login cancelado por el usuario',
+                'auth/popup-blocked': 'Popup bloqueado. Permite popups en este sitio',
+                'auth/cancelled-popup-request': 'Login cancelado',
+                'auth/user-disabled': 'Esta cuenta ha sido deshabilitada',
+                'auth/requires-recent-login': 'Por seguridad, necesitas iniciar sesión nuevamente',
+                'auth/network-request-failed': 'Error de conexión. Verifica tu internet',
+                'auth/timeout': 'La operación tardó demasiado. Inténtalo de nuevo'
+            };
+            
+            // Errores de Firestore
+            const firestoreErrors = {
+                'permission-denied': 'Permisos insuficientes. Contacta al administrador',
+                'unavailable': 'Servicio temporalmente no disponible',
+                'deadline-exceeded': 'La operación tardó demasiado. Inténtalo de nuevo',
+                'resource-exhausted': 'Límite de recursos alcanzado. Inténtalo más tarde',
+                'unauthenticated': 'Debes iniciar sesión para realizar esta acción',
+                'not-found': 'El recurso solicitado no existe',
+                'already-exists': 'El recurso ya existe',
+                'failed-precondition': 'No se pueden realizar cambios en este momento',
+                'aborted': 'Operación cancelada. Inténtalo de nuevo',
+                'out-of-range': 'Valor fuera del rango permitido',
+                'unimplemented': 'Esta función no está disponible',
+                'internal': 'Error interno del servidor',
+                'data-loss': 'Error de integridad de datos'
+            };
+            
+            // Manejo especial para requisitos de contraseña
+            if (errorCode.includes('auth/password-does-not-meet-requirements') || errorMessage.includes('password-does-not-meet-requirements')) {
+                // Extraer los requisitos específicos del mensaje de Firebase
+                const requirements = [];
+                if (errorMessage.includes('Password must contain an upper case character')) {
+                    requirements.push('• Al menos una letra mayúscula');
+                }
+                if (errorMessage.includes('Password must contain a lower case character')) {
+                    requirements.push('• Al menos una letra minúscula');
+                }
+                if (errorMessage.includes('Password must contain a non-alphanumeric character')) {
+                    requirements.push('• Al menos un carácter especial (!@#$%^&*)');
+                }
+                if (errorMessage.includes('Password must contain a numeric character')) {
+                    requirements.push('• Al menos un número');
+                }
+                if (errorMessage.includes('Password must be at least')) {
+                    const minLength = errorMessage.match(/Password must be at least (\d+)/);
+                    if (minLength) {
+                        requirements.push(`• Mínimo ${minLength[1]} caracteres`);
+                    }
+                }
+                
+                if (requirements.length > 0) {
+                    return 'La contraseña debe cumplir los siguientes requisitos:\n' + requirements.join('\n');
+                }
+                return 'La contraseña no cumple con los requisitos de seguridad';
+            }
+            
+            // Buscar en errores de autenticación
+            for (const [code, message] of Object.entries(authErrors)) {
+                if (errorCode.includes(code) || errorMessage.includes(code)) {
+                    return message;
+                }
+            }
+            
+            // Buscar en errores de Firestore
+            for (const [code, message] of Object.entries(firestoreErrors)) {
+                if (errorCode.includes(code) || errorMessage.includes(code)) {
+                    return message;
+                }
+            }
+            
+            // Errores específicos por contexto
+            if (context === 'password-recovery') {
+                if (errorMessage.includes('user-not-found')) {
+                    return 'No existe una cuenta con este email';
+                }
+                if (errorMessage.includes('invalid-email')) {
+                    return 'Email inválido';
+                }
+                if (errorMessage.includes('too-many-requests')) {
+                    return 'Demasiados intentos. Inténtalo más tarde';
+                }
+                return 'Error al enviar el email de recuperación';
+            }
+            
+            if (context === 'email-verification') {
+                if (errorMessage.includes('too-many-requests')) {
+                    return 'Demasiados intentos de verificación. Inténtalo más tarde';
+                }
+                return 'Error al enviar el email de verificación';
+            }
+            
+            // Mensaje genérico si no se encuentra un error específico
+            console.warn('[WARNING]  Error no reconocido:', { code: errorCode, message: errorMessage, context });
+            return 'Error inesperado. Inténtalo de nuevo';
+        }
+
+        // Pantalla de verificación de email
+        function showEmailVerificationScreen(email) {
+            const root = document.getElementById('root');
+            root.innerHTML = `
+                <div style="min-height: 100vh; display: flex; background: url('./imagen_fondo_manos.webp') center/cover no-repeat fixed;">
+                    <!-- Panel izquierdo - Verificación -->
+                    <div style="width: 40%; min-height: 100vh; background: white; display: flex; flex-direction: column; justify-content: center; padding: 3rem 4rem; box-shadow: 2px 0 10px rgba(0,0,0,0.1);">
+                        <!-- Logo -->
+                        <div style="text-align: center; margin-bottom: 3rem;">
+                            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 1rem;">
+                                    <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
+                                        <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                                    </svg>
+                                </div>
+                                <h1 style="font-size: 1.75rem; font-weight: 700; color: #1a202c; margin: 0;">Expertia Business Suite</h1>
+                            </div>
+                        </div>
+                        
+                        <!-- Título -->
+                        <h2 style="font-size: 2rem; font-weight: 600; color: #1a202c; text-align: center; margin-bottom: 0.5rem;">Verifica tu Email</h2>
+                        
+                        <!-- Mensaje -->
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <p style="color: #6b7280; font-size: 1rem; line-height: 1.5;">
+                                Hemos enviado un enlace de verificación a:<br>
+                                <strong style="color: #1a202c;">${sanitizeInput(email)}</strong>
+                            </p>
+                            <p style="color: #6b7280; font-size: 0.9rem; margin-top: 1rem;">
+                                Por favor, revisa tu bandeja de entrada y haz clic en el enlace para verificar tu cuenta.
+                            </p>
+                        </div>
+                        
+                        <!-- Botones -->
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <button 
+                                onclick="checkEmailVerification()"
+                                style="width: 100%; background: #3b82f6; color: white; padding: 0.875rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: background-color 0.3s ease;"
+                                onmouseover="this.style.backgroundColor='#2563eb'"
+                                onmouseout="this.style.backgroundColor='#3b82f6'"
+                            >
+                                Ya verifiqué mi email
+                            </button>
+                            
+                            <button 
+                                onclick="resendVerificationEmail()"
+                                style="width: 100%; background: #10b981; color: white; padding: 0.875rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: background-color 0.3s ease;"
+                                onmouseover="this.style.backgroundColor='#059669'"
+                                onmouseout="this.style.backgroundColor='#10b981'"
+                            >
+                                Reenviar email de verificación
+                            </button>
+                            
+                            <button 
+                                onclick="showAuthScreen()"
+                                style="width: 100%; background: none; border: 1px solid #d1d5db; color: #6b7280; padding: 0.875rem; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 1rem; transition: all 0.3s ease;"
+                                onmouseover="this.style.backgroundColor='#f9fafb'; this.style.borderColor='#9ca3af'"
+                                onmouseout="this.style.backgroundColor='transparent'; this.style.borderColor='#d1d5db'"
+                            >
+                                Volver al Login
+                            </button>
+                        </div>
+                        
+                        <div id="auth-status" style="margin-top: 1rem; padding: 0.75rem; border-radius: 6px; display: none;"></div>
+                    </div>
+                    
+                    <!-- Panel derecho - Imagen de fondo -->
+                    <div style="width: 60%; min-height: 100vh; background: url('./imagen_fondo_manos.webp') center/cover no-repeat; position: relative;">
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.1);"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Función para verificar si el email ha sido verificado
+        async function checkEmailVerification() {
+            try {
+                showAuthStatus('Verificando estado del email...', 'info');
+                console.log('[INFO]  Verificando estado del email...');
+                
+                await window.authManager.reloadUser();
+                const user = window.authManager.getCurrentUser();
+                
+                console.log('👤 Usuario actual:', user?.email);
+                console.log('📧 Email verificado:', user?.emailVerified);
+                
+                if (user && user.emailVerified) {
+                    console.log('[OK]  Email verificado correctamente');
+                    showAuthStatus('[OK]  Email verificado correctamente. Cargando aplicación...', 'success');
+                    setTimeout(() => {
+                        startApp();
+                    }, 1500);
+                } else {
+                    console.log('❌ Email aún no verificado');
+                    showAuthStatus('[ERROR]  El email aún no ha sido verificado. Por favor, revisa tu correo y haz clic en el enlace de verificación.', 'error');
+                }
+            } catch (error) {
+                console.error('[ERROR]  Error verificando email:', error);
+                console.error('🔍 Código de error:', error.code);
+                console.error('📝 Mensaje:', error.message);
+                const friendlyMessage = getFirebaseErrorMessage(error, 'email-verification');
+                showAuthStatus('[ERROR]  ' + friendlyMessage, 'error');
+            }
+        }
+
+        // Función para reenviar email de verificación
+        async function resendVerificationEmail() {
+            try {
+                showAuthStatus('Reenviando email de verificación...', 'info');
+                console.log('[INFO]  Reenviando email de verificación...');
+                
+                await window.authManager.sendEmailVerification();
+                console.log('[OK]  Email de verificación reenviado exitosamente');
+                
+                showAuthStatus('[OK]  Email de verificación reenviado. Revisa tu bandeja de entrada.', 'success');
+            } catch (error) {
+                console.error('[ERROR]  Error reenviando email:', error);
+                console.error('🔍 Código de error:', error.code);
+                console.error('📝 Mensaje:', error.message);
+                const friendlyMessage = getFirebaseErrorMessage(error, 'email-verification');
+                showAuthStatus('[ERROR]  ' + friendlyMessage, 'error');
+            }
+        }
+
+        // Pantalla de recuperación de contraseña
+        function showPasswordRecoveryScreen() {
+            const root = document.getElementById('root');
+            root.innerHTML = `
+                <div style="min-height: 100vh; display: flex; background: url('./imagen_fondo_manos.webp') center/cover no-repeat fixed;">
+                    <!-- Panel izquierdo - Recuperación -->
+                    <div style="width: 40%; min-height: 100vh; background: white; display: flex; flex-direction: column; justify-content: center; padding: 3rem 4rem; box-shadow: 2px 0 10px rgba(0,0,0,0.1);">
+                        <!-- Logo -->
+                        <div style="text-align: center; margin-bottom: 3rem;">
+                            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 1rem;">
+                                    <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
+                                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+                                    </svg>
+                                </div>
+                                <h1 style="font-size: 1.75rem; font-weight: 700; color: #1a202c; margin: 0;">Expertia Business Suite</h1>
+                            </div>
+                        </div>
+                        
+                        <!-- Título -->
+                        <h2 style="font-size: 2rem; font-weight: 600; color: #1a202c; text-align: center; margin-bottom: 0.5rem;">Recuperar Contraseña</h2>
+                        
+                        <!-- Mensaje -->
+                        <p style="text-align: center; color: #6b7280; margin-bottom: 2rem; font-size: 0.95rem;">
+                            Introduce tu email y te enviaremos un enlace para restablecer tu contraseña.
+                        </p>
+                        
+                        <!-- Formulario de recuperación -->
+                        <form id="recovery-form" onsubmit="event.preventDefault(); handlePasswordRecovery();">
+                            <!-- Email -->
+                            <div style="margin-bottom: 1.5rem;">
+                                <label style="display: block; font-size: 0.9rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Email</label>
+                                <div style="position: relative;">
+                                    <input 
+                                        type="email" 
+                                        id="recovery-email" 
+                                        required
+                                        style="width: 100%; padding: 0.875rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; box-sizing: border-box; transition: border-color 0.3s ease;"
+                                        placeholder="tu@email.com"
+                                        onfocus="this.style.borderColor='#ef4444'"
+                                        onblur="this.style.borderColor='#d1d5db'"
+                                    >
+                                </div>
+                            </div>
+                            
+                            <!-- Botón Enviar -->
+                            <button 
+                                type="submit"
+                                style="width: 100%; background: #ef4444; color: white; padding: 0.875rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: background-color 0.3s ease; margin-bottom: 1rem;"
+                                onmouseover="this.style.backgroundColor='#dc2626'"
+                                onmouseout="this.style.backgroundColor='#ef4444'"
+                            >
+                                Enviar Enlace de Recuperación
+                            </button>
+                        </form>
+                        
+                        <!-- Botón Volver -->
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <button 
+                                onclick="showAuthScreen()"
+                                style="background: none; border: none; color: #6b7280; text-decoration: none; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: color 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin: 0 auto;"
+                                onmouseover="this.style.color='#374151'"
+                                onmouseout="this.style.color='#6b7280'"
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                                </svg>
+                                Volver al Login
+                            </button>
+                        </div>
+                        
+                        <div id="auth-status" style="margin-top: 1rem; padding: 0.75rem; border-radius: 6px; display: none;"></div>
+                    </div>
+                    
+                    <!-- Panel derecho - Imagen de fondo -->
+                    <div style="width: 60%; min-height: 100vh; background: url('./imagen_fondo_manos.webp') center/cover no-repeat; position: relative;">
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.1);"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Función para manejar la recuperación de contraseña
+        async function handlePasswordRecovery() {
+            const email = document.getElementById('recovery-email').value;
+            
+            if (!email) {
+                showAuthStatus('Por favor introduce tu email', 'error');
+                return;
+            }
+            
+            if (!validateEmail(email)) {
+                showAuthStatus('Por favor introduce un email válido', 'error');
+                return;
+            }
+            
+            const sanitizedEmail = sanitizeInput(email);
+            
+            try {
+                showAuthStatus('Enviando enlace de recuperación...', 'info');
+                await window.authManager.sendPasswordResetEmail(sanitizedEmail);
+                showAuthStatus('[OK]  Se ha enviado un enlace de recuperación a ' + sanitizedEmail + '. Revisa tu bandeja de entrada.', 'success');
+                
+                // Mostrar pantalla de confirmación
+                setTimeout(() => {
+                    showPasswordRecoveryConfirmationScreen(sanitizedEmail);
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error enviando email de recuperación:', error);
+                const friendlyMessage = getFirebaseErrorMessage(error, 'password-recovery');
+                showAuthStatus('[ERROR]  ' + friendlyMessage, 'error');
+            }
+        }
+
+        // Pantalla de confirmación de recuperación
+        function showPasswordRecoveryConfirmationScreen(email) {
+            const root = document.getElementById('root');
+            root.innerHTML = `
+                <div style="min-height: 100vh; display: flex; background: url('./imagen_fondo_manos.webp') center/cover no-repeat fixed;">
+                    <!-- Panel izquierdo - Confirmación -->
+                    <div style="width: 40%; min-height: 100vh; background: white; display: flex; flex-direction: column; justify-content: center; padding: 3rem 4rem; box-shadow: 2px 0 10px rgba(0,0,0,0.1);">
+                        <!-- Logo -->
+                        <div style="text-align: center; margin-bottom: 3rem;">
+                            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 1rem;">
+                                    <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
+                                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <h1 style="font-size: 1.75rem; font-weight: 700; color: #1a202c; margin: 0;">Expertia Business Suite</h1>
+                            </div>
+                        </div>
+                        
+                        <!-- Título -->
+                        <h2 style="font-size: 2rem; font-weight: 600; color: #1a202c; text-align: center; margin-bottom: 0.5rem;">Email Enviado</h2>
+                        
+                        <!-- Mensaje -->
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <p style="color: #6b7280; font-size: 1rem; line-height: 1.5;">
+                                Hemos enviado un enlace de recuperación a:<br>
+                                <strong style="color: #1a202c;">${sanitizedEmail}</strong>
+                            </p>
+                            <p style="color: #6b7280; font-size: 0.9rem; margin-top: 1rem;">
+                                Revisa tu bandeja de entrada y sigue las instrucciones para restablecer tu contraseña.
+                            </p>
+                            <p style="color: #6b7280; font-size: 0.8rem; margin-top: 1rem; font-style: italic;">
+                                El enlace expirará en 1 hora por seguridad.
+                            </p>
+                        </div>
+                        
+                        <!-- Botón Volver -->
+                        <div style="text-align: center;">
+                            <button 
+                                onclick="showAuthScreen()"
+                                style="background: #10b981; color: white; padding: 0.875rem 2rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: background-color 0.3s ease;"
+                                onmouseover="this.style.backgroundColor='#059669'"
+                                onmouseout="this.style.backgroundColor='#10b981'"
+                            >
+                                Volver al Login
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Panel derecho - Imagen de fondo -->
+                    <div style="width: 60%; min-height: 100vh; background: url('./imagen_fondo_manos.webp') center/cover no-repeat; position: relative;">
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.1);"></div>
+                    </div>
+                </div>
+            `;
+        }
+        
         function showAuthStatus(message, type) {
             const statusDiv = document.getElementById('auth-status');
-            statusDiv.textContent = message;
+            
+            // Manejar mensajes multilínea
+            if (message.includes('\n')) {
+                statusDiv.innerHTML = message.replace(/\n/g, '<br>');
+            } else {
+                statusDiv.textContent = message;
+            }
             
             // Estilos según el tipo
             if (type === 'error') {
@@ -14396,6 +15330,10 @@ Equipo Expertia Medical Solutions"
             }
             
             statusDiv.style.display = 'block';
+            statusDiv.style.padding = '0.75rem';
+            statusDiv.style.borderRadius = '6px';
+            statusDiv.style.fontSize = '0.9rem';
+            statusDiv.style.lineHeight = '1.4';
             
             // Auto-ocultar después de 5 segundos si es éxito
             if (type === 'success') {
@@ -14415,7 +15353,7 @@ Equipo Expertia Medical Solutions"
                     return;
                 }
                 
-                console.log('🔍 ANÁLISIS DE REFERENCIAS A CONFIGURACION EN EL CÓDIGO\n');
+                console.log('[DEBUG]  ANÁLISIS DE REFERENCIAS A CONFIGURACION EN EL CÓDIGO\n');
                 
                 // Importar Firestore
                 const { getFirestore, doc, getDoc } = 
@@ -14423,10 +15361,10 @@ Equipo Expertia Medical Solutions"
                 
                 const db = getFirestore(window.authManager.app);
                 
-                console.log('📊 === ANÁLISIS DE REFERENCIAS DE CONFIGURACIÓN ===\n');
+                console.log('[DATA]  === ANÁLISIS DE REFERENCIAS DE CONFIGURACIÓN ===\n');
                 
                 // 1. Obtener configuración actual de system_settings
-                console.log('🔧 1. Obteniendo configuración actual de system_settings:');
+                console.log('[CONFIG]  1. Obteniendo configuración actual de system_settings:');
                 const systemSettingsRef = doc(db, 'system_settings', 'main');
                 const systemSettingsDoc = await getDoc(systemSettingsRef);
                 
@@ -14529,11 +15467,11 @@ Equipo Expertia Medical Solutions"
                 }
                 
                 console.log('\\n✅ === ANÁLISIS COMPLETADO ===');
-                console.log('📋 Siguiente paso: Implementar las funciones dinámicas en index.html');
-                console.log('🔧 Usar las recomendaciones anteriores para refactorizar el código\\n');
+                console.log('[PROCESS]  Siguiente paso: Implementar las funciones dinámicas en index.html');
+                console.log('[CONFIG]  Usar las recomendaciones anteriores para refactorizar el código\\n');
                 
             } catch (error) {
-                console.error('❌ Error analizando referencias:', error);
+                console.error('[ERROR]  Error analizando referencias:', error);
             }
         }
         */

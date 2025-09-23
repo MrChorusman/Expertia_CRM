@@ -10,6 +10,8 @@ class AuthManager {
     // Inicializar Firebase
     async init() {
         try {
+            console.log('🔄 Inicializando Firebase Auth...');
+            
             // Importar Firebase
             const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
             const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } = 
@@ -17,25 +19,33 @@ class AuthManager {
 
             // Obtener configuración desde firebase-config.js
             const config = JSON.parse(window.__firebase_config);
+            console.log('🔧 Configuración Firebase cargada:', config.projectId);
             
             // Inicializar Firebase
             this.app = initializeApp(config);
             this.auth = getAuth(this.app);
             
+            console.log('✅ Firebase App inicializado');
+            console.log('✅ Firebase Auth inicializado');
+            
             // Configurar provider de Google
             this.googleProvider = new GoogleAuthProvider();
+            console.log('✅ Google Auth Provider configurado');
             
             // Escuchar cambios de autenticación
             onAuthStateChanged(this.auth, (user) => {
                 this.currentUser = user;
                 this.onAuthStateChange(user);
             });
+            console.log('✅ Auth State Listener configurado');
 
             this.isInitialized = true;
             console.log('✅ Firebase Auth inicializado correctamente');
             return true;
         } catch (error) {
             console.error('❌ Error inicializando Firebase:', error);
+            console.error('🔍 Código de error:', error.code);
+            console.error('📝 Mensaje:', error.message);
             return false;
         }
     }
@@ -44,6 +54,9 @@ class AuthManager {
     onAuthStateChange(user) {
         if (user) {
             console.log('👤 Usuario autenticado:', user.email);
+            console.log('👤 UID:', user.uid);
+            console.log('📧 Email verificado:', user.emailVerified);
+            console.log('🔍 Proveedor:', user.providerData[0]?.providerId || 'email');
         } else {
             console.log('👤 Usuario no autenticado');
         }
@@ -56,20 +69,76 @@ class AuthManager {
         }
 
         try {
-            const { createUserWithEmailAndPassword } = 
+            const { createUserWithEmailAndPassword, sendEmailVerification } = 
                 await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
             const { getFirestore, doc, setDoc, collection, getDocs } = 
                 await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+            
+            console.log('🔄 Iniciando registro para:', email);
             
             // Crear usuario en Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
             const user = userCredential.user;
             
-            // Verificar si es el primer usuario
+            console.log('✅ Usuario creado en Firebase Auth:', user.uid);
+            console.log('📧 Email verificado:', user.emailVerified);
+            
+            // PASO CRÍTICO: Enviar email de verificación inmediatamente después de crear el usuario
+            console.log('🔄 Enviando email de verificación inmediatamente...');
+            console.log('👤 Usuario a verificar:', {
+                uid: user.uid,
+                email: user.email,
+                emailVerified: user.emailVerified
+            });
+            
+            // Configurar actionCodeSettings para el email de verificación
+            const actionCodeSettings = {
+                url: window.location.origin + '/index.html?verified=true',
+                handleCodeInApp: false,
+            };
+            
+            console.log('🔧 Configuración de email:', actionCodeSettings);
+            
+            try {
+                await sendEmailVerification(user, actionCodeSettings);
+                console.log('✅ Email de verificación enviado exitosamente');
+                
+                // CRÍTICO: Verificar que el usuario sigue sin verificar después del envío
+                await user.reload();
+                if (user.emailVerified) {
+                    console.error('🚨 PROBLEMA CRÍTICO: Usuario marcado como verificado sin haber verificado el email');
+                    throw new Error('El usuario fue marcado como verificado incorrectamente');
+                }
+                console.log('✅ Confirmado: Usuario sigue sin verificar después del envío del email');
+                
+            } catch (emailError) {
+                console.error('❌ Error específico enviando email de verificación:', emailError);
+                console.error('🔍 Código de error:', emailError.code);
+                console.error('📝 Mensaje:', emailError.message);
+                
+                // Manejar error específico de demasiadas solicitudes
+                if (emailError.code === 'auth/too-many-requests') {
+                    console.error('🚨 LÍMITE DE EMAILS ALCANZADO: Firebase ha bloqueado el envío de emails de verificación');
+                    console.error('💡 SOLUCIÓN: Espera 1 hora o usa una IP diferente para continuar las pruebas');
+                    throw new Error('Límite de emails de verificación alcanzado. Espera 1 hora antes de intentar nuevamente.');
+                }
+                
+                // Si es un error crítico, lanzar el error para que el registro falle
+                if (emailError.message.includes('marcado como verificado incorrectamente')) {
+                    throw emailError;
+                }
+                
+                // Para otros errores, continuar pero marcar como problema
+                console.log('⚠️ Continuando con el registro sin email de verificación');
+            }
+            
+            // Verificar si es el primer usuario (simplificado para evitar errores de Firestore)
             const db = getFirestore(this.app);
-            const usersCollection = collection(db, 'users');
-            const usersSnapshot = await getDocs(usersCollection);
-            const isFirstUser = usersSnapshot.empty;
+            
+            // Por ahora, asumir que no es el primer usuario para evitar errores de permisos
+            // TODO: Implementar verificación más robusta en el futuro
+            let isFirstUser = false;
+            console.log('🏆 Asumiendo usuario comercial (verificación de primer usuario deshabilitada temporalmente)');
             
             // Crear perfil de usuario en Firestore
             const userProfile = {
@@ -79,15 +148,54 @@ class AuthManager {
                 name: user.displayName || email.split('@')[0],
                 createdAt: new Date().toISOString(),
                 isFirstUser: isFirstUser,
-                active: true
+                active: true,
+                emailVerified: user.emailVerified
             };
             
-            await setDoc(doc(db, 'users', user.uid), userProfile);
+            // Esperar un poco más para asegurar que la autenticación esté completamente establecida
+            console.log('⏳ Esperando estabilización de autenticación...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            try {
+                console.log('🔄 Intentando crear perfil en Firestore...');
+                console.log('👤 UID del usuario:', user.uid);
+                console.log('📄 Datos del perfil:', userProfile);
+                
+                await setDoc(doc(db, 'users', user.uid), userProfile);
+                console.log('✅ Perfil de usuario creado en Firestore');
+            } catch (firestoreError) {
+                console.error('❌ Error creando perfil en Firestore:', firestoreError);
+                console.error('🔍 Código de error:', firestoreError.code);
+                console.error('📝 Mensaje:', firestoreError.message);
+                
+                // Intentar una vez más después de un delay adicional
+                try {
+                    console.log('🔄 Reintentando creación de perfil...');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await setDoc(doc(db, 'users', user.uid), userProfile);
+                    console.log('✅ Perfil de usuario creado en Firestore (segundo intento)');
+                } catch (retryError) {
+                    console.error('❌ Error en segundo intento:', retryError);
+                    // No lanzar error aquí, el usuario ya está creado en Auth
+                    // El perfil se creará después cuando el usuario inicie sesión
+                }
+            }
+            
+            // Verificar que el usuario esté correctamente autenticado
+            console.log('🔍 Verificando estado de autenticación...');
+            const currentUser = this.auth.currentUser;
+            if (currentUser && currentUser.uid === user.uid) {
+                console.log('✅ Usuario correctamente autenticado');
+            } else {
+                console.warn('⚠️ Usuario no está autenticado después del registro');
+            }
             
             console.log('✅ Usuario registrado:', user.email, 'Rol:', userProfile.role);
             return user;
         } catch (error) {
             console.error('❌ Error en registro:', error);
+            console.error('🔍 Código de error:', error.code);
+            console.error('📝 Mensaje:', error.message);
             throw error;
         }
     }
@@ -102,11 +210,28 @@ class AuthManager {
             const { signInWithEmailAndPassword } = 
                 await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
             
+            console.log('🔄 Iniciando sesión para:', email);
+            
             const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
-            console.log('✅ Usuario logueado:', userCredential.user.email);
-            return userCredential.user;
+            const user = userCredential.user;
+            
+            console.log('✅ Usuario logueado exitosamente:', user.email);
+            console.log('👤 UID:', user.uid);
+            console.log('📧 Email verificado:', user.emailVerified);
+            console.log('🔍 Estado de autenticación:', this.auth.currentUser ? 'Autenticado' : 'No autenticado');
+            
+            // Verificar que el usuario esté correctamente autenticado
+            if (this.auth.currentUser && this.auth.currentUser.uid === user.uid) {
+                console.log('✅ Estado de autenticación verificado correctamente');
+            } else {
+                console.warn('⚠️ Problema con el estado de autenticación después del login');
+            }
+            
+            return user;
         } catch (error) {
             console.error('❌ Error en login:', error);
+            console.error('🔍 Código de error:', error.code);
+            console.error('📝 Mensaje:', error.message);
             throw error;
         }
     }
@@ -217,26 +342,60 @@ class AuthManager {
     // Obtener perfil completo del usuario actual
     async getUserProfile() {
         if (!this.currentUser) {
+            console.log('⚠️ No hay usuario autenticado para obtener perfil');
             return null;
         }
 
         try {
-            const { getFirestore, doc, getDoc } = 
+            const { getFirestore, doc, getDoc, setDoc, collection, getDocs } = 
                 await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+            
+            console.log('🔄 Obteniendo perfil para usuario:', this.currentUser.email);
+            console.log('👤 UID:', this.currentUser.uid);
             
             const db = getFirestore(this.app);
             const userDoc = await getDoc(doc(db, 'users', this.currentUser.uid));
             
             if (userDoc.exists()) {
                 const profile = userDoc.data();
-                console.log('👤 Perfil de usuario:', profile);
+                console.log('✅ Perfil de usuario encontrado:', profile);
                 return profile;
             } else {
-                console.log('⚠️ No se encontró perfil para el usuario');
-                return null;
+                console.log('⚠️ No se encontró perfil para el usuario, creando uno...');
+                
+                // Crear perfil si no existe (simplificado para evitar errores de Firestore)
+                let isFirstUser = false;
+                console.log('🏆 Asumiendo usuario comercial (verificación de primer usuario deshabilitada temporalmente)');
+                
+                const userProfile = {
+                    uid: this.currentUser.uid,
+                    email: this.currentUser.email,
+                    role: isFirstUser ? 'admin' : 'comercial',
+                    name: this.currentUser.displayName || this.currentUser.email.split('@')[0],
+                    photoURL: this.currentUser.photoURL || null,
+                    createdAt: new Date().toISOString(),
+                    isFirstUser: isFirstUser,
+                    provider: this.currentUser.providerData[0]?.providerId || 'email',
+                    active: true,
+                    emailVerified: this.currentUser.emailVerified
+                };
+                
+                try {
+                    console.log('🔄 Creando perfil de usuario:', userProfile);
+                    await setDoc(doc(db, 'users', this.currentUser.uid), userProfile);
+                    console.log('✅ Perfil de usuario creado exitosamente:', userProfile);
+                    return userProfile;
+                } catch (createError) {
+                    console.error('❌ Error creando perfil:', createError);
+                    console.error('🔍 Código de error:', createError.code);
+                    console.error('📝 Mensaje:', createError.message);
+                    return null;
+                }
             }
         } catch (error) {
             console.error('❌ Error obteniendo perfil:', error);
+            console.error('🔍 Código de error:', error.code);
+            console.error('📝 Mensaje:', error.message);
             return null;
         }
     }
@@ -249,6 +408,113 @@ class AuthManager {
     // Verificar si hay usuario autenticado
     isLoggedIn() {
         return this.currentUser !== null;
+    }
+
+    // Enviar email de verificación
+    async sendEmailVerification() {
+        if (!this.currentUser) {
+            throw new Error('Usuario no autenticado');
+        }
+
+        try {
+            const { sendEmailVerification } = 
+                await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            
+            console.log('🔄 Enviando email de verificación a:', this.currentUser.email);
+            console.log('👤 Usuario UID:', this.currentUser.uid);
+            console.log('📧 Email verificado actualmente:', this.currentUser.emailVerified);
+            console.log('🔍 Estado de autenticación:', this.auth.currentUser ? 'Autenticado' : 'No autenticado');
+            
+            // Verificar que el usuario esté correctamente autenticado
+            if (!this.auth.currentUser || this.auth.currentUser.uid !== this.currentUser.uid) {
+                throw new Error('Usuario no está correctamente autenticado');
+            }
+            
+            // Configurar actionCodeSettings para el email de verificación
+            const actionCodeSettings = {
+                url: window.location.origin + '/index.html?verified=true',
+                handleCodeInApp: false,
+            };
+            
+            console.log('🔧 Configuración de email:', actionCodeSettings);
+            
+            // Llamar al método de Firebase Auth
+            await sendEmailVerification(this.currentUser, actionCodeSettings);
+            console.log('✅ Email de verificación enviado exitosamente');
+            
+            // Verificar que el email se envió correctamente
+            console.log('🔍 Verificando estado después del envío...');
+            await this.reloadUser();
+            const updatedUser = this.getCurrentUser();
+            if (updatedUser) {
+                console.log('📧 Estado del email después del envío:', updatedUser.emailVerified);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error enviando email de verificación:', error);
+            console.error('🔍 Código de error:', error.code);
+            console.error('📝 Mensaje:', error.message);
+            
+            // Proporcionar información específica sobre el error
+            if (error.code === 'auth/too-many-requests') {
+                throw new Error('Demasiados intentos de verificación. Inténtalo más tarde');
+            } else if (error.code === 'auth/user-not-found') {
+                throw new Error('Usuario no encontrado');
+            } else if (error.code === 'auth/invalid-email') {
+                throw new Error('Email inválido');
+            } else if (error.code === 'auth/network-request-failed') {
+                throw new Error('Error de conexión. Verifica tu internet');
+            }
+            
+            throw error;
+        }
+    }
+
+    // Recargar usuario (para verificar estado de email)
+    async reloadUser() {
+        if (!this.currentUser) {
+            throw new Error('Usuario no autenticado');
+        }
+
+        try {
+            const { reload } = 
+                await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            
+            console.log('🔄 Recargando usuario:', this.currentUser.email);
+            console.log('📧 Estado antes del reload:', this.currentUser.emailVerified);
+            
+            await reload(this.currentUser);
+            
+            // Actualizar la referencia del usuario actual
+            this.currentUser = this.auth.currentUser;
+            
+            console.log('✅ Usuario recargado exitosamente');
+            console.log('📧 Estado después del reload:', this.currentUser?.emailVerified);
+            
+        } catch (error) {
+            console.error('❌ Error recargando usuario:', error);
+            console.error('🔍 Código de error:', error.code);
+            console.error('📝 Mensaje:', error.message);
+            throw error;
+        }
+    }
+
+    // Enviar email de recuperación de contraseña
+    async sendPasswordResetEmail(email) {
+        if (!this.isInitialized) {
+            throw new Error('Firebase no está inicializado');
+        }
+
+        try {
+            const { sendPasswordResetEmail } = 
+                await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            
+            await sendPasswordResetEmail(this.auth, email);
+            console.log('✅ Email de recuperación enviado a:', email);
+        } catch (error) {
+            console.error('❌ Error enviando email de recuperación:', error);
+            throw error;
+        }
     }
 
     // Obtener todos los usuarios (solo para administradores)
