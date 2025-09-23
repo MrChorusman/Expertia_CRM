@@ -6959,8 +6959,8 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                 <td>${item.description || 'N/A'}</td>
                                                 <td style="text-align: center;">${item.serialNumber || 'N/A'}</td>
                                                 <td style="text-align: center;">${item.quantity || 0}</td>
-                                                <td style="text-align: right;">${(item.price || 0).toFixed(2)} €</td>
-                                                <td style="text-align: right;">${((item.quantity || 0) * (item.price || 0)).toFixed(2)} €</td>
+                                                <td style="text-align: right;">${(parseFloat(item.price) || 0).toFixed(2)} €</td>
+                                                <td style="text-align: right;">${((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0)).toFixed(2)} €</td>
                                             </tr>
                                         `).join('')}
                                         ${(invoice.items || []).length === 0 ? '<tr><td colspan="4" style="text-align: center; color: #666;">No hay elementos en esta factura</td></tr>' : ''}
@@ -7137,8 +7137,8 @@ Website: ${settings.company.website} `;
                                         <td className="p-3">{item.description}</td>
                                         <td className="p-3 text-center">{item.serialNumber}</td>
                                         <td className="p-3 text-center">{item.quantity}</td>
-                                        <td className="p-3 text-right">{parseFloat(item.price).toFixed(2)} €</td>
-                                        <td className="p-3 text-right">{(item.quantity * item.price).toFixed(2)} €</td>
+                                        <td className="p-3 text-right">{(parseFloat(item.price) || 0).toFixed(2)} €</td>
+                                        <td className="p-3 text-right">{(parseFloat(item.quantity) * parseFloat(item.price)).toFixed(2)} €</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -7297,8 +7297,8 @@ Website: ${settings.company.website} `;
                         }
                         
                         itemText += `\n   Cantidad: ${item.quantity}`;
-                        itemText += `\n   Precio Unitario: ${item.price.toFixed(2)} €`;
-                        itemText += `\n   Total: ${(item.quantity * item.price).toFixed(2)} €`;
+                        itemText += `\n   Precio Unitario: ${(parseFloat(item.price) || 0).toFixed(2)} €`;
+                        itemText += `\n   Total: ${(parseFloat(item.quantity) * parseFloat(item.price)).toFixed(2)} €`;
                         
                         return itemText;
                     }).join('\n\n') || 'No hay productos en esta oferta';
@@ -7460,8 +7460,8 @@ Website: ${settings.company.website}`;
                                             <td>${item.description}</td>
                                             <td style="text-align: center;">${item.serialNumber}</td>
                                             <td style="text-align: center;">${item.quantity}</td>
-                                            <td style="text-align: right;">${item.price.toFixed(2)} €</td>
-                                            <td style="text-align: right;"><strong>${(item.quantity * item.price).toFixed(2)} €</strong></td>
+                                            <td style="text-align: right;">${(parseFloat(item.price) || 0).toFixed(2)} €</td>
+                                            <td style="text-align: right;"><strong>${(parseFloat(item.quantity) * parseFloat(item.price)).toFixed(2)} €</strong></td>
                                         </tr>
                                     `).join('') || '<tr><td colspan="4">No hay items</td></tr>'}
                                 </tbody>
@@ -7571,8 +7571,8 @@ Website: ${settings.company.website}`;
                                                     <td className="p-3">{item.description}</td>
                                                     <td className="p-3 text-center">{item.serialNumber}</td>
                                                     <td className="p-3 text-center">{item.quantity}</td>
-                                                    <td className="p-3 text-right">{item.price.toFixed(2)} €</td>
-                                                    <td className="p-3 text-right font-semibold">{(item.quantity * item.price).toFixed(2)} €</td>
+                                                    <td className="p-3 text-right">{(parseFloat(item.price) || 0).toFixed(2)} €</td>
+                                                    <td className="p-3 text-right font-semibold">{(parseFloat(item.quantity) * parseFloat(item.price)).toFixed(2)} €</td>
                                                 </tr>
                                             ))}
                                         </tbody>
