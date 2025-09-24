@@ -167,8 +167,27 @@ async function testGoogleAuthFlow() {
     };
 }
 
-// Ejecutar pruebas automáticamente
-testGoogleAuthFix();
+// Ejecutar pruebas cuando esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🧪 Script de pruebas de Google Auth cargado');
+    
+    // Esperar a que authManager esté disponible
+    const waitForAuthManager = setInterval(() => {
+        if (window.authManager && window.authManager.isInitialized) {
+            clearInterval(waitForAuthManager);
+            console.log('🚀 AuthManager detectado, ejecutando pruebas...');
+            testGoogleAuthFix();
+        }
+    }, 1000);
+    
+    // Timeout después de 10 segundos
+    setTimeout(() => {
+        clearInterval(waitForAuthManager);
+        if (!window.authManager) {
+            console.log('⚠️ AuthManager no disponible después de 10 segundos');
+        }
+    }, 10000);
+});
 
 // Hacer disponible la función de prueba de flujo
 window.testGoogleAuthFlow = testGoogleAuthFlow;

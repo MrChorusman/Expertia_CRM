@@ -30,7 +30,22 @@ class AuthManager {
             
             // Configurar provider de Google
             this.googleProvider = new GoogleAuthProvider();
-            console.log('✅ Google Auth Provider configurado');
+            
+            // Configurar scopes y parámetros adicionales
+            this.googleProvider.addScope('https://www.googleapis.com/auth/userinfo.email');
+            this.googleProvider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+            this.googleProvider.addScope('openid');
+            
+            // Configurar parámetros personalizados para popup
+            this.googleProvider.setCustomParameters({
+                'prompt': 'select_account',
+                'include_granted_scopes': 'true',
+                'access_type': 'online'
+            });
+            
+            console.log('✅ Google Auth Provider configurado con scopes completos');
+            console.log('📋 Scopes configurados: userinfo.email, userinfo.profile, openid');
+            console.log('📋 Parámetros: prompt=select_account, include_granted_scopes=true, access_type=online');
             
             // Escuchar cambios de autenticación
             onAuthStateChanged(this.auth, (user) => {
@@ -53,10 +68,19 @@ class AuthManager {
     // Callback cuando cambia el estado de autenticación
     onAuthStateChange(user) {
         if (user) {
-            console.log('👤 Usuario autenticado:', user.email);
+            console.log('👤 Usuario autenticado:', user.email || 'Email no disponible');
             console.log('👤 UID:', user.uid);
             console.log('📧 Email verificado:', user.emailVerified);
             console.log('🔍 Proveedor:', user.providerData[0]?.providerId || 'email');
+            console.log('📋 Datos completos del usuario en callback:', {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+                emailVerified: user.emailVerified,
+                providerData: user.providerData,
+                metadata: user.metadata
+            });
         } else {
             console.log('👤 Usuario no autenticado');
         }
@@ -271,29 +295,105 @@ class AuthManager {
                 await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
             
             // Ejecutar autenticación con Google
+            console.log('🔓 Ejecutando signInWithPopup...');
             const result = await signInWithPopup(this.auth, this.googleProvider);
-            const user = result.user;
+            console.log('📋 Resultado completo de signInWithPopup:', result);
             
-            if (!user || !user.email) {
-                throw new Error('No se pudieron obtener los datos del usuario de Google');
+            let user = result.user;
+            console.log('👤 Usuario obtenido del resultado:', user);
+            
+            // Si el usuario del resultado es null, intentar obtenerlo del auth actual
+            if (!user) {
+                console.log('⚠️ Usuario null en resultado, verificando auth.currentUser...');
+                user = this.auth.currentUser;
+                console.log('👤 Usuario desde auth.currentUser:', user);
+                
+                // Esperar un poco para que se actualice el estado
+                if (!user) {
+                    console.log('⏳ Esperando actualización del estado de autenticación...');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    user = this.auth.currentUser;
+                    console.log('👤 Usuario después de esperar:', user);
+                }
             }
             
-            console.log('✅ Autenticación con Google exitosa:', user.email);
+            // Si tenemos usuario pero le faltan datos, intentar recargarlo
+            if (user && !user.email) {
+                console.log('⚠️ Usuario disponible pero sin email, intentando recargar datos...');
+                try {
+                    await user.reload();
+                    console.log('🔄 Usuario recargado, verificando datos nuevamente...');
+                    console.log('👤 Datos después de reload:', {
+                        uid: user.uid,
+                        email: user.email,
+                        displayName: user.displayName,
+                        emailVerified: user.emailVerified,
+                        providerData: user.providerData
+                    });
+                } catch (reloadError) {
+                    console.error('❌ Error recargando usuario:', reloadError);
+                }
+            }
+            
+            // Verificar datos del usuario paso a paso
+            if (!user) {
+                console.error('❌ Usuario es null o undefined incluso después de verificaciones');
+                throw new Error('No se pudo obtener el usuario de Google - resultado nulo');
+            }
+            
+            // Intentar obtener email de diferentes fuentes
+            let userEmail = user.email;
+            let userDisplayName = user.displayName;
+            
+            if (!userEmail && user.providerData && user.providerData.length > 0) {
+                console.log('⚠️ Email principal no disponible, buscando en providerData...');
+                const googleProvider = user.providerData.find(provider => provider.providerId === 'google.com');
+                if (googleProvider) {
+                    userEmail = googleProvider.email;
+                    userDisplayName = userDisplayName || googleProvider.displayName;
+                    console.log('✅ Datos obtenidos de providerData:', {
+                        email: userEmail,
+                        displayName: userDisplayName
+                    });
+                }
+            }
+            
+            if (!userEmail) {
+                console.error('❌ No se pudo obtener email de ninguna fuente');
+                console.log('📋 Datos disponibles del usuario:', {
+                    uid: user.uid,
+                    email: user.email,
+                    displayName: user.displayName,
+                    photoURL: user.photoURL,
+                    emailVerified: user.emailVerified,
+                    providerData: user.providerData
+                });
+                throw new Error('No se pudo obtener el email del usuario de Google');
+            }
+            
+            // Actualizar referencias del usuario con los datos obtenidos
+            const processedUser = {
+                ...user,
+                email: userEmail,
+                displayName: userDisplayName
+            };
+            
+            console.log('✅ Autenticación con Google exitosa:', userEmail);
             console.log('👤 UID:', user.uid);
-            console.log('📧 Email:', user.email);
-            console.log('👤 Nombre:', user.displayName);
+            console.log('📧 Email:', userEmail);
+            console.log('👤 Nombre:', userDisplayName);
             console.log('🖼️ Foto:', user.photoURL);
             console.log('✅ Email verificado:', user.emailVerified);
             
             // Crear o actualizar perfil de usuario de manera robusta
-            const userProfile = await this.handleGoogleUserProfile(user);
+            const userProfile = await this.handleGoogleUserProfile(processedUser);
             
             if (!userProfile) {
                 throw new Error('No se pudo crear o actualizar el perfil del usuario');
             }
             
             console.log('✅ Perfil de usuario procesado correctamente');
-            return user;
+            return processedUser;
             
         } catch (error) {
             console.error('❌ Error en autenticación con Google:', error);
@@ -450,6 +550,52 @@ class AuthManager {
     extractNameFromEmail(email) {
         const localPart = email.split('@')[0];
         return localPart.charAt(0).toUpperCase() + localPart.slice(1);
+    }
+    
+    // Función de diagnóstico para debugging de Google Auth
+    async diagnoseGoogleAuth() {
+        console.log('🔍 DIAGNÓSTICO DE GOOGLE AUTH');
+        console.log('===============================');
+        
+        console.log('📋 Estado de AuthManager:');
+        console.log('  - Inicializado:', this.isInitialized);
+        console.log('  - Usuario actual:', this.currentUser?.email || 'No disponible');
+        console.log('  - UID actual:', this.currentUser?.uid || 'No disponible');
+        
+        console.log('📋 Estado de Firebase Auth:');
+        console.log('  - Auth instance:', !!this.auth);
+        console.log('  - Current user:', this.auth.currentUser?.email || 'No disponible');
+        console.log('  - UID:', this.auth.currentUser?.uid || 'No disponible');
+        
+        console.log('📋 Google Provider:');
+        console.log('  - Provider configurado:', !!this.googleProvider);
+        console.log('  - Scopes:', this.googleProvider?.scopes || 'No disponible');
+        console.log('  - Custom parameters:', this.googleProvider?.customParameters || 'No disponible');
+        
+        if (this.auth.currentUser) {
+            console.log('📋 Datos completos del usuario actual:');
+            const user = this.auth.currentUser;
+            console.log('  - UID:', user.uid);
+            console.log('  - Email:', user.email);
+            console.log('  - Display Name:', user.displayName);
+            console.log('  - Photo URL:', user.photoURL);
+            console.log('  - Email Verified:', user.emailVerified);
+            console.log('  - Provider Data:', user.providerData);
+            console.log('  - Metadata:', user.metadata);
+        }
+        
+        return {
+            isInitialized: this.isInitialized,
+            hasCurrentUser: !!this.currentUser,
+            hasAuthCurrentUser: !!this.auth.currentUser,
+            hasGoogleProvider: !!this.googleProvider,
+            currentUserData: this.auth.currentUser ? {
+                uid: this.auth.currentUser.uid,
+                email: this.auth.currentUser.email,
+                displayName: this.auth.currentUser.displayName,
+                emailVerified: this.auth.currentUser.emailVerified
+            } : null
+        };
     }
 
     // Obtener perfil completo del usuario actual
@@ -666,7 +812,7 @@ class AuthManager {
         } catch (error) {
             console.error('❌ Error obteniendo usuarios:', error);
             throw error;
-        }
+    }
     }
 }
 
