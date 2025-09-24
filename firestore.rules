@@ -20,16 +20,23 @@ service cloud.firestore {
       );
     }
     
-    // Usuarios normales - Reglas simplificadas para debugging
+    // Usuarios normales - Reglas mejoradas para Google Auth
     match /users/{userId} {
       // Permitir acceso completo a usuarios autenticados a sus propios datos
       allow read, write, create: if request.auth != null && request.auth.uid == userId;
       
-      // Regla temporal para permitir creación de perfiles durante registro
+      // Permitir creación de perfiles para cualquier usuario autenticado
+      // (necesario para Google Auth y primer usuario)
       allow create: if request.auth != null;
       
-      // Permitir acceso administrativo (solo si el usuario ya existe)
-      allow read, write, list: if request.auth != null && isAdmin();
+      // Permitir lectura para verificar si es primer usuario
+      allow read: if request.auth != null;
+      
+      // Permitir acceso administrativo (verificación cuidadosa)
+      allow read, write, list: if request.auth != null && 
+        (exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
       
       // Recordatorios de usuarios - subcolección
       match /recordatorios/{recordatorioId} {

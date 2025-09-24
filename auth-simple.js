@@ -529,6 +529,31 @@ class AuthManager {
             
         } catch (error) {
             console.error('❌ Error procesando perfil de usuario:', error);
+            
+            // Manejar errores específicos de permisos
+            if (error.code === 'permission-denied') {
+                console.error('🚨 Error de permisos de Firestore');
+                console.error('💡 Solución: Verificar reglas de Firestore');
+                console.error('📋 Usuario actual:', user.uid);
+                console.error('📋 Email:', user.email);
+                
+                // Intentar crear un perfil básico local
+                console.log('🔄 Creando perfil básico sin Firestore...');
+                return {
+                    uid: user.uid,
+                    email: user.email,
+                    name: user.displayName || this.extractNameFromEmail(user.email),
+                    photoURL: user.photoURL || null,
+                    emailVerified: user.emailVerified || false,
+                    provider: 'google',
+                    role: 'comercial', // Por defecto comercial hasta que se resuelvan los permisos
+                    active: true,
+                    createdAt: new Date().toISOString(),
+                    lastLoginAt: new Date().toISOString(),
+                    _localProfile: true // Marcar como perfil local temporal
+                };
+            }
+            
             throw new Error(`Error procesando perfil: ${error.message}`);
         }
     }
