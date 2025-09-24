@@ -254,202 +254,98 @@ class AuthManager {
         }
     }
 
-    // === AUTENTICACIÓN CON GOOGLE - SISTEMA ROBUSTO ===
-    
-    // Login con Google - Implementación robusta que evita duplicados
+    // Login con Google
     async loginWithGoogle() {
         if (!this.isInitialized) {
             throw new Error('Firebase no está inicializado');
         }
 
         try {
-            console.log('🔄 Iniciando autenticación con Google...');
+            console.log('🔄 Iniciando login con Google...');
             
             const { signInWithPopup } = 
                 await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
-            const { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where } = 
+            const { getFirestore, doc, setDoc, getDoc, collection, getDocs } = 
                 await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
             
-            // Ejecutar autenticación con Google
+            console.log('🔓 Ejecutando signInWithPopup...');
             const result = await signInWithPopup(this.auth, this.googleProvider);
             const user = result.user;
+            console.log('✅ Autenticación exitosa para:', user.email);
+            console.log('👤 Datos completos del usuario Google:');
+            console.log('  - UID:', user.uid);
+            console.log('  - Email:', user.email);
+            console.log('  - Display Name:', user.displayName);
+            console.log('  - Photo URL:', user.photoURL);
+            console.log('  - Email Verified:', user.emailVerified);
+            console.log('  - Provider Data:', user.providerData);
+            console.log('  - Creation Time:', user.metadata.creationTime);
+            console.log('  - Last Sign In:', user.metadata.lastSignInTime);
             
-            if (!user || !user.email) {
-                throw new Error('No se pudieron obtener los datos del usuario de Google');
+            // Inicializar Firestore
+            console.log('🔥 Inicializando Firestore...');
+            const db = getFirestore(this.app);
+            
+            try {
+                // Verificar si el usuario ya existe en Firestore
+                console.log('🔍 Verificando si existe perfil para UID:', user.uid);
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                
+                if (!userDoc.exists()) {
+                    console.log('👤 Usuario no encontrado, creando perfil...');
+                    
+                    // Es un usuario nuevo, verificar si es el primer usuario
+                    console.log('📊 Verificando si es el primer usuario...');
+                    const usersCollection = collection(db, 'users');
+                    const usersSnapshot = await getDocs(usersCollection);
+                    const isFirstUser = usersSnapshot.empty;
+                    console.log('🏆 ¿Es primer usuario?', isFirstUser);
+                    
+                    // Crear perfil de usuario en Firestore
+                    const userProfile = {
+                        uid: user.uid,
+                        email: user.email,
+                        role: isFirstUser ? 'admin' : 'comercial',
+                        name: user.displayName || user.email.split('@')[0],
+                        photoURL: user.photoURL || null,
+                        createdAt: new Date().toISOString(),
+                        isFirstUser: isFirstUser,
+                        provider: 'google',
+                        active: true
+                    };
+                    
+                    console.log('💾 Creando perfil:', userProfile);
+                    await setDoc(doc(db, 'users', user.uid), userProfile);
+                    console.log('✅ Nuevo usuario Google creado:', user.email, 'Rol:', userProfile.role);
+                } else {
+                    console.log('✅ Usuario Google existente encontrado:', user.email);
+                    console.log('📄 Perfil existente:', userDoc.data());
+                }
+                
+            } catch (firestoreError) {
+                console.error('❌ Error específico de Firestore:', firestoreError);
+                console.log('⚠️ Continuando sin crear perfil - se intentará crear después');
+                // No lanzar error aquí, permitir que el usuario se autentique
+                // El perfil se creará después en la aplicación principal
             }
             
-            console.log('✅ Autenticación con Google exitosa:', user.email);
-            console.log('👤 UID:', user.uid);
-            console.log('📧 Email:', user.email);
-            console.log('👤 Nombre:', user.displayName);
-            console.log('🖼️ Foto:', user.photoURL);
-            console.log('✅ Email verificado:', user.emailVerified);
-            
-            // Crear o actualizar perfil de usuario de manera robusta
-            const userProfile = await this.handleGoogleUserProfile(user);
-            
-            if (!userProfile) {
-                throw new Error('No se pudo crear o actualizar el perfil del usuario');
-            }
-            
-            console.log('✅ Perfil de usuario procesado correctamente');
             return user;
-            
         } catch (error) {
-            console.error('❌ Error en autenticación con Google:', error);
+            console.error('❌ Error en login con Google:', error);
             
-            // Mensajes de error más específicos
-            if (error.code === 'auth/popup-closed-by-user') {
-                throw new Error('Login cancelado por el usuario');
-            } else if (error.code === 'auth/popup-blocked') {
-                throw new Error('Popup bloqueado. Permite ventanas emergentes para este sitio');
-            } else if (error.code === 'auth/network-request-failed') {
-                throw new Error('Error de conexión. Verifica tu internet');
-            } else if (error.code === 'auth/too-many-requests') {
-                throw new Error('Demasiados intentos. Inténtalo más tarde');
+            // Logging detallado del error
+            if (error.code) {
+                console.log('🔍 Código de error:', error.code);
+            }
+            if (error.message) {
+                console.log('📝 Mensaje de error:', error.message);
+            }
+            if (error.stack) {
+                console.log('📚 Stack trace:', error.stack);
             }
             
             throw error;
         }
-    }
-    
-    // Procesar perfil de usuario de Google de manera robusta
-    async handleGoogleUserProfile(user) {
-        const { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where } = 
-            await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-        
-        const db = getFirestore(this.app);
-        
-        try {
-            // PASO 1: Verificar si ya existe un usuario con este UID
-            console.log('🔍 Verificando usuario por UID:', user.uid);
-            const userByUidRef = doc(db, 'users', user.uid);
-            const userByUidDoc = await getDoc(userByUidRef);
-            
-            if (userByUidDoc.exists()) {
-                // Usuario existente - actualizar datos
-                console.log('👤 Usuario existente encontrado, actualizando datos...');
-                const existingData = userByUidDoc.data();
-                
-                const updateData = {
-                    lastLoginAt: new Date().toISOString(),
-                    name: user.displayName || existingData.name,
-                    photoURL: user.photoURL || existingData.photoURL,
-                    emailVerified: user.emailVerified,
-                    provider: this.mergeProviders(existingData.provider, 'google')
-                };
-                
-                await setDoc(userByUidRef, updateData, { merge: true });
-                console.log('✅ Datos del usuario actualizados');
-                
-                return { ...existingData, ...updateData };
-            }
-            
-            // PASO 2: Verificar si existe un usuario con el mismo email pero diferente UID
-            console.log('🔍 Verificando usuario por email:', user.email);
-            const usersCollection = collection(db, 'users');
-            const emailQuery = query(usersCollection, where('email', '==', user.email));
-            const emailQuerySnapshot = await getDocs(emailQuery);
-            
-            if (!emailQuerySnapshot.empty) {
-                // CASO CRÍTICO: Usuario con mismo email pero diferente UID
-                console.warn('⚠️ CONFLICTO: Usuario con mismo email pero diferente UID detectado');
-                
-                const existingUserDoc = emailQuerySnapshot.docs[0];
-                const existingData = existingUserDoc.data();
-                const existingUid = existingUserDoc.id;
-                
-                console.log('📋 Usuario existente:', {
-                    uid: existingUid,
-                    email: existingData.email,
-                    provider: existingData.provider
-                });
-                
-                console.log('📋 Usuario de Google:', {
-                    uid: user.uid,
-                    email: user.email,
-                    provider: 'google'
-                });
-                
-                // Por seguridad, usar el usuario existente y actualizar sus datos
-                console.log('🔄 Actualizando usuario existente con datos de Google...');
-                
-                const mergedData = {
-                    ...existingData,
-                    name: user.displayName || existingData.name,
-                    photoURL: user.photoURL || existingData.photoURL,
-                    emailVerified: user.emailVerified || existingData.emailVerified,
-                    lastLoginAt: new Date().toISOString(),
-                    provider: this.mergeProviders(existingData.provider, 'google'),
-                    googleUid: user.uid // Guardar el UID de Google como referencia
-                };
-                
-                await setDoc(doc(db, 'users', existingUid), mergedData);
-                console.log('✅ Usuario existente actualizado con datos de Google');
-                
-                return mergedData;
-            }
-            
-            // PASO 3: Usuario completamente nuevo - crear perfil
-            console.log('👤 Usuario nuevo, creando perfil...');
-            
-            // Verificar si es el primer usuario del sistema
-            const allUsersSnapshot = await getDocs(usersCollection);
-            const isFirstUser = allUsersSnapshot.empty;
-            
-            const newUserProfile = {
-                uid: user.uid,
-                email: user.email,
-                name: user.displayName || this.extractNameFromEmail(user.email),
-                photoURL: user.photoURL || null,
-                emailVerified: user.emailVerified || false,
-                
-                // Metadatos del sistema
-                role: isFirstUser ? 'admin' : 'comercial',
-                active: true,
-                isFirstUser: isFirstUser,
-                provider: 'google',
-                
-                // Timestamps
-                createdAt: new Date().toISOString(),
-                lastLoginAt: new Date().toISOString(),
-                
-                // Configuración por defecto
-                preferences: {
-                    language: 'es',
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    theme: 'light'
-                }
-            };
-            
-            await setDoc(userByUidRef, newUserProfile);
-            console.log('✅ Nuevo usuario creado:', newUserProfile);
-            
-            return newUserProfile;
-            
-        } catch (error) {
-            console.error('❌ Error procesando perfil de usuario:', error);
-            throw new Error(`Error procesando perfil: ${error.message}`);
-        }
-    }
-    
-    // Función auxiliar para combinar proveedores
-    mergeProviders(existingProvider, newProvider) {
-        if (!existingProvider) return newProvider;
-        if (existingProvider === newProvider) return existingProvider;
-        
-        // Si son diferentes, crear un array o string combinado
-        if (typeof existingProvider === 'string') {
-            return existingProvider.includes(newProvider) ? existingProvider : `${existingProvider},${newProvider}`;
-        }
-        
-        return `${existingProvider},${newProvider}`;
-    }
-    
-    // Función auxiliar para extraer nombre del email
-    extractNameFromEmail(email) {
-        const localPart = email.split('@')[0];
-        return localPart.charAt(0).toUpperCase() + localPart.slice(1);
     }
 
     // Obtener perfil completo del usuario actual
