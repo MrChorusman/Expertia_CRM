@@ -1479,25 +1479,26 @@
                 
                 // Funciones para gestión de gastos
                 const loadExpenses = async () => {
-                    if (!db) {
-                        console.error('[ERROR]  Base de datos no disponible');
-                        return;
-                    }
-                    
-                    // Obtener userId directamente del userDoc o user
-                    let userId = user?.uid;
-                    
-                    if (!userId) {
-                        console.error('[ERROR]  No se pudo obtener ID de usuario para cargar gastos');
-                        console.error('[ERROR]  user:', user);
-                        return;
-                    }
-                    
-                    console.log('[DEBUG]  === LOAD EXPENSES DEBUG ===');
-                    console.log('[DEBUG]  userId:', userId);
-                    console.log('[DEBUG]  userDoc:', userDoc);
-                    
                     try {
+                        console.log('[DEBUG] === LOAD EXPENSES START ===');
+                        
+                        if (!db) {
+                            console.error('[ERROR] Base de datos no disponible');
+                            return;
+                        }
+                        
+                        if (!user || !user.uid) {
+                            console.error('[ERROR] Usuario no disponible o sin UID');
+                            console.error('[ERROR] user:', user);
+                            return;
+                        }
+                        
+                        const userId = user.uid;
+                        console.log('[DEBUG] userId obtenido:', userId);
+                        
+                        // Pequeña pausa para asegurar que el contexto está estable
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                        
                         // Importar Firebase Firestore
                         const { getFirestore, collection, getDocs, query, orderBy } = 
                             await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
@@ -1798,15 +1799,43 @@
                 
                 // Cargar configuración del sistema cuando db y user estén disponibles
                 useEffect(() => {
-                    if (db && user) {
-                        console.log('Condiciones cumplidas para cargar configuración - db:', !!db, 'user:', !!user);
-                        loadAppConfig();
-                        loadCounters();
-                        loadExpenses();
+                    console.log("[DEBUG] useEffect ejecutándose - db:", !!db, "user:", !!user, "isAuthReady:", isAuthReady);
+                    console.log("[DEBUG] user.uid:", user?.uid);
+                    
+                    if (db && user && user.uid && isAuthReady) {
+                        console.log("Condiciones cumplidas para cargar configuración");
+                        console.log("- db disponible:", !!db);
+                        console.log("- user disponible:", !!user);
+                        console.log("- user.uid disponible:", !!user.uid);
+                        console.log("- isAuthReady:", isAuthReady);
+                        
+                        // Cargar datos de forma secuencial para evitar problemas de timing
+                        const loadData = async () => {
+                            try {
+                                console.log("[DEBUG] Iniciando carga secuencial de datos");
+                                await loadAppConfig();
+                                console.log("[DEBUG] loadAppConfig completado");
+                                await loadCounters();
+                                console.log("[DEBUG] loadCounters completado");
+                                // Pequeña pausa antes de cargar gastos para estabilizar React
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                                await loadExpenses();
+                                console.log("[DEBUG] loadExpenses completado");
+                                console.log("[OK] Todos los datos cargados correctamente");
+                            } catch (error) {
+                                console.error("[ERROR] Error cargando datos:", error);
+                            }
+                        };
+                        
+                        loadData();
                     } else {
-                        console.log('Esperando condiciones para cargar configuración - db:', !!db, 'user:', !!user);
+                        console.log("Esperando condiciones para cargar configuración");
+                        console.log("- db:", !!db);
+                        console.log("- user:", !!user);
+                        console.log("- user.uid:", !!user?.uid);
+                        console.log("- isAuthReady:", isAuthReady);
                     }
-                }, [db, user]);
+                }, [db, user, isAuthReady]);
 
                 // Función para cargar datos demo
                 const loadDemoData = () => {
