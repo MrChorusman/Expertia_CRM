@@ -987,6 +987,7 @@
                 const [auth, setAuth] = useState(null);
                 const [user, setUser] = useState(null);
                 const [userProfile, setUserProfile] = useState(null);
+                const [userDoc, setUserDoc] = useState(null);
                 const [isAuthReady, setIsAuthReady] = useState(false);
 
                 const [clients, setClients] = useState([]);
@@ -1483,13 +1484,18 @@
                         return;
                     }
                     
-                    // Obtener userId de múltiples fuentes posibles
-                    let userId = userProfile?.id || userProfile?.uid || user?.uid;
+                    // Obtener userId directamente del userDoc o user
+                    let userId = user?.uid;
                     
                     if (!userId) {
                         console.error('[ERROR]  No se pudo obtener ID de usuario para cargar gastos');
+                        console.error('[ERROR]  user:', user);
                         return;
                     }
+                    
+                    console.log('[DEBUG]  === LOAD EXPENSES DEBUG ===');
+                    console.log('[DEBUG]  userId:', userId);
+                    console.log('[DEBUG]  userDoc:', userDoc);
                     
                     try {
                         // Importar Firebase Firestore
@@ -1535,9 +1541,8 @@
                 const saveExpense = async (expenseData) => {
                     console.log('[DEBUG]  === SAVE EXPENSE DEBUG ===');
                     console.log('[DEBUG]  db disponible:', !!db);
-                    console.log('[DEBUG]  userProfile:', userProfile);
-                    console.log('[DEBUG]  userProfile.id:', userProfile?.id);
-                    console.log('[DEBUG]  userProfile.uid:', userProfile?.uid);
+                    console.log('[DEBUG]  user:', user);
+                    console.log('[DEBUG]  userDoc:', userDoc);
                     console.log('[DEBUG]  expenseData:', expenseData);
                     
                     if (!db) {
@@ -1546,12 +1551,11 @@
                         return false;
                     }
                     
-                    // Obtener userId de múltiples fuentes posibles
-                    let userId = userProfile?.id || userProfile?.uid || user?.uid;
+                    // Obtener userId directamente del user
+                    let userId = user?.uid;
                     
                     if (!userId) {
                         console.error('[ERROR]  No se pudo obtener ID de usuario');
-                        console.error('[ERROR]  userProfile:', userProfile);
                         console.error('[ERROR]  user:', user);
                         showNotification('Error', 'No se pudo identificar al usuario', 'error');
                         return false;
@@ -1606,14 +1610,19 @@
                         return;
                     }
                     
-                    // Obtener userId de múltiples fuentes posibles
-                    let userId = userProfile?.id || userProfile?.uid || user?.uid;
+                    // Obtener userId directamente del user
+                    let userId = user?.uid;
                     
                     if (!userId) {
                         console.error('[ERROR]  No se pudo obtener ID de usuario para eliminar gasto');
+                        console.error('[ERROR]  user:', user);
                         showNotification('Error', 'No se pudo identificar al usuario', 'error');
                         return;
                     }
+                    
+                    console.log('[DEBUG]  === DELETE EXPENSE DEBUG ===');
+                    console.log('[DEBUG]  userId:', userId);
+                    console.log('[DEBUG]  expense:', expense);
                     
                     try {
                         // Importar Firebase Firestore
@@ -1738,8 +1747,9 @@
                             if (firebaseUser) {
                                 setUser(firebaseUser);
                                 // Cargar perfil del usuario desde Firestore
-                                const userDoc = await doc(firestoreDb, 'users', firebaseUser.uid);
-                                onSnapshot(userDoc, (snapshot) => {
+                                const userDocRef = await doc(firestoreDb, 'users', firebaseUser.uid);
+                                setUserDoc(userDocRef); // Almacenar referencia del documento
+                                onSnapshot(userDocRef, (snapshot) => {
                                     if (snapshot.exists()) {
                                         setUserProfile({ id: firebaseUser.uid, ...snapshot.data() });
                                     } else {
@@ -1750,7 +1760,7 @@
                                             role: 'comercial', // Por defecto comercial
                                             createdAt: new Date().toISOString()
                                         };
-                                        setDoc(userDoc, newProfile);
+                                        setDoc(userDocRef, newProfile);
                                         setUserProfile({ id: firebaseUser.uid, ...newProfile });
                                     }
                                 });
