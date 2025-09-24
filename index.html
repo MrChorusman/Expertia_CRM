@@ -1751,19 +1751,39 @@
                                 const userDocRef = await doc(firestoreDb, 'users', firebaseUser.uid);
                                 setUserDoc(userDocRef); // Almacenar referencia del documento
                                 onSnapshot(userDocRef, (snapshot) => {
+                                    console.log('[DEBUG] onSnapshot ejecutado para UID:', firebaseUser.uid);
+                                    console.log('[DEBUG] firebaseUser.displayName:', firebaseUser.displayName);
+                                    console.log('[DEBUG] firebaseUser.email:', firebaseUser.email);
+                                    console.log('[DEBUG] firebaseUser.photoURL:', firebaseUser.photoURL);
+                                    console.log('[DEBUG] snapshot.exists():', snapshot.exists());
+                                    
                                     if (snapshot.exists()) {
-                                        setUserProfile({ id: firebaseUser.uid, ...snapshot.data() });
+                                        const existingProfile = snapshot.data();
+                                        console.log('[DEBUG] Perfil existente encontrado:', existingProfile);
+                                        setUserProfile({ id: firebaseUser.uid, ...existingProfile });
                                     } else {
-                                        // Usuario nuevo, crear perfil básico
-                                        const newProfile = {
-                                            email: firebaseUser.email,
-                                            name: firebaseUser.displayName || 'Usuario',
-                                            role: 'comercial', // Por defecto comercial
-                                            createdAt: new Date().toISOString()
-                                        };
-                                        setDoc(userDocRef, newProfile);
-                                        setUserProfile({ id: firebaseUser.uid, ...newProfile });
+                                        console.log('[DEBUG] Perfil no existe, creando perfil básico...');
+                                        // Solo crear perfil básico si NO viene de Google (que ya creó su perfil)
+                                        const isGoogleUser = firebaseUser.providerData && 
+                                            firebaseUser.providerData.some(provider => provider.providerId === 'google.com');
+                                        
+                                        if (!isGoogleUser) {
+                                            console.log('[DEBUG] Usuario no es de Google, creando perfil básico');
+                                            const newProfile = {
+                                                email: firebaseUser.email,
+                                                name: firebaseUser.displayName || 'Usuario',
+                                                role: 'comercial',
+                                                createdAt: new Date().toISOString()
+                                            };
+                                            setDoc(userDocRef, newProfile);
+                                            setUserProfile({ id: firebaseUser.uid, ...newProfile });
+                                        } else {
+                                            console.log('[DEBUG] Usuario de Google detectado, esperando perfil del auth-simple.js');
+                                            // Para usuarios de Google, esperar a que se cree el perfil en auth-simple.js
+                                            // No crear perfil aquí para evitar sobrescribir
+                                        }
                                     }
+                                });
                                 });
                             } else {
                                 // Sin autenticación, modo demo

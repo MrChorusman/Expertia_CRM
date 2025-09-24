@@ -272,6 +272,15 @@ class AuthManager {
             const result = await signInWithPopup(this.auth, this.googleProvider);
             const user = result.user;
             console.log('✅ Autenticación exitosa para:', user.email);
+            console.log('👤 Datos completos del usuario Google:');
+            console.log('  - UID:', user.uid);
+            console.log('  - Email:', user.email);
+            console.log('  - Display Name:', user.displayName);
+            console.log('  - Photo URL:', user.photoURL);
+            console.log('  - Email Verified:', user.emailVerified);
+            console.log('  - Provider Data:', user.providerData);
+            console.log('  - Creation Time:', user.metadata.creationTime);
+            console.log('  - Last Sign In:', user.metadata.lastSignInTime);
             
             // Inicializar Firestore
             console.log('🔥 Inicializando Firestore...');
