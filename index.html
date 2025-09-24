@@ -13317,7 +13317,10 @@ Equipo Expertia Medical Solutions"
                     await new Promise((resolve, reject) => {
                         script.onload = () => {
                             console.log('[OK]  Script de autenticación cargado');
-                            resolve();
+                            // Esperar un poco más para que se ejecute el código del script
+                            setTimeout(() => {
+                                resolve();
+                            }, 100);
                         };
                         script.onerror = () => {
                             console.error('[ERROR]  Error cargando script de autenticación');
@@ -13331,11 +13334,15 @@ Equipo Expertia Medical Solutions"
                     });
                     
                     // Verificar que authManager esté disponible
+                    console.log('[DEBUG]  Verificando window.authManager:', !!window.authManager);
+                    console.log('[DEBUG]  Tipo de window.authManager:', typeof window.authManager);
+                    
                     if (!window.authManager) {
                         throw new Error('AuthManager no se inicializó correctamente');
                     }
                     
                     console.log('[CONFIG]  AuthManager disponible con métodos:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.authManager)));
+                    console.log('[DEBUG]  Método loginWithGoogle disponible:', typeof window.authManager.loginWithGoogle);
                 }
                 
                 // Firebase Analyzer movido a archive/tools/ para limpieza del código principal
