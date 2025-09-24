@@ -26,7 +26,21 @@ class AuthManager {
             this.auth = getAuth(this.app);
             
             console.log('✅ Firebase App inicializado');
-            console.log('✅ Firebase Auth inicializado');
+            console.log(\'✅ Firebase Auth inicializado\');
+            // Configurar Google Auth Provider con mejores prácticas
+            this.googleProvider = new GoogleAuthProvider();
+            
+            // Configurar scopes adicionales para obtener más información
+            this.googleProvider.addScope('profile');
+            this.googleProvider.addScope('email');
+            this.googleProvider.addScope('openid');
+            
+            // Configurar parámetros adicionales
+            this.googleProvider.setCustomParameters({
+                'prompt': 'select_account' // Forzar selección de cuenta
+            });
+            
+            console.log('✅ Google Auth Provider configurado con mejores prácticas');
             
             // Configurar provider de Google
             this.googleProvider = new GoogleAuthProvider();
@@ -254,12 +268,7 @@ class AuthManager {
         }
     }
 
-    // Login con Google
-    async loginWithGoogle() {
-        if (!this.isInitialized) {
-            throw new Error('Firebase no está inicializado');
-        }
-
+    
         try {
             console.log('🔄 Iniciando login con Google...');
             
@@ -563,6 +572,158 @@ class AuthManager {
             console.error('❌ Error obteniendo usuarios:', error);
             throw error;
         }
+
+    // === GOOGLE LOGIN CON MEJORES PRÁCTICAS ===
+    
+    // Login con Google - Versión Mejorada
+    async loginWithGoogle() {
+        if (!this.isInitialized) {
+            throw new Error('Firebase no está inicializado');
+        }
+
+        try {
+            console.log('🔄 Iniciando login con Google (mejores prácticas)...');
+            
+            const { signInWithPopup } = 
+                await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            const { getFirestore, doc, setDoc, getDoc, collection, getDocs, updateDoc } = 
+                await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+            
+            console.log('🔓 Ejecutando signInWithPopup con configuración optimizada...');
+            const result = await signInWithPopup(this.auth, this.googleProvider);
+            const user = result.user;
+            
+            // Capturar TODOS los datos disponibles de Google
+            const googleUserData = {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+                emailVerified: user.emailVerified,
+                creationTime: user.metadata.creationTime,
+                lastSignInTime: user.metadata.lastSignInTime,
+                providerId: user.providerData[0]?.providerId,
+                googleUid: user.providerData[0]?.uid,
+                provider: 'google',
+                createdAt: new Date().toISOString(),
+                lastLoginAt: new Date().toISOString()
+            };
+            
+            console.log('👤 Datos completos capturados de Google:');
+            console.log('  - UID:', googleUserData.uid);
+            console.log('  - Email:', googleUserData.email);
+            console.log('  - Display Name:', googleUserData.displayName);
+            console.log('  - Photo URL:', googleUserData.photoURL);
+            console.log('  - Email Verified:', googleUserData.emailVerified);
+            console.log('  - Google UID:', googleUserData.googleUid);
+            console.log('  - Provider:', googleUserData.provider);
+            console.log('  - Creation Time:', googleUserData.creationTime);
+            console.log('  - Last Sign In:', googleUserData.lastSignInTime);
+            
+            // Validar datos capturados
+            await this.validateGoogleUserData(googleUserData);
+            
+            // Crear o actualizar perfil en Firestore
+            const userProfile = await this.createGoogleUserProfile(googleUserData);
+            
+            return user;
+        } catch (error) {
+            console.error('❌ Error en login con Google:', error);
+            console.log('🔍 Código de error:', error.code);
+            console.log('📝 Mensaje de error:', error.message);
+            throw error;
+        }
+    }
+    
+    // Validar datos de usuario de Google
+    async validateGoogleUserData(userData) {
+        const errors = [];
+        
+        if (!userData.email) errors.push('Email requerido');
+        if (!userData.displayName) errors.push('Nombre requerido');
+        if (!userData.uid) errors.push('UID requerido');
+        if (!userData.emailVerified) errors.push('Email no verificado');
+        if (userData.providerId !== 'google.com') errors.push('Proveedor no es Google');
+        
+        if (errors.length > 0) {
+            throw new Error(`Datos de Google inválidos: ${errors.join(', ')}`);
+        }
+        
+        console.log('✅ Datos de Google validados correctamente');
+        return true;
+    }
+    
+    // Crear o actualizar perfil de usuario de Google
+    async createGoogleUserProfile(userData) {
+        const { getFirestore, doc, setDoc, getDoc, collection, getDocs, updateDoc } = 
+            await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        
+        const db = getFirestore(this.app);
+        const userRef = doc(db, 'users', userData.uid);
+        
+        try {
+            const userDoc = await getDoc(userRef);
+            
+            if (!userDoc.exists()) {
+                console.log('👤 Usuario nuevo, creando perfil completo...');
+                
+                // Verificar si es el primer usuario
+                const usersCollection = collection(db, 'users');
+                const usersSnapshot = await getDocs(usersCollection);
+                const isFirstUser = usersSnapshot.empty;
+                
+                const userProfile = {
+                    // Datos de Google
+                    uid: userData.uid,
+                    email: userData.email,
+                    name: userData.displayName,
+                    photoURL: userData.photoURL,
+                    emailVerified: userData.emailVerified,
+                    
+                    // Metadatos
+                    provider: userData.provider,
+                    googleUid: userData.googleUid,
+                    createdAt: userData.createdAt,
+                    lastLoginAt: userData.lastLoginAt,
+                    
+                    // Configuración de la aplicación
+                    role: isFirstUser ? 'admin' : 'comercial',
+                    active: true,
+                    isFirstUser: isFirstUser,
+                    
+                    // Preferencias por defecto
+                    preferences: {
+                        language: 'es',
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    }
+                };
+                
+                await setDoc(userRef, userProfile);
+                console.log('✅ Perfil de Google creado:', userProfile);
+                return userProfile;
+                
+            } else {
+                console.log('👤 Usuario existente, actualizando datos...');
+                
+                // Actualizar datos que pueden haber cambiado
+                await updateDoc(userRef, {
+                    lastLoginAt: userData.lastLoginAt,
+                    photoURL: userData.photoURL,
+                    name: userData.displayName,
+                    emailVerified: userData.emailVerified
+                });
+                
+                const existingProfile = userDoc.data();
+                console.log('✅ Perfil de Google actualizado:', existingProfile);
+                return existingProfile;
+            }
+            
+        } catch (firestoreError) {
+            console.error('❌ Error específico de Firestore:', firestoreError);
+            console.log('⚠️ Continuando sin crear perfil - se intentará crear después');
+            return null;
+        }
+    }
     }
 }
 
