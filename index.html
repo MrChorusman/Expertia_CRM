@@ -4591,31 +4591,35 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                 </td>
                                                 <td className="p-3">
                                                     <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                onEditOffer(offer);
-                                                            }}
-                                                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                                            title="Editar oferta"
-                                                        >
-                                                            <EditIcon width={16} height={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                showConfirm(
-                                                                    'Eliminar Oferta',
-                                                                    `¿Estás seguro de que quieres eliminar la oferta #${offer.offerNumber}?`,
-                                                                    () => onDeleteOffer(offer.id),
-                                                                    'danger'
-                                                                );
-                                                            }}
-                                                            className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                                            title="Eliminar oferta"
-                                                        >
-                                                            <TrashIcon width={16} height={16} />
-                                                        </button>
+                                                        {window.roleManager && window.roleManager.canEditOffer(offer) && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onEditOffer(offer);
+                                                                }}
+                                                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                                                title="Editar oferta"
+                                                            >
+                                                                <EditIcon width={16} height={16} />
+                                                            </button>
+                                                        )}
+                                                        {window.roleManager && window.roleManager.canDeleteOffer(offer) && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    showConfirm(
+                                                                        'Eliminar Oferta',
+                                                                        `¿Estás seguro de que quieres eliminar la oferta #${offer.offerNumber}?`,
+                                                                        () => onDeleteOffer(offer.id),
+                                                                        'danger'
+                                                                    );
+                                                                }}
+                                                                className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                                                title="Eliminar oferta"
+                                                            >
+                                                                <TrashIcon width={16} height={16} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -5196,18 +5200,22 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                             >
                                                                 Ver
                                                             </button>
-                                                            <button
-                                                                onClick={() => onEditExpense(expense)}
-                                                                className="text-green-600 hover:text-green-900"
-                                                            >
-                                                                Editar
-                                                            </button>
-                                                            <button
-                                                                onClick={() => onDeleteExpense(expense)}
-                                                                className="text-red-600 hover:text-red-900"
-                                                            >
-                                                                Eliminar
-                                                            </button>
+                                                            {window.roleManager && window.roleManager.canEditExpense(expense) && (
+                                                                <button
+                                                                    onClick={() => onEditExpense(expense)}
+                                                                    className="text-green-600 hover:text-green-900"
+                                                                >
+                                                                    Editar
+                                                                </button>
+                                                            )}
+                                                            {window.roleManager && window.roleManager.canDeleteExpense(expense) && (
+                                                                <button
+                                                                    onClick={() => onDeleteExpense(expense)}
+                                                                    className="text-red-600 hover:text-red-900"
+                                                                >
+                                                                    Eliminar
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -5261,12 +5269,14 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                         >
                                                             Ver
                                                         </button>
-                                                        <button
-                                                            onClick={() => onEditExpense(expense)}
-                                                            className="text-xs text-green-600 hover:text-green-900"
-                                                        >
-                                                            Editar
-                                                        </button>
+                                                        {window.roleManager && window.roleManager.canEditExpense(expense) && (
+                                                            <button
+                                                                onClick={() => onEditExpense(expense)}
+                                                                className="text-xs text-green-600 hover:text-green-900"
+                                                            >
+                                                                Editar
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))}
@@ -12577,13 +12587,22 @@ Equipo Expertia Medical Solutions"
                                             name="role"
                                             value={formData.role}
                                             onChange={handleChange}
-                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 text-sm appearance-none bg-white"
-                                            disabled={loading}
+                                            className={`w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all duration-300 text-sm appearance-none ${
+                                                window.roleManager && !window.roleManager.canModifyRole() 
+                                                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
+                                                    : 'bg-white'
+                                            }`}
+                                            disabled={loading || (window.roleManager && !window.roleManager.canModifyRole())}
                                         >
                                             <option value="usuario">👥 Usuario - Acceso básico</option>
                                             <option value="comercial">💼 Comercial - Gestión de ventas</option>
                                             <option value="admin">⚡ Administrador - Acceso completo</option>
                                         </select>
+                                        {window.roleManager && !window.roleManager.canModifyRole() && (
+                                            <div className="mt-1 text-xs text-gray-500">
+                                                💡 Solo los administradores pueden modificar roles
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 

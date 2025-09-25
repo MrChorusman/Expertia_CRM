@@ -318,24 +318,42 @@ class RoleManager {
 // Crear instancia global
 window.roleManager = new RoleManager();
 
-// Inicializar cuando esté disponible el AuthManager
+// Inicializar cuando esté disponible el AuthManager y el usuario
 document.addEventListener('DOMContentLoaded', function() {
     const initRoleManager = setInterval(() => {
-        if (window.authManager && window.authManager.isInitialized) {
+        if (window.authManager && window.authManager.isInitialized && window.authManager.currentUser) {
             clearInterval(initRoleManager);
             window.roleManager.init().then(() => {
                 console.log('✅ RoleManager listo para usar');
+                // Aplicar restricciones de UI después de inicializar
+                setTimeout(() => {
+                    window.roleManager.applyUIRestrictions();
+                }, 500);
             });
         }
     }, 1000);
     
-    // Timeout después de 10 segundos
+    // Timeout después de 15 segundos
     setTimeout(() => {
         clearInterval(initRoleManager);
         if (!window.roleManager.isInitialized) {
             console.warn('⚠️ RoleManager no se pudo inicializar');
         }
-    }, 10000);
+    }, 15000);
 });
+
+// También escuchar cambios de autenticación
+if (window.authManager) {
+    window.authManager.auth?.onAuthStateChanged((user) => {
+        if (user && window.roleManager && !window.roleManager.isInitialized) {
+            window.roleManager.init().then(() => {
+                console.log('✅ RoleManager inicializado por cambio de auth');
+                setTimeout(() => {
+                    window.roleManager.applyUIRestrictions();
+                }, 500);
+            });
+        }
+    });
+}
 
 console.log('🔐 RoleManager cargado - Sistema de roles y permisos listo');
