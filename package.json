@@ -18,7 +18,8 @@
   },
   "devDependencies": {
     "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "vercel": "^48.1.6"
   },
   "build": {
     "appId": "com.expertia.crm",
