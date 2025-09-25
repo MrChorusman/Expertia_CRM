@@ -83,6 +83,9 @@
     <!-- �️ MODULARIZACIÓN SEGURA: Incluir módulo de rendimiento -->
     <script src="./js/performance-utils.js"></script>
     
+    <!-- 🔐 SISTEMA DE ROLES: Gestión de permisos y restricciones -->
+    <script src="./js/role-manager.js"></script>
+    
     <!-- 🧪 Script de prueba para system_settings -->
             <!-- <script src="./test-system-settings.js"></script> MOVIDO A archive/testing/ -->
 
@@ -1707,9 +1710,9 @@
                 window.showConfirm = showConfirm;
                 window.showNotification = showNotification;
 
-                // Función para verificar permisos
-                const isAdmin = () => userProfile?.role === 'admin';
-                const isCommercialOrAdmin = () => userProfile?.role === 'admin' || userProfile?.role === 'comercial';
+                // Función para verificar permisos (usando RoleManager)
+                const isAdmin = () => window.roleManager ? window.roleManager.isAdmin() : userProfile?.role === 'admin';
+                const isCommercialOrAdmin = () => window.roleManager ? (window.roleManager.isAdmin() || window.roleManager.isCommercial()) : (userProfile?.role === 'admin' || userProfile?.role === 'comercial');
 
                 useEffect(() => {
                     console.log("Iniciando inicialización de Firebase...");
@@ -2183,7 +2186,7 @@
                 };
 
                 const handleSaveProduct = async (productData) => {
-                    if (!isAdmin()) {
+                    if (!window.roleManager || !window.roleManager.canEditProducts()) {
                         showNotification('Acceso denegado', 'Solo los administradores pueden gestionar productos', 'error');
                         return;
                     }
@@ -2692,7 +2695,7 @@
                         case 'reports': 
                             return <ReportsDashboard allInvoices={invoices} userProfile={userProfile} />;
                         case 'admin':
-                            if (!isAdmin()) {
+                            if (!window.roleManager || !window.roleManager.canAccessAdminPanel()) {
                                 return (
                                     <div className="p-6 text-center">
                                         <h2 className="text-xl font-semibold text-red-600 mb-4">Acceso Denegado</h2>
@@ -2885,7 +2888,7 @@
             function Header({ userProfile, activeView, setActiveView }) {
                 const [showUserDropdown, setShowUserDropdown] = React.useState(false);
                 const navItemClass = (viewName) => `cursor-pointer py-2 px-3 rounded-md text-sm font-medium flex items-center gap-2 ${activeView.startsWith(viewName) ? 'bg-[#006666] text-white' : 'text-gray-600 hover:bg-gray-200'}`;
-                const isAdmin = userProfile?.role === 'admin';
+                const isAdmin = window.roleManager ? window.roleManager.isAdmin() : userProfile?.role === 'admin';
                 
                 // Cerrar dropdown al hacer clic fuera
                 React.useEffect(() => {
@@ -2935,7 +2938,7 @@
                                     <span onClick={() => setActiveView('reports')} className={navItemClass('reports')}>
                                         <TrendingUpIcon width={16} height={16} /> Informes
                                     </span>
-                                    {isAdmin && (
+                                    {window.roleManager && window.roleManager.canAccessAdminPanel() && (
                                         <span onClick={() => setActiveView('admin')} className={navItemClass('admin')}>
                                             <CheckSquareIcon /> Admin
                                         </span>
@@ -4908,27 +4911,31 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                 </td>
                                                 <td className="p-3">
                                                     <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={() => onEditProduct(product)}
-                                                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                                            title="Editar producto"
-                                                        >
-                                                            <EditIcon width={16} height={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                showConfirm(
-                                                                    'Eliminar Producto',
-                                                                    `¿Estás seguro de que quieres eliminar el producto "${product.name}"?`,
-                                                                    () => onDeleteProduct(product.id),
-                                                                    'danger'
-                                                                );
-                                                            }}
-                                                            className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                                            title="Eliminar producto"
-                                                        >
-                                                            <TrashIcon width={16} height={16} />
-                                                        </button>
+                                                        {window.roleManager && window.roleManager.canEditProducts() && (
+                                                            <button
+                                                                onClick={() => onEditProduct(product)}
+                                                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                                                title="Editar producto"
+                                                            >
+                                                                <EditIcon width={16} height={16} />
+                                                            </button>
+                                                        )}
+                                                        {window.roleManager && window.roleManager.canDeleteProducts() && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    showConfirm(
+                                                                        'Eliminar Producto',
+                                                                        `¿Estás seguro de que quieres eliminar el producto "${product.name}"?`,
+                                                                        () => onDeleteProduct(product.id),
+                                                                        'danger'
+                                                                    );
+                                                                }}
+                                                                className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                                                title="Eliminar producto"
+                                                            >
+                                                                <TrashIcon width={16} height={16} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
