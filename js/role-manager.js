@@ -94,30 +94,12 @@ class RoleManager {
 
     // Verificar si el usuario puede editar un gasto específico
     canEditExpense(expenseData) {
-        if (this.isAdmin()) {
-            return true; // Admin puede editar cualquier gasto
-        }
-        
-        if (this.isCommercial()) {
-            // Comercial solo puede editar sus propios gastos
-            return expenseData.createdBy === this.currentUser?.uid;
-        }
-        
-        return false;
+        return true; // Todos pueden editar cualquier gasto
     }
 
     // Verificar si el usuario puede eliminar un gasto específico
     canDeleteExpense(expenseData) {
-        if (this.isAdmin()) {
-            return true; // Admin puede eliminar cualquier gasto
-        }
-        
-        if (this.isCommercial()) {
-            // Comercial solo puede eliminar sus propios gastos
-            return expenseData.createdBy === this.currentUser?.uid;
-        }
-        
-        return false;
+        return true; // Todos pueden eliminar cualquier gasto
     }
 
     // Verificar si el usuario puede acceder a ofertas
@@ -189,8 +171,6 @@ class RoleManager {
             'admin_panel': 'No tienes permisos para acceder al panel de administración',
             'edit_product': 'No tienes permisos para editar productos',
             'delete_product': 'No tienes permisos para eliminar productos',
-            'edit_expense': 'Solo puedes editar tus propios gastos',
-            'delete_expense': 'Solo puedes eliminar tus propios gastos',
             'edit_offer': 'Solo puedes editar tus propias ofertas',
             'delete_offer': 'Solo puedes eliminar tus propias ofertas',
             'modify_role': 'No tienes permisos para modificar roles'
@@ -252,11 +232,10 @@ class RoleManager {
         }
     }
 
-    // Aplicar restricciones de gastos
+    // Aplicar restricciones de gastos (sin restricciones)
     applyExpenseRestrictions() {
-        // Los botones de editar/eliminar se mostrarán/ocultarán dinámicamente
-        // basándose en el creador del gasto específico
-        console.log('💰 Restricciones de gastos aplicadas');
+        // Los gastos no tienen restricciones de rol - todos pueden acceder
+        console.log('💰 Gastos: Sin restricciones de rol aplicadas');
     }
 
     // Aplicar restricciones de ofertas
@@ -279,12 +258,6 @@ class RoleManager {
                 break;
             case 'delete_product':
                 hasAccess = this.canDeleteProducts();
-                break;
-            case 'edit_expense':
-                hasAccess = this.canEditExpense(data);
-                break;
-            case 'delete_expense':
-                hasAccess = this.canDeleteExpense(data);
                 break;
             case 'edit_offer':
                 hasAccess = this.canEditOffer(data);

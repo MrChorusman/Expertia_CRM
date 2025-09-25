@@ -5213,22 +5213,18 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                             >
                                                                 Ver
                                                             </button>
-                                                            {window.roleManager && window.roleManager.canEditExpense(expense) && (
-                                                                <button
-                                                                    onClick={() => onEditExpense(expense)}
-                                                                    className="text-green-600 hover:text-green-900"
-                                                                >
-                                                                    Editar
-                                                                </button>
-                                                            )}
-                                                            {window.roleManager && window.roleManager.canDeleteExpense(expense) && (
-                                                                <button
-                                                                    onClick={() => onDeleteExpense(expense)}
-                                                                    className="text-red-600 hover:text-red-900"
-                                                                >
-                                                                    Eliminar
-                                                                </button>
-                                                            )}
+                                                            <button
+                                                                onClick={() => onEditExpense(expense)}
+                                                                className="text-green-600 hover:text-green-900"
+                                                            >
+                                                                Editar
+                                                            </button>
+                                                            <button
+                                                                onClick={() => onDeleteExpense(expense)}
+                                                                className="text-red-600 hover:text-red-900"
+                                                            >
+                                                                Eliminar
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -5282,14 +5278,12 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                         >
                                                             Ver
                                                         </button>
-                                                        {window.roleManager && window.roleManager.canEditExpense(expense) && (
-                                                            <button
-                                                                onClick={() => onEditExpense(expense)}
-                                                                className="text-xs text-green-600 hover:text-green-900"
-                                                            >
-                                                                Editar
-                                                            </button>
-                                                        )}
+                                                        <button
+                                                            onClick={() => onEditExpense(expense)}
+                                                            className="text-xs text-green-600 hover:text-green-900"
+                                                        >
+                                                            Editar
+                                                        </button>
                                                     </div>
                                                 </div>
                                             ))}
