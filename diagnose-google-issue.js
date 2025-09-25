@@ -90,11 +90,19 @@ async function diagnoseGoogleIssue() {
     console.log('\n✅ DIAGNÓSTICO COMPLETADO');
 }
 
-// Ejecutar diagnóstico
+// Ejecutar diagnóstico cuando AuthManager esté listo
+function waitForAuthManager() {
+    if (window.authManager && window.authManager.isInitialized && window.authManager.auth) {
+        diagnoseGoogleIssue();
+    } else {
+        setTimeout(waitForAuthManager, 1000);
+    }
+}
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', diagnoseGoogleIssue);
+    document.addEventListener('DOMContentLoaded', waitForAuthManager);
 } else {
-    diagnoseGoogleIssue();
+    waitForAuthManager();
 }
 
 console.log('\n💡 Para ejecutar diagnóstico manual: diagnoseGoogleIssue()');
