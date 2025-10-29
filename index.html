@@ -7538,9 +7538,7 @@ Para cualquier consulta, no dude en contactarnos.
 Atentamente,
 
 ${settings.company.name}
-Tel: ${settings.company.phone}
-Email: ${settings.company.email}
-Website: ${settings.company.website}`;
+${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.address ? `${settings.company.address}\n` : ''}${settings.company.email || ''}`;
 
                     // Crear el enlace mailto
                     const mailtoLink = `mailto:${client?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -7570,6 +7568,11 @@ Website: ${settings.company.website}`;
                                 .company-info { 
                                     text-align: right; 
                                     color: #008080;
+                                    font-size: 12px;
+                                }
+                                .company-info p {
+                                    margin: 0;
+                                    line-height: 1.4;
                                 }
                                 .offer-info { 
                                     display: grid; 
@@ -7619,15 +7622,14 @@ Website: ${settings.company.website}`;
                             <div class="header">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <div>
-                                        <h1 style="color: #008080; margin: 0;">OFERTA COMERCIAL</h1>
-                                        <h2 style="margin: 5px 0 0 0;">${offer.offerNumber}</h2>
+                                        <p><img src="./LOGO_EXPERTIA.jpg" alt="Expertia Medical Solutions Logo" className="h-10 w-auto" /></p>
+                                        <h4 style="margin: 5px 0 0 0;">${offer.offerNumber}</h4>
                                     </div>
-                                    <div class="company-info" style="line-height: 1.3;">
-                                    <h3 style="margin: 0 0 5px 0;">${settings.company.name}</h3>
-                                    ${settings.company.address}<br>
-                                    ${settings.company.phone ? `Tel: ${settings.company.phone}<br>` : ''}
-                                    ${settings.company.email ? `${settings.company.email}<br>` : ''}
-                                    ${settings.company.website ? `${settings.company.website}` : ''}
+                                    <div class="company-info" style="line-height: 1.4; font-size: 11px;">
+                                    <p style="margin: 0 0 4px 0; font-weight: bold; font-size: 12px;">${settings.company.name}</p>
+                                    ${settings.company.nit ? `NIT: ${settings.company.nit}<br>` : ''}
+                                    ${settings.company.address ? `${settings.company.address}<br>` : ''}
+                                    ${settings.company.email ? `${settings.company.email}` : ''}
                                     </div>                          
                                 </div>
                             </div>
@@ -7690,7 +7692,6 @@ Website: ${settings.company.website}`;
                             ` : ''}
 
                             <div class="footer">
-                                <p>Esta oferta ha sido generada automáticamente por Expertia CRM el ${new Date().toLocaleDateString('es-ES')}.</p>
                                 <p>Para cualquier consulta, no dude en contactarnos en los datos indicados arriba.</p>
                             </div>
                         </body>
