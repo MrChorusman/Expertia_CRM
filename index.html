@@ -7116,12 +7116,11 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                         <p style="margin-top: 10px; font-weight: bold; font-size: 16px;">${invoice.type.toUpperCase()}</p>
                                         <p style="color: #666;">Nº: ${invoice.invoiceNumber || 'N/A'}</p>
                                     </div>
-                                    <div class="company-info">
-                                      <h3>${settings.company.name}</h3>
-                                      <p>${settings.company.address}</p>
-                                      ${settings.company.phone ? `<p>Tel: ${settings.company.phone}</p>` : ''}
-                                      ${settings.company.email ? `<p>${settings.company.email}</p>` : ''}
-                                      ${settings.company.website ? `<p><a href="${settings.company.website}">${settings.company.website}</a></p>` : ''}
+                                    <div class="company-info" style="line-height: 1.4; font-size: 11px;">
+                                      <p style="margin: 0 0 4px 0; font-weight: bold; font-size: 12px;">${settings.company.name}</p>
+                                      ${settings.company.nit ? `${settings.company.nit}<br>` : ''}
+                                      ${settings.company.address ? `${settings.company.address}<br>` : ''}
+                                      ${settings.company.email ? `${settings.company.email}` : ''}
                                     </div>
                                 </div>
 
@@ -7192,7 +7191,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
 
                                 <div class="footer">
                                     <p><strong>Forma de pago:</strong> Transferencia bancaria</p>
-                                    <p><strong>Cuenta bancaria:</strong> ES21 1234 5678 9012 3456 7890</p>
+                                    <p><strong>Cuenta bancaria:</strong> ES55 0049 7692 1725 1001 1591</p>
                                     <p>Gracias por confiar en ${settings.company.name}</p>
                                 </div>
                             </div>
@@ -7266,9 +7265,7 @@ Si tiene alguna pregunta sobre esta factura, no dude en contactarnos.
 Atentamente,
 
 ${settings.company.name}
-Tel: ${settings.company.phone}
-Email: ${settings.company.email}
-Website: ${settings.company.website} `; 
+${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.address ? `${settings.company.address}\n` : ''}${settings.company.email || ''}`; 
 
                     const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
                     // Abrir en nueva ventana/pestaña
@@ -7286,10 +7283,9 @@ Website: ${settings.company.website} `;
                             <div className="text-right">
                                 <div className="company-info">
                                     <strong>{settings.company.name}</strong><br />
-                                    {settings.company.address}<br />
-                                    {settings.company.phone && `Tel: ${settings.company.phone}`}<br />
-                                    {settings.company.email && settings.company.email}<br />
-                                    {settings.company.website && <a href={settings.company.website}>{settings.company.website}</a>}
+                                    {settings.company.nit && `${settings.company.nit}`}<br />
+                                    {settings.company.address && `${settings.company.address}`}<br />
+                                    {settings.company.email && settings.company.email}
                                 </div>
                             </div>
                         </div>
