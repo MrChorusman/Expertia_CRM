@@ -918,7 +918,14 @@
             // --- Constantes de la aplicación ---
             const FUNNEL_TAGS = { 'Lead': 'bg-gray-200 text-gray-800', 'Primer Contacto': 'bg-blue-200 text-blue-800', 'Interesado': 'bg-cyan-200 text-cyan-800', 'Demo Realizada': 'bg-indigo-200 text-indigo-800', 'Negociación': 'bg-purple-200 text-purple-800', 'En Cierre': 'bg-orange-200 text-orange-800', 'Ganado': 'bg-green-200 text-green-800', 'Perdido': 'bg-red-200 text-red-800' };
             const CONTACT_PREFERENCES = { 'Email': <MailIcon />, 'Teléfono': <PhoneIcon />, 'WhatsApp': <MessageSquareIcon />, 'Visita Comercial': <BuildingIcon /> };
-            const INVOICE_STATUSES = { 'Borrador': 'bg-gray-200 text-gray-800', 'Finalizada': 'bg-blue-200 text-blue-800', 'Pagada': 'bg-green-200 text-green-800', 'Anulada': 'bg-red-300 text-red-900' };
+            const INVOICE_STATUSES = { 
+                'Borrador': 'bg-gray-200 text-gray-800',
+                'Enviada': 'bg-blue-200 text-blue-800',
+                'Parcialmente Pagada': 'bg-yellow-200 text-yellow-800',
+                'Pagada': 'bg-green-200 text-green-800',
+                'Anulada': 'bg-red-300 text-red-900',
+                'Finalizada': 'bg-blue-200 text-blue-800'
+            };
             const OFFER_STATUSES = { 'Borrador': 'bg-gray-200 text-gray-800', 'Enviada': 'bg-blue-200 text-blue-800', 'Aceptada': 'bg-green-200 text-green-800', 'Rechazada': 'bg-red-200 text-red-800', 'Expirada': 'bg-orange-200 text-orange-800' };
             const VAT_RATE = 0.21;
 
@@ -2090,7 +2097,8 @@
                     unsubscribers.push(
                         onSnapshot(invoicesCollection, (snapshot) => {
                             const invoicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                            setInvoices(invoicesData);
+                            // Borrado lógico: ocultar documentos marcados como eliminados
+                            setInvoices(invoicesData.filter(inv => !inv?.isDeleted));
                         }, (error) => {
                             console.error("Error loading invoices:", error);
                         })
@@ -2138,8 +2146,10 @@
                     try {
                         if (finalDocId) {
                             await setDoc(doc(db, collectionName, finalDocId), dataToSave, { merge: true });
+                            return finalDocId;
                         } else {
-                            await addDoc(collection(db, collectionName), dataToSave);
+                            const docRef = await addDoc(collection(db, collectionName), dataToSave);
+                            return docRef.id;
                         }
                         console.log(`Guardado exitoso en ${collectionName}`);
                     } catch (error) { 
@@ -2241,8 +2251,26 @@
                     }
                 };
 
+                const PAYMENT_METHODS = ['Efectivo', 'Tarjeta', 'Transferencia', 'Bizum', 'Otro'];
+                try { window.PAYMENT_METHODS = PAYMENT_METHODS; } catch (e) {}
+                const formatPaymentMethod = (p) => {
+                    if (!p) return '—';
+                    if (p.method === 'Otro') return p.methodOther ? `Otro (${p.methodOther})` : 'Otro';
+                    return p.method || '—';
+                };
+
                 const handleSaveInvoice = async (invoiceData, convertFromProforma = false) => {
-                    let dataToSave = { ...invoiceData };
+                    // Extraer campos solo-UI (no persistirlos en la factura)
+                    const {
+                        registerPaymentNow,
+                        paymentNowAmount,
+                        paymentNowDate,
+                        paymentNowMethod,
+                        paymentNowMethodOther,
+                        ...invoiceCore
+                    } = invoiceData || {};
+
+                    let dataToSave = { ...invoiceCore };
                     
                     if (convertFromProforma || !dataToSave.id) {
                         if (dataToSave.type !== 'Factura Proforma') {
@@ -2255,7 +2283,89 @@
                         }
                     }
                     
-                    await handleSave('facturas', dataToSave, dataToSave.id);
+                    const savedInvoiceId = await handleSave('facturas', dataToSave, dataToSave.id);
+
+                    // Registrar pago inicial en el alta/edición si se solicitó
+                    const shouldRegisterPayment = Boolean(registerPaymentNow);
+                    const parsedPaymentAmount = parseFloat(paymentNowAmount);
+                    if (shouldRegisterPayment && savedInvoiceId && parsedPaymentAmount > 0) {
+                        const method = PAYMENT_METHODS.includes(paymentNowMethod) ? paymentNowMethod : 'Otro';
+                        const paymentData = {
+                            amount: parsedPaymentAmount,
+                            date: paymentNowDate || new Date().toISOString().split('T')[0],
+                            method,
+                            methodOther: method === 'Otro' ? (paymentNowMethodOther || '') : '',
+                            registeredBy: user.uid
+                        };
+
+                        try {
+                            await addDoc(collection(db, `facturas/${savedInvoiceId}/payments`), paymentData);
+
+                            // Actualizar totales de pago y estado de la factura
+                            const basePaid = Number(dataToSave.totalPaid || 0);
+                            const totalPaid = basePaid + parsedPaymentAmount;
+                            const invoiceTotal = Number(dataToSave.total || 0);
+                            let newStatus = dataToSave.status || 'Enviada';
+                            if (invoiceTotal > 0) {
+                                if (totalPaid >= invoiceTotal) newStatus = 'Pagada';
+                                else if (totalPaid > 0) newStatus = 'Parcialmente Pagada';
+                                else newStatus = 'Enviada';
+                            }
+
+                            await handleSave('facturas', {
+                                id: savedInvoiceId,
+                                totalPaid,
+                                status: newStatus
+                            }, savedInvoiceId);
+                        } catch (error) {
+                            console.error('Error registrando pago inicial:', error);
+                            showNotification?.('Pago no registrado', 'Se guardó la factura, pero hubo un error registrando el pago inicial.', 'error');
+                        }
+                    }
+
+                    // Movimientos de stock (solo una vez por factura emitida)
+                    try {
+                        const isBillableInvoice = dataToSave.type === 'Factura' && dataToSave.status !== 'Borrador' && dataToSave.status !== 'Anulada';
+                        const hasItemsWithProduct = Array.isArray(dataToSave.items) && dataToSave.items.some(it => it?.productId && Number(it?.quantity) > 0);
+                        if (savedInvoiceId && isBillableInvoice && hasItemsWithProduct && !dataToSave.stockAppliedAt) {
+                            for (const item of (dataToSave.items || [])) {
+                                const productId = item?.productId;
+                                const qty = Number(item?.quantity) || 0;
+                                if (!productId || qty <= 0) continue;
+
+                                await runTransaction(db, async (transaction) => {
+                                    const productRef = doc(db, 'productos', productId);
+                                    const productSnap = await transaction.get(productRef);
+                                    if (!productSnap.exists()) return;
+                                    const currentStock = Number(productSnap.data()?.stock || 0);
+                                    const newStock = currentStock - qty;
+                                    transaction.update(productRef, { stock: newStock });
+                                });
+
+                                await addDoc(collection(db, 'stockMovements'), {
+                                    productId,
+                                    invoiceId: savedInvoiceId,
+                                    invoiceNumber: dataToSave.invoiceNumber || '',
+                                    invoiceSeries: dataToSave.invoiceSeries || '',
+                                    clientId: dataToSave.clientId || '',
+                                    date: dataToSave.invoiceDate || new Date().toISOString().split('T')[0],
+                                    type: 'sale',
+                                    quantityChange: -qty,
+                                    quantity: qty,
+                                    createdAt: new Date().toISOString(),
+                                    createdBy: user.uid
+                                });
+                            }
+
+                            await handleSave('facturas', {
+                                id: savedInvoiceId,
+                                stockAppliedAt: new Date().toISOString()
+                            }, savedInvoiceId);
+                        }
+                    } catch (error) {
+                        console.error('Error aplicando movimientos de stock:', error);
+                        showNotification?.('Stock no actualizado', 'La factura se guardó, pero hubo un error actualizando el stock.', 'error');
+                    }
                     setActiveView('accounting');
                 };
 
@@ -2268,15 +2378,24 @@
                     await handleSaveInvoice(invoiceData, true);
                 };
 
+                const handleSoftDeleteInvoice = async (invoiceId) => {
+                    if (!invoiceId) return;
+                    await handleSave('facturas', {
+                        id: invoiceId,
+                        isDeleted: true,
+                        deletedAt: new Date().toISOString()
+                    }, invoiceId);
+                };
+
                 const handleCreateRectificativa = async (originalInvoice) => {
                     try {
                         // Extraer la serie y número de la factura original
                         const originalInvoiceNumber = originalInvoice.invoiceNumber || originalInvoice.number || '';
                         const originalSeries = originalInvoice.invoiceSeries || 'EXP';
                         
-                        // Generar serie y número de rectificativa: REC + número original completo
-                        const rectificativaSeries = `REC${originalSeries}`;
-                        const rectificativaNumber = `REC${originalInvoiceNumber}`;
+                        // Generar serie y número de rectificativa: RECT + número original completo (más claro para gestoría)
+                        const rectificativaSeries = `RECT`;
+                        const rectificativaNumber = `RECT ${originalInvoiceNumber}`;
                         
                         console.log('[PROCESS]  Generando rectificativa:', {
                             original: {
@@ -2300,6 +2419,7 @@
                             originalInvoiceId: originalInvoice.id,
                             originalInvoiceNumber: originalInvoiceNumber,
                             originalInvoiceSeries: originalSeries,
+                            rectificationReason: originalInvoice.rectificationReason || '',
                             // Mantener el cliente de la factura original
                             clientId: originalInvoice.clientId,
                             client: originalInvoice.client,
@@ -2338,7 +2458,13 @@
                     }
                 };
 
-                const handleRegisterPayment = async (invoice, paymentAmount) => {
+                const handleRegisterPayment = async (invoice, payment) => {
+                    // Compatibilidad: permitir llamada antigua (invoice, number)
+                    const normalizedPayment = typeof payment === 'number'
+                        ? { amount: payment }
+                        : (payment || {});
+                    const paymentAmount = parseFloat(normalizedPayment.amount);
+
                     if (!db || !invoice || !paymentAmount) return;
                     
                     const newTotalPaid = (invoice.totalPaid || 0) + paymentAmount;
@@ -2358,9 +2484,12 @@
                     };
                     
                     // Guardar el pago en la subcolección
+                        const method = PAYMENT_METHODS.includes(normalizedPayment.method) ? normalizedPayment.method : 'Otro';
                         const paymentData = { 
                             amount: paymentAmount, 
-                        date: new Date().toISOString().split('T')[0], // Formato YYYY-MM-DD
+                            date: normalizedPayment.date || new Date().toISOString().split('T')[0], // Formato YYYY-MM-DD
+                            method,
+                            methodOther: method === 'Otro' ? (normalizedPayment.methodOther || '') : '',
                             registeredBy: user.uid
                         };
                     console.log('💾 Guardando pago:', paymentData);
@@ -2618,7 +2747,7 @@
                                 clients={clients} 
                                 onCreateInvoice={() => { setSelectedItem(null); setActiveView('createInvoice'); }} 
                                 onViewInvoice={(invoice) => { setSelectedItem(invoice); setActiveView('viewInvoice'); }} 
-                                onDeleteInvoice={(id) => handleDelete('facturas', id)}
+                                onDeleteInvoice={(id) => handleSoftDeleteInvoice(id)}
                                 showConfirm={showConfirm}
                                 showNotification={showNotification}
                             />;
@@ -2708,7 +2837,7 @@
                                 showNotification={showNotification}
                             />;
                         case 'reports': 
-                            return <ReportsDashboard allInvoices={invoices} userProfile={userProfile} />;
+                            return <ReportsDashboard allInvoices={invoices} userProfile={userProfile} db={db} products={products} showNotification={showNotification} />;
                         case 'admin':
                             if (!window.roleManager || !window.roleManager.canAccessAdminPanel()) {
                                 return (
@@ -3567,7 +3696,7 @@
                                 <legend className="text-lg font-semibold px-2">Información de Contacto</legend>
                                 <FormField label="Nombre del Contacto" name="name" value={formData.name} onChange={handleChange} required />
                                 <FormField label="Empresa/Clínica" name="company" value={formData.company} onChange={handleChange} required />
-                                <FormField label="Email" name="email" type="email" value={formData.email} onChange={handleChange} required />
+                                <FormField label="Email" name="email" type="email" value={formData.email} onChange={handleChange} />
                                 <FormField label="Teléfono" name="phone" value={formData.phone} onChange={handleChange} />
                                 
                                 {/* Campo CIF/NIF */}
@@ -5665,10 +5794,40 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
                             <h1 className="text-3xl font-bold text-gray-900">Gestión de Productos</h1>
-                            <button onClick={onCreateProduct} className="bg-[#006666] text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-[#005555]">
-                                <PlusIcon width={20} height={20} />
-                                Nuevo Producto
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => {
+                                        const exportData = filteredAndSortedProducts.map(p => {
+                                            const price = Number(p.price || 0);
+                                            const priceWithVat = price * (1 + VAT_RATE);
+                                            return {
+                                                'Producto': p.name || '',
+                                                'Categoría': p.category || '',
+                                                'SKU': p.sku || '',
+                                                'Proveedor': p.supplier || '',
+                                                'Precio sin IVA': price.toFixed(2),
+                                                'Precio con IVA (21%)': priceWithVat.toFixed(2),
+                                                'Stock (unidades)': Number(p.stock || 0),
+                                                'Stock mínimo': Number(p.minStock || 0),
+                                                'Activo': p.active !== false ? 'Sí' : 'No'
+                                            };
+                                        });
+                                        const ok = (typeof ExportUtils !== 'undefined' && ExportUtils.exportToExcel)
+                                            ? ExportUtils.exportToExcel(exportData, 'inventario_productos')
+                                            : false;
+                                        if (!ok) alert('❌ No se pudo exportar el inventario (XLSX no disponible)');
+                                    }}
+                                    className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50"
+                                    title="Exportar inventario a Excel"
+                                >
+                                    <DownloadIcon width={18} height={18} />
+                                    Exportar inventario
+                                </button>
+                                <button onClick={onCreateProduct} className="bg-[#006666] text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-[#005555]">
+                                    <PlusIcon width={20} height={20} />
+                                    Nuevo Producto
+                                </button>
+                            </div>
                         </div>
                         
                         <div className="bg-white p-6 rounded-lg shadow">
@@ -5747,9 +5906,12 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                 onClick={() => handleSort('price')}
                                             >
                                                 <div className="flex items-center gap-2">
-                                                    Precio
+                                                    Precio (sin IVA)
                                                     {renderSortIcon('price')}
                                                 </div>
+                                            </th>
+                                            <th className="p-3">
+                                                Precio (con IVA)
                                             </th>
                                             <th 
                                                 className="p-3 cursor-pointer hover:bg-gray-200 select-none"
@@ -5804,6 +5966,9 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                                 </td>
                                                 <td className="p-3 font-semibold text-[#006666]">
                                                     €{Number(product.price || 0).toFixed(2)}
+                                                </td>
+                                                <td className="p-3 text-gray-800">
+                                                    €{(Number(product.price || 0) * (1 + VAT_RATE)).toFixed(2)}
                                                 </td>
                                                 <td className="p-3">
                                                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
@@ -6753,14 +6918,21 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     return filtered;
                 }, [invoices, searchTerm, selectedSeries, sortField, sortDirection, clients]);
 
-                // Estadísticas resumidas
+                // Estadísticas resumidas (solo documentos cobrables)
                 const stats = useMemo(() => {
-                    const total = filteredAndSortedInvoices.reduce((acc, inv) => acc + (inv.total || 0), 0);
-                    const paid = filteredAndSortedInvoices.reduce((acc, inv) => acc + (inv.totalPaid || 0), 0);
+                    const billable = filteredAndSortedInvoices.filter(inv =>
+                        inv &&
+                        inv.type !== 'Factura Proforma' &&
+                        inv.status !== 'Borrador' &&
+                        inv.status !== 'Anulada'
+                    );
+
+                    const total = billable.reduce((acc, inv) => acc + (inv.total || 0), 0);
+                    const paid = billable.reduce((acc, inv) => acc + (inv.totalPaid || 0), 0);
                     const pending = total - paid;
                     
                     return {
-                        count: filteredAndSortedInvoices.length,
+                        count: billable.length,
                         total: total,
                         paid: paid,
                         pending: pending
@@ -7068,7 +7240,16 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     items: invoiceData?.items || [{ description: '', quantity: 1, price: 0, productId: '', serialNumber: '' }],
                     includeVAT: invoiceData?.includeVAT !== undefined ? invoiceData.includeVAT : true,
                     customVATRate: invoiceData?.customVATRate || 0.21,
+                    discountRate: invoiceData?.discountRate || 0,
+                    rectificationReason: invoiceData?.rectificationReason || '',
                 });
+
+                // Pago en el alta/edición (sin tener que reabrir la factura)
+                const [registerPaymentNow, setRegisterPaymentNow] = useState(false);
+                const [paymentNowAmount, setPaymentNowAmount] = useState('');
+                const [paymentNowDate, setPaymentNowDate] = useState(new Date().toISOString().split('T')[0]);
+                const [paymentNowMethod, setPaymentNowMethod] = useState('Transferencia');
+                const [paymentNowMethodOther, setPaymentNowMethodOther] = useState('');
 
                 // Estado para el número de factura de vista previa
                 const [previewInvoiceNumber, setPreviewInvoiceNumber] = useState(
@@ -7089,9 +7270,12 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 // Calcular IVA efectivo basado en configuración y selección manual
                 const effectiveVATRate = formData.includeVAT ? (formData.customVATRate || seriesConfig.vatRate) : 0;
 
-                const subtotal = useMemo(() => formData.items.reduce((acc, item) => acc + (item.quantity * item.price), 0), [formData.items]);
-                const vat = useMemo(() => subtotal * effectiveVATRate, [subtotal, effectiveVATRate]);
-                const total = useMemo(() => subtotal + vat, [subtotal, vat]);
+                const subtotal = useMemo(() => formData.items.reduce((acc, item) => acc + ((Number(item.quantity) || 0) * (Number(item.price) || 0)), 0), [formData.items]);
+                const effectiveDiscountRate = Math.min(Math.max(Number(formData.discountRate) || 0, 0), 1);
+                const discountAmount = useMemo(() => subtotal * effectiveDiscountRate, [subtotal, effectiveDiscountRate]);
+                const subtotalAfterDiscount = useMemo(() => subtotal - discountAmount, [subtotal, discountAmount]);
+                const vat = useMemo(() => subtotalAfterDiscount * effectiveVATRate, [subtotalAfterDiscount, effectiveVATRate]);
+                const total = useMemo(() => subtotalAfterDiscount + vat, [subtotalAfterDiscount, vat]);
 
                 // Actualizar configuración de IVA cuando cambie la serie
                 useEffect(() => {
@@ -7148,9 +7332,18 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                         subtotal, 
                         vat, 
                         total,
+                        discountRate: effectiveDiscountRate,
+                        discountAmount,
+                        subtotalAfterDiscount,
                         includeVAT: formData.includeVAT,
                         customVATRate: formData.customVATRate,
-                        effectiveVATRate: effectiveVATRate
+                        effectiveVATRate: effectiveVATRate,
+                        // Campos solo-UI que handleSaveInvoice extrae y NO persiste
+                        registerPaymentNow,
+                        paymentNowAmount: registerPaymentNow ? (paymentNowAmount || total.toFixed(2)) : '',
+                        paymentNowDate,
+                        paymentNowMethod,
+                        paymentNowMethodOther
                     }); 
                 };
 
@@ -7185,10 +7378,30 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                             <FormField label="Fecha Factura" name="invoiceDate" type="date" value={formData.invoiceDate} onChange={handleChange} />
                             <FormField label="Fecha Vencimiento" name="dueDate" type="date" value={formData.dueDate} onChange={handleChange} />
                             
-                            <FormSelect label="Tipo Documento" name="type" value={formData.type} onChange={handleChange} options={['Factura', 'Factura Proforma']} />
+                            <FormSelect label="Tipo Documento" name="type" value={formData.type} onChange={handleChange} options={['Factura', 'Factura Proforma', 'Factura Rectificativa']} />
                             <FormSelect label="Serie Factura" name="invoiceSeries" value={formData.invoiceSeries} onChange={handleChange} options={invoiceSeries} />
                             <FormSelect label="Estado" name="status" value={formData.status} onChange={handleChange} options={Object.keys(INVOICE_STATUSES)} />
                         </div>
+
+                        {formData.type === 'Factura Rectificativa' && (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <h3 className="font-semibold text-yellow-900 mb-2">Motivo de la rectificativa</h3>
+                                <textarea
+                                    name="rectificationReason"
+                                    value={formData.rectificationReason}
+                                    onChange={handleChange}
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-[#008080] focus:ring-[#008080]"
+                                    placeholder="Describe el motivo (obligatorio)"
+                                    rows={3}
+                                    required
+                                />
+                                {invoiceData?.originalInvoiceNumber && (
+                                    <p className="mt-2 text-sm text-yellow-800">
+                                        Factura referenciada: <strong>{invoiceData.originalInvoiceNumber}</strong>
+                                    </p>
+                                )}
+                            </div>
+                        )}
                         
                         <div className="border-t pt-4">
                             <h3 className="text-lg font-semibold mb-2">Líneas de la factura</h3>
@@ -7295,6 +7508,27 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                     </div>
                                 )}
                             </div>
+
+                            {/* Descuento global antes de IVA */}
+                            <div className="mt-3 flex items-center space-x-3">
+                                <label htmlFor="discountRate" className="text-sm font-medium text-gray-700">
+                                    Descuento (%):
+                                </label>
+                                <input
+                                    type="number"
+                                    id="discountRate"
+                                    name="discountRate"
+                                    value={(Number(formData.discountRate) || 0) * 100}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, discountRate: parseFloat(e.target.value || '0') / 100 }))}
+                                    min="0"
+                                    max="100"
+                                    step="0.01"
+                                    className="w-20 px-3 py-1 border border-gray-300 rounded-md focus:ring-[#008080] focus:border-[#008080]"
+                                />
+                                <span className="text-sm text-gray-500">
+                                    (se aplica antes del IVA)
+                                </span>
+                            </div>
                             
                             {/* Información de la serie */}
                             <div className="mt-3 text-sm text-gray-600">
@@ -7314,6 +7548,18 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                     <span className="font-semibold">Subtotal:</span>
                                     <span>{subtotal.toFixed(2)} €</span>
                                 </div>
+                                {effectiveDiscountRate > 0 && (
+                                    <div className="flex justify-between text-red-700">
+                                        <span className="font-semibold">Descuento ({(effectiveDiscountRate * 100).toFixed(2)}%):</span>
+                                        <span>-{discountAmount.toFixed(2)} €</span>
+                                    </div>
+                                )}
+                                {effectiveDiscountRate > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="font-semibold">Base tras descuento:</span>
+                                        <span>{subtotalAfterDiscount.toFixed(2)} €</span>
+                                    </div>
+                                )}
                                 {formData.includeVAT ? (
                                 <div className="flex justify-between">
                                         <span className="font-semibold">IVA ({(effectiveVATRate * 100).toFixed(1)}%):</span>
@@ -7330,6 +7576,78 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                     <span className="font-bold text-lg">{total.toFixed(2)} €</span>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Pago al guardar (sin reabrir factura) */}
+                        <div className="border-t pt-4">
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="registerPaymentNow"
+                                    checked={registerPaymentNow}
+                                    onChange={(e) => setRegisterPaymentNow(e.target.checked)}
+                                    className="h-4 w-4 text-[#008080] focus:ring-[#008080] border-gray-300 rounded"
+                                />
+                                <label htmlFor="registerPaymentNow" className="text-sm font-medium text-gray-700">
+                                    Registrar pago ahora (opcional)
+                                </label>
+                            </div>
+
+                            {registerPaymentNow && (
+                                <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Importe</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={paymentNowAmount}
+                                            onChange={(e) => setPaymentNowAmount(e.target.value)}
+                                            placeholder={total.toFixed(2)}
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-[#008080] focus:ring-[#008080]"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de pago</label>
+                                        <input
+                                            type="date"
+                                            value={paymentNowDate}
+                                            onChange={(e) => setPaymentNowDate(e.target.value)}
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-[#008080] focus:ring-[#008080]"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Método</label>
+                                        <select
+                                            value={paymentNowMethod}
+                                            onChange={(e) => setPaymentNowMethod(e.target.value)}
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-[#008080] focus:ring-[#008080]"
+                                            required
+                                        >
+                                            {['Efectivo','Tarjeta','Transferencia','Bizum','Otro'].map(m => (
+                                                <option key={m} value={m}>{m}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Otro (si aplica)</label>
+                                        <input
+                                            type="text"
+                                            value={paymentNowMethodOther}
+                                            onChange={(e) => setPaymentNowMethodOther(e.target.value)}
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-[#008080] focus:ring-[#008080]"
+                                            placeholder="Especifica el método"
+                                            disabled={paymentNowMethod !== 'Otro'}
+                                            required={paymentNowMethod === 'Otro'}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-4 text-xs text-gray-500">
+                                        Puedes registrar un pago parcial ahora y completar el resto más adelante desde la factura.
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         
                         <div className="flex justify-end gap-4 pt-4">
@@ -7923,6 +8241,9 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 const client = clients.find(c => c.id === invoice.clientId);
                 const [payments, setPayments] = useState([]);
                 const [paymentAmount, setPaymentAmount] = useState(0);
+                const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+                const [paymentMethod, setPaymentMethod] = useState('Transferencia');
+                const [paymentMethodOther, setPaymentMethodOther] = useState('');
                 const amountPaid = invoice.totalPaid || 0;
                 const amountDue = invoice.total - amountPaid;
                 
@@ -7948,7 +8269,13 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     e.preventDefault(); 
                     const amount = parseFloat(paymentAmount); 
                     if (amount > 0 && amount <= amountDue) { 
-                        onRegisterPayment(invoice, amount); 
+                        const method = (window.PAYMENT_METHODS || ['Efectivo','Tarjeta','Transferencia','Bizum','Otro']).includes(paymentMethod) ? paymentMethod : 'Otro';
+                        onRegisterPayment(invoice, { 
+                            amount, 
+                            date: paymentDate,
+                            method,
+                            methodOther: method === 'Otro' ? paymentMethodOther : ''
+                        }); 
                         setPaymentAmount(0); 
                     } else { 
                         showNotification('Error de pago', 'El importe del pago no es válido. Debe ser mayor que 0 y no superior al importe pendiente.', 'error');
@@ -7958,7 +8285,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 // Función para imprimir la factura
                 const handlePrintInvoice = () => {
                     const settings = window.getSettings();
-                    const printContent = generateInvoicePrintHTML(invoice, client, settings);
+                    const printContent = generateInvoicePrintHTML(invoice, client, settings, payments);
                     const printWindow = window.open('', '_blank', 'width=800,height=600');
                     printWindow.document.open();
                     printWindow.document.write(printContent);
@@ -7971,7 +8298,24 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 };
 
                 // Función para generar el HTML de impresión
-                const generateInvoicePrintHTML = (invoice, client, settings) => {
+                const generateInvoicePrintHTML = (invoice, client, settings, payments = []) => {
+                    const vatRate = (invoice?.effectiveVATRate ?? invoice?.customVATRate ?? VAT_RATE) || 0;
+                    const paid = Number(invoice?.totalPaid || 0);
+                    const total = Number(invoice?.total || 0);
+                    const pending = total - paid;
+                    const discountRate = Number(invoice?.discountRate || 0);
+                    const discountAmount = Number(invoice?.discountAmount || 0);
+
+                    const formatDate = (d) => {
+                        if (!d) return '—';
+                        try {
+                            if (d?.toDate) return d.toDate().toLocaleDateString('es-ES');
+                            return new Date(d).toLocaleDateString('es-ES');
+                        } catch (e) {
+                            return String(d);
+                        }
+                    };
+
                     return `
                         <!DOCTYPE html>
                         <html>
@@ -8074,8 +8418,18 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                             <td style="text-align: right;"><strong>Subtotal:</strong></td>
                                             <td style="text-align: right;">${(invoice.subtotal || 0).toFixed(2)} €</td>
                                         </tr>
+                                        ${discountRate > 0 ? `
                                         <tr>
-                                            <td style="text-align: right;"><strong>IVA (21%):</strong></td>
+                                            <td style="text-align: right;"><strong>Descuento (${(discountRate * 100).toFixed(2)}%):</strong></td>
+                                            <td style="text-align: right;">-${discountAmount.toFixed(2)} €</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: right;"><strong>Base tras descuento:</strong></td>
+                                            <td style="text-align: right;">${(Number(invoice.subtotalAfterDiscount || ((invoice.subtotal || 0) - discountAmount))).toFixed(2)} €</td>
+                                        </tr>
+                                        ` : ''}
+                                        <tr>
+                                            <td style="text-align: right;"><strong>IVA (${(vatRate * 100).toFixed(1)}%):</strong></td>
                                             <td style="text-align: right;">${(invoice.vat || 0).toFixed(2)} €</td>
                                         </tr>
                                         <tr class="total-row">
@@ -8086,6 +8440,34 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                 </div>
 
                                 <div style="clear: both;"></div>
+
+                                <div style="margin-top: 20px;">
+                                    <h4 style="color:#006666; font-size: 13px; margin-bottom: 8px;">Pagos</h4>
+                                    <table style="width:100%; border-collapse: collapse; font-size: 11px;">
+                                        <thead>
+                                            <tr>
+                                                <th style="text-align:left; border-bottom: 1px solid #ddd; padding: 6px 4px;">Fecha</th>
+                                                <th style="text-align:left; border-bottom: 1px solid #ddd; padding: 6px 4px;">Método</th>
+                                                <th style="text-align:right; border-bottom: 1px solid #ddd; padding: 6px 4px;">Importe</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${payments && payments.length ? payments.map(p => `
+                                                <tr>
+                                                    <td style="padding: 6px 4px; border-bottom: 1px solid #f0f0f0;">${formatDate(p.date)}</td>
+                                                    <td style="padding: 6px 4px; border-bottom: 1px solid #f0f0f0;">${p.method === 'Otro' ? (p.methodOther ? `Otro (${p.methodOther})` : 'Otro') : (p.method || '—')}</td>
+                                                    <td style="padding: 6px 4px; border-bottom: 1px solid #f0f0f0; text-align:right;">${(Number(p.amount) || 0).toFixed(2)} €</td>
+                                                </tr>
+                                            `).join('') : `
+                                                <tr><td colspan="3" style="padding: 6px 4px; color:#666;">No hay pagos registrados.</td></tr>
+                                            `}
+                                        </tbody>
+                                    </table>
+                                    <div style="display:flex; justify-content:flex-end; gap:24px; margin-top: 8px; font-size: 11px;">
+                                        <div><strong>Total pagado:</strong> ${paid.toFixed(2)} €</div>
+                                        <div><strong>Pendiente:</strong> ${pending.toFixed(2)} €</div>
+                                    </div>
+                                </div>
 
                                 <div class="footer">
                                     <p><strong>Forma de pago:</strong> Transferencia bancaria</p>
@@ -8101,7 +8483,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 // Función para generar y descargar PDF de la factura
                 const handleDownloadPDF = () => {
                     const settings = window.getSettings();
-                    const printContent = generateInvoicePrintHTML(invoice, client, settings);
+                    const printContent = generateInvoicePrintHTML(invoice, client, settings, payments);
                     const printWindow = window.open('', '_blank', 'width=800,height=600');
                     printWindow.document.open();
                     printWindow.document.write(printContent);
@@ -8249,8 +8631,12 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                                     <ul className="text-sm space-y-1">
                                         {payments.map(p => (
                                             <li key={p.id} className="flex justify-between p-1 bg-gray-50 rounded">
-                                                <span>{p.date?.toDate ? p.date.toDate().toLocaleDateString('es-ES') : (p.date ? new Date(p.date).toLocaleDateString('es-ES') : p.date)}:</span> 
-                                                <span className="font-semibold">{p.amount.toFixed(2)} €</span>
+                                                <span>
+                                                    {p.date?.toDate ? p.date.toDate().toLocaleDateString('es-ES') : (p.date ? new Date(p.date).toLocaleDateString('es-ES') : p.date)}
+                                                    {' — '}
+                                                    {p.method === 'Otro' ? (p.methodOther ? `Otro (${p.methodOther})` : 'Otro') : (p.method || '—')}
+                                                </span> 
+                                                <span className="font-semibold">{(parseFloat(p.amount) || 0).toFixed(2)} €</span>
                                             </li>
                                         ))}
                                     </ul>
@@ -8262,23 +8648,53 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                                     <form onSubmit={handlePaymentSubmit} className="mt-4">
                                         <h4 className="font-semibold text-gray-600 mb-2">Contabilizar Nuevo Pago:</h4>
                                         <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
-                                        <div className="flex gap-2">
-                                            <input 
-                                                type="number" 
-                                                step="0.01" 
-                                                max={amountDue.toFixed(2)} 
-                                                value={paymentAmount} 
-                                                onChange={(e) => setPaymentAmount(e.target.value)} 
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                                                <input 
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    max={amountDue.toFixed(2)} 
+                                                    value={paymentAmount} 
+                                                    onChange={(e) => setPaymentAmount(e.target.value)} 
                                                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500" 
-                                                placeholder="Importe" 
-                                            />
-                                            <button 
-                                                type="submit" 
-                                                className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700"
-                                            >
-                                                Registrar
-                                            </button>
+                                                    placeholder="Importe" 
+                                                    required
+                                                />
+                                                <input
+                                                    type="date"
+                                                    value={paymentDate}
+                                                    onChange={(e) => setPaymentDate(e.target.value)}
+                                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                                                    required
+                                                />
+                                                <select
+                                                    value={paymentMethod}
+                                                    onChange={(e) => setPaymentMethod(e.target.value)}
+                                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                                                    required
+                                                >
+                                                    {['Efectivo','Tarjeta','Transferencia','Bizum','Otro'].map(m => (
+                                                        <option key={m} value={m}>{m}</option>
+                                                    ))}
+                                                </select>
+                                                <button 
+                                                    type="submit" 
+                                                    className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700"
+                                                >
+                                                    Registrar
+                                                </button>
                                             </div>
+                                            {paymentMethod === 'Otro' && (
+                                                <div className="mt-2">
+                                                    <input
+                                                        type="text"
+                                                        value={paymentMethodOther}
+                                                        onChange={(e) => setPaymentMethodOther(e.target.value)}
+                                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                                                        placeholder="Especifica el método (Otro)"
+                                                        required
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     </form>
                                 )}
@@ -8289,9 +8705,21 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                                     <span className="font-semibold">Subtotal:</span>
                                     <span>{invoice.subtotal.toFixed(2)} €</span>
                                 </div>
+                                {Number(invoice.discountRate || 0) > 0 && (
+                                    <div className="flex justify-between text-red-700">
+                                        <span className="font-semibold">Descuento ({(Number(invoice.discountRate) * 100).toFixed(2)}%):</span>
+                                        <span>-{(Number(invoice.discountAmount || 0)).toFixed(2)} €</span>
+                                    </div>
+                                )}
+                                {Number(invoice.discountRate || 0) > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="font-semibold">Base tras descuento:</span>
+                                        <span>{(Number(invoice.subtotalAfterDiscount || ((invoice.subtotal || 0) - (invoice.discountAmount || 0)))).toFixed(2)} €</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between">
-                                    <span className="font-semibold">IVA ({VAT_RATE * 100}%):</span>
-                                    <span>{invoice.vat.toFixed(2)} €</span>
+                                    <span className="font-semibold">IVA ({((invoice.effectiveVATRate ?? invoice.customVATRate ?? VAT_RATE) * 100).toFixed(1)}%):</span>
+                                    <span>{(invoice.vat || 0).toFixed(2)} €</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="font-semibold">Total Factura:</span>
@@ -9006,10 +9434,17 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
             };
 
             // === DASHBOARD DE INFORMES Y ESTADÍSTICAS ===
-            function ReportsDashboard({ allInvoices, userProfile }) {
+            function ReportsDashboard({ allInvoices, userProfile, db, products, showNotification }) {
                 const [productFilter, setProductFilter] = useState('all');
                 const [salespersonFilter, setSalespersonFilter] = useState('all');
                 const [dateFilter, setDateFilter] = useState('all');
+
+                // Movimientos de stock (para gestoría)
+                const [stockMonth, setStockMonth] = useState(() => {
+                    const now = new Date();
+                    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                });
+                const [isExportingStock, setIsExportingStock] = useState(false);
                 
                 // Verificar si Recharts está disponible
                 const hasRecharts = typeof window.Recharts !== 'undefined' && window.rechartsAvailable;
@@ -9017,6 +9452,128 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                 const paidInvoices = allInvoices.filter(inv => 
                     inv.status === 'Pagada' || inv.status === 'Parcialmente Pagada'
                 );
+
+                const productById = useMemo(() => {
+                    const map = new Map();
+                    (products || []).forEach(p => map.set(p.id, p));
+                    return map;
+                }, [products]);
+
+                const exportStockMovementsByMonth = async () => {
+                    if (!db) {
+                        alert('❌ La exportación de movimientos de stock requiere conexión a base de datos.');
+                        return;
+                    }
+                    if (!stockMonth) {
+                        alert('❌ Selecciona un mes para exportar.');
+                        return;
+                    }
+                    if (typeof XLSX === 'undefined') {
+                        alert('❌ No se puede exportar a Excel: falta la librería XLSX.');
+                        return;
+                    }
+                    setIsExportingStock(true);
+                    try {
+                        const [yearStr, monthStr] = stockMonth.split('-');
+                        const year = Number(yearStr);
+                        const month = Number(monthStr); // 1-12
+                        const start = new Date(year, month - 1, 1);
+                        const end = new Date(year, month, 0); // último día del mes
+                        const startStr = start.toISOString().split('T')[0];
+                        const endStr = end.toISOString().split('T')[0];
+
+                        const movementsRef = collection(db, 'stockMovements');
+                        const q = query(
+                            movementsRef,
+                            where('date', '>=', startStr),
+                            where('date', '<=', endStr),
+                            orderBy('date', 'asc')
+                        );
+                        const snap = await getDocs(q);
+                        const movements = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                        const rows = movements.map(m => {
+                            const p = m.productId ? productById.get(m.productId) : null;
+                            const qty = Number(m.quantity || 0);
+                            const change = Number(m.quantityChange || 0);
+                            return {
+                                'Fecha': m.date || '',
+                                'Tipo': m.type || '',
+                                'Producto': p?.name || m.productId || '',
+                                'SKU': p?.sku || '',
+                                'Categoría': p?.category || '',
+                                'Unidades': qty,
+                                'Cambio stock': change,
+                                'Factura': m.invoiceNumber || '',
+                                'Serie': m.invoiceSeries || '',
+                                'Cliente (id)': m.clientId || '',
+                                'Factura (id)': m.invoiceId || ''
+                            };
+                        });
+
+                        // Resumen por producto (ventas del mes)
+                        const byProduct = new Map();
+                        movements.forEach(m => {
+                            if (m.type !== 'sale') return;
+                            const pid = m.productId || 'SIN_PRODUCTO';
+                            const qty = Number(m.quantity || 0);
+                            const prev = byProduct.get(pid) || { units: 0 };
+                            prev.units += qty;
+                            byProduct.set(pid, prev);
+                        });
+                        const summaryRows = Array.from(byProduct.entries()).map(([productId, agg]) => {
+                            const p = productId !== 'SIN_PRODUCTO' ? productById.get(productId) : null;
+                            const price = Number(p?.price || 0);
+                            const units = Number(agg.units || 0);
+                            return {
+                                'Producto': p?.name || productId,
+                                'SKU': p?.sku || '',
+                                'Categoría': p?.category || '',
+                                'Unidades vendidas (mes)': units,
+                                'Precio base (sin IVA)': price.toFixed(2),
+                                'Importe base (aprox)': (units * price).toFixed(2)
+                            };
+                        }).sort((a, b) => Number(b['Unidades vendidas (mes)']) - Number(a['Unidades vendidas (mes)']));
+
+                        // Inventario actual (valoración a fecha de exportación)
+                        const inventoryRows = (products || []).map(p => {
+                            const stock = Number(p.stock || 0);
+                            const price = Number(p.price || 0);
+                            return {
+                                'Producto': p.name || '',
+                                'SKU': p.sku || '',
+                                'Categoría': p.category || '',
+                                'Stock (actual)': stock,
+                                'Precio base (sin IVA)': price.toFixed(2),
+                                'Valor inventario (base)': (stock * price).toFixed(2),
+                                'Proveedor': p.supplier || ''
+                            };
+                        }).sort((a, b) => Number(b['Valor inventario (base)']) - Number(a['Valor inventario (base)']));
+
+                        const statsRows = [
+                            { 'Métrica': 'Mes', 'Valor': stockMonth },
+                            { 'Métrica': 'Movimientos (registros)', 'Valor': movements.length },
+                            { 'Métrica': 'Ventas (unidades, mes)', 'Valor': summaryRows.reduce((s, r) => s + Number(r['Unidades vendidas (mes)'] || 0), 0) },
+                            { 'Métrica': 'Valor inventario actual (base)', 'Valor': inventoryRows.reduce((s, r) => s + Number(r['Valor inventario (base)'] || 0), 0).toFixed(2) },
+                            { 'Métrica': 'Nota', 'Valor': 'La valoración de inventario es el stock actual en el momento de exportación (no un cierre contable histórico).' }
+                        ];
+
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Movimientos');
+                        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryRows), 'Resumen ventas mes');
+                        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(inventoryRows), 'Inventario actual');
+                        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(statsRows), 'Notas');
+
+                        const filename = `stock_${stockMonth}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                        XLSX.writeFile(wb, filename);
+                        showNotification?.('Exportación OK', `Excel generado con ${rows.length} movimientos y ${summaryRows.length} productos`, 'success');
+                    } catch (error) {
+                        console.error('Error exportando movimientos de stock:', error);
+                        showNotification?.('Error exportación', 'No se pudieron exportar los movimientos de stock.', 'error');
+                    } finally {
+                        setIsExportingStock(false);
+                    }
+                };
 
                 const productOptions = useMemo(() => {
                     const products = new Set();
@@ -9945,6 +10502,43 @@ ${data.topProducts.slice(0, 5).map((p, i) =>
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2H7a2 2 0 01-2-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                         </svg>
                                         Copiar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Movimientos de stock (gestoría) */}
+                        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                        <PackageIcon width={20} height={20} className="text-[#008080]" />
+                                        Movimientos de stock (por mes)
+                                    </h3>
+                                    <p className="text-sm text-gray-600">
+                                        Exporta los movimientos registrados en <code className="px-1 py-0.5 bg-gray-100 rounded">stockMovements</code> para gestoría.
+                                    </p>
+                                </div>
+                                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Mes</label>
+                                        <input
+                                            type="month"
+                                            value={stockMonth}
+                                            onChange={(e) => setStockMonth(e.target.value)}
+                                            className="mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-[#006666]"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={exportStockMovementsByMonth}
+                                        disabled={isExportingStock}
+                                        className={`px-4 py-2 rounded-lg flex items-center gap-2 text-white ${
+                                            isExportingStock ? 'bg-gray-400' : 'bg-[#006666] hover:bg-[#005555]'
+                                        }`}
+                                        title="Exportar movimientos de stock del mes seleccionado"
+                                    >
+                                        <DownloadIcon width={18} height={18} />
+                                        {isExportingStock ? 'Exportando...' : 'Exportar movimientos'}
                                     </button>
                                 </div>
                             </div>
