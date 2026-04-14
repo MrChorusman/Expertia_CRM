@@ -8905,7 +8905,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 const paidCents = toCents(amountPaid);
                 const dueCents = Math.max(0, totalCents - paidCents);
                 const amountDue = dueCents / 100;
-                const amountDueDisplay = Math.max(0, amountDue);
+                const amountDueDisplay = Math.abs(amountDue) < 0.005 ? 0 : Math.max(0, amountDue);
                 
                 // Obtener configuraciones dinámicas
                 const settings = window.getSettings();
