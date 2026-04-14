@@ -100,6 +100,12 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
       allow list: if request.auth != null;
     }
+
+    // Movimientos de stock (registrados al emitir facturas)
+    match /stockMovements/{movementId} {
+      allow read, write: if request.auth != null;
+      allow list: if request.auth != null;
+    }
     
     // Contadores para numeración secuencial
     match /counters/{counterId} {

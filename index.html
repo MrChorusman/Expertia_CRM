@@ -2471,6 +2471,15 @@
                     }
                     
                     const savedInvoiceId = await handleSave('facturas', dataToSave, dataToSave.id);
+                    window.logSupportEvent?.({
+                        level: 'info',
+                        event: 'invoice_save_success',
+                        context: {
+                            feature: 'invoice',
+                            invoiceId: savedInvoiceId || dataToSave.id || null,
+                            invoiceNumber: dataToSave.invoiceNumber || null
+                        }
+                    });
 
                     // Registrar pago inicial en el alta/edición si se solicitó
                     const shouldRegisterPayment = Boolean(registerPaymentNow);
@@ -2517,7 +2526,33 @@
                     try {
                         const isBillableInvoice = dataToSave.type === 'Factura' && dataToSave.status !== 'Borrador' && dataToSave.status !== 'Anulada';
                         const hasItemsWithProduct = Array.isArray(dataToSave.items) && dataToSave.items.some(it => it?.productId && Number(it?.quantity) > 0);
+                        const hasAnyItem = Array.isArray(dataToSave.items) && dataToSave.items.length > 0;
+                        if (savedInvoiceId && isBillableInvoice && hasAnyItem && !hasItemsWithProduct) {
+                            window.logSupportEvent?.({
+                                level: 'warning',
+                                event: 'stock_skip_no_productId',
+                                context: {
+                                    feature: 'stock',
+                                    invoiceId: savedInvoiceId,
+                                    invoiceNumber: dataToSave.invoiceNumber || null
+                                }
+                            });
+                            showNotification?.(
+                                'Stock no actualizado',
+                                'Esta factura tiene líneas sin producto del catálogo (sin ProductId). Para que el stock se descuente, selecciona el producto desde el selector de productos en la línea.',
+                                'warning'
+                            );
+                        }
                         if (savedInvoiceId && isBillableInvoice && hasItemsWithProduct && !dataToSave.stockAppliedAt) {
+                            window.logSupportEvent?.({
+                                level: 'info',
+                                event: 'stock_apply_start',
+                                context: {
+                                    feature: 'stock',
+                                    invoiceId: savedInvoiceId,
+                                    invoiceNumber: dataToSave.invoiceNumber || null
+                                }
+                            });
                             for (const item of (dataToSave.items || [])) {
                                 const productId = item?.productId;
                                 const qty = Number(item?.quantity) || 0;
@@ -2551,9 +2586,32 @@
                                 id: savedInvoiceId,
                                 stockAppliedAt: new Date().toISOString()
                             }, savedInvoiceId);
+                            window.logSupportEvent?.({
+                                level: 'info',
+                                event: 'stock_apply_success',
+                                context: {
+                                    feature: 'stock',
+                                    invoiceId: savedInvoiceId,
+                                    invoiceNumber: dataToSave.invoiceNumber || null
+                                }
+                            });
                         }
                     } catch (error) {
                         console.error('Error aplicando movimientos de stock:', error);
+                        window.logSupportEvent?.({
+                            level: 'error',
+                            event: 'stock_apply_error',
+                            context: {
+                                feature: 'stock',
+                                invoiceId: savedInvoiceId || dataToSave.id || null,
+                                invoiceNumber: dataToSave.invoiceNumber || null
+                            },
+                            error: {
+                                message: error?.message || String(error),
+                                name: error?.name || null,
+                                stack: error?.stack || null
+                            }
+                        });
                         showNotification?.('Stock no actualizado', 'La factura se guardó, pero hubo un error actualizando el stock.', 'error');
                     }
                     setActiveView('accounting');
