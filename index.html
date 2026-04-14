@@ -8920,8 +8920,12 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 const handlePaymentSubmit = async (e) => { 
                     e.preventDefault(); 
                     if (isRegisteringPayment) return;
-                    const amount = parseFloat(paymentAmount); 
-                    if (!(amount > 0 && amount <= amountDue)) { 
+                    const rawAmount = String(paymentAmount ?? '').trim().replace(',', '.');
+                    const amount = parseFloat(rawAmount);
+                    const toCents = (n) => Math.round((Number(n) || 0) * 100);
+                    const amountCents = toCents(amount);
+                    const dueCents = toCents(amountDue);
+                    if (!(amountCents > 0 && amountCents <= dueCents)) { 
                         showNotification('Error de pago', 'El importe del pago no es válido. Debe ser mayor que 0 y no superior al importe pendiente.', 'error');
                         return;
                     }
