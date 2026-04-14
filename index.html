@@ -8905,6 +8905,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 const paidCents = toCents(amountPaid);
                 const dueCents = Math.max(0, totalCents - paidCents);
                 const amountDue = dueCents / 100;
+                const amountDueDisplay = Math.max(0, amountDue);
                 
                 // Obtener configuraciones dinámicas
                 const settings = window.getSettings();
@@ -8957,7 +8958,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
 
                 const openPaymentModal = () => {
                     // Pre-rellenar importe pendiente por defecto (editable)
-                    setPaymentAmount(amountDue > 0 ? amountDue.toFixed(2) : '');
+                    setPaymentAmount(amountDueDisplay > 0 ? amountDueDisplay.toFixed(2) : '');
                     setPaymentDate(new Date().toISOString().split('T')[0]);
                     setPaymentMethod('Transferencia');
                     setPaymentMethodOther('');
@@ -9373,7 +9374,7 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                                                         </span>
                                                         <div className="min-w-0">
                                                             <div className="text-sm font-medium text-gray-900">Registrar pago</div>
-                                                            <div className="text-xs text-gray-500">Pendiente: {amountDue.toFixed(2)} €</div>
+                                                            <div className="text-xs text-gray-500">Pendiente: {amountDueDisplay.toFixed(2)} €</div>
                                                         </div>
                                                     </button>
                                                 )}
@@ -9609,7 +9610,7 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                                         </div>
                                         <div className="flex justify-between border-t-2 border-gray-900 pt-3 mt-3">
                                             <span className="font-bold text-lg">Pendiente</span>
-                                            <span className="font-bold text-lg text-red-600 tabular-nums">{amountDue.toFixed(2)} €</span>
+                                            <span className="font-bold text-lg text-red-600 tabular-nums">{amountDueDisplay.toFixed(2)} €</span>
                                         </div>
                                     </div>
 
@@ -9635,7 +9636,7 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                                     <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
                                         <div>
                                             <div className="text-sm font-semibold text-gray-900">Registrar pago</div>
-                                            <div className="text-xs text-gray-500">Pendiente: {amountDue.toFixed(2)} €</div>
+                                            <div className="text-xs text-gray-500">Pendiente: {amountDueDisplay.toFixed(2)} €</div>
                                         </div>
                                         <button
                                             type="button"
@@ -9655,7 +9656,7 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                                                     type="number"
                                                     step="0.01"
                                                     min="0"
-                                                    max={amountDue.toFixed(2)}
+                                                    max={amountDueDisplay.toFixed(2)}
                                                     value={paymentAmount}
                                                     onChange={(e) => setPaymentAmount(e.target.value)}
                                                     className="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-green-600 focus:ring-green-600"
