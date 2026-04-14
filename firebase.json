@@ -32,11 +32,20 @@
     ],
     "headers": [
       {
-        "source": "**/*.@(js|css|html|png|jpg|jpeg|gif|ico|svg)",
+        "source": "**/*.@(js|css|png|jpg|jpeg|gif|ico|svg)",
         "headers": [
           {
             "key": "Cache-Control",
             "value": "max-age=86400"
+          }
+        ]
+      },
+      {
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
           }
         ]
       },
