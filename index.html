@@ -8906,6 +8906,10 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 const dueCents = Math.max(0, totalCents - paidCents);
                 const amountDue = dueCents / 100;
                 const amountDueDisplay = Math.abs(amountDue) < 0.005 ? 0 : Math.max(0, amountDue);
+                const formatEuro = (n) => {
+                    const fixed = (Number(n) || 0).toFixed(2);
+                    return fixed === '-0.00' ? '0.00' : fixed;
+                };
                 
                 // Obtener configuraciones dinámicas
                 const settings = window.getSettings();
@@ -9374,7 +9378,7 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                                                         </span>
                                                         <div className="min-w-0">
                                                             <div className="text-sm font-medium text-gray-900">Registrar pago</div>
-                                                            <div className="text-xs text-gray-500">Pendiente: {amountDueDisplay.toFixed(2)} €</div>
+                                                            <div className="text-xs text-gray-500">Pendiente: {formatEuro(amountDueDisplay)} €</div>
                                                         </div>
                                                     </button>
                                                 )}
@@ -9610,7 +9614,7 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                                         </div>
                                         <div className="flex justify-between border-t-2 border-gray-900 pt-3 mt-3">
                                             <span className="font-bold text-lg">Pendiente</span>
-                                            <span className="font-bold text-lg text-red-600 tabular-nums">{amountDueDisplay.toFixed(2)} €</span>
+                                            <span className="font-bold text-lg text-red-600 tabular-nums">{formatEuro(amountDueDisplay)} €</span>
                                         </div>
                                     </div>
 
@@ -9636,7 +9640,7 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                                     <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
                                         <div>
                                             <div className="text-sm font-semibold text-gray-900">Registrar pago</div>
-                                            <div className="text-xs text-gray-500">Pendiente: {amountDueDisplay.toFixed(2)} €</div>
+                                            <div className="text-xs text-gray-500">Pendiente: {formatEuro(amountDueDisplay)} €</div>
                                         </div>
                                         <button
                                             type="button"
