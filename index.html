@@ -1779,6 +1779,89 @@
                 window.showConfirm = showConfirm;
                 window.showNotification = showNotification;
 
+                const sanitizeSupportContext = (ctx) => {
+                    if (!ctx || typeof ctx !== 'object') return null;
+                    const out = {};
+                    // Campos esperados / seguros
+                    if (ctx.feature) out.feature = String(ctx.feature).slice(0, 50);
+                    if (ctx.invoiceId) out.invoiceId = String(ctx.invoiceId).slice(0, 128);
+                    if (ctx.invoiceNumber) out.invoiceNumber = String(ctx.invoiceNumber).slice(0, 64);
+                    if (typeof ctx.amount === 'number' && Number.isFinite(ctx.amount)) out.amount = ctx.amount;
+                    if (ctx.date) out.date = String(ctx.date).slice(0, 32);
+                    if (ctx.method) out.method = String(ctx.method).slice(0, 24);
+                    return out;
+                };
+
+                const logSupportEvent = async (payload) => {
+                    try {
+                        if (!window.firebaseDb || !user?.uid) return null;
+                        const { addDoc, collection } = window.firebase;
+                        if (!addDoc || !collection) return null;
+
+                        const nowIso = new Date().toISOString();
+                        const safe = payload && typeof payload === 'object' ? payload : {};
+                        const level = ['info', 'warning', 'error'].includes(safe.level) ? safe.level : 'info';
+                        const event = safe.event ? String(safe.event).slice(0, 120) : 'unknown_event';
+
+                        const docData = {
+                            level,
+                            event,
+                            createdAt: nowIso,
+                            userId: user.uid,
+                            // Evitar PII: no guardamos email/nombre/cliente
+                            app: {
+                                name: 'Expertis CRM',
+                                origin: window.location?.origin || null,
+                                pathname: window.location?.pathname || null,
+                                userAgent: navigator.userAgent
+                            },
+                            context: sanitizeSupportContext(safe.context),
+                            error: safe.error ? {
+                                message: safe.error.message ? String(safe.error.message).slice(0, 1000) : null,
+                                name: safe.error.name ? String(safe.error.name).slice(0, 120) : null,
+                                stack: safe.error.stack ? String(safe.error.stack).slice(0, 4000) : null
+                            } : null
+                        };
+
+                        const ref = await addDoc(collection(window.firebaseDb, 'support_logs'), docData);
+                        return ref.id;
+                    } catch (e) {
+                        // No bloquear la app por un fallo de logging
+                        console.warn('[WARN] No se pudo escribir support_log:', e);
+                        return null;
+                    }
+                };
+
+                window.logSupportEvent = logSupportEvent;
+
+                // Captura global de errores (para soporte)
+                window.addEventListener('error', (evt) => {
+                    logSupportEvent({
+                        level: 'error',
+                        event: 'window_error',
+                        context: null,
+                        error: {
+                            message: evt?.message || 'window_error',
+                            name: evt?.error?.name || null,
+                            stack: evt?.error?.stack || null
+                        }
+                    });
+                });
+
+                window.addEventListener('unhandledrejection', (evt) => {
+                    const reason = evt?.reason;
+                    logSupportEvent({
+                        level: 'error',
+                        event: 'unhandledrejection',
+                        context: null,
+                        error: {
+                            message: reason?.message || String(reason),
+                            name: reason?.name || null,
+                            stack: reason?.stack || null
+                        }
+                    });
+                });
+
                 // Función para verificar permisos (usando RoleManager)
                 const isAdmin = () => window.roleManager ? window.roleManager.isAdmin() : userProfile?.role === 'admin';
                 const isCommercialOrAdmin = () => window.roleManager ? (window.roleManager.isAdmin() || window.roleManager.isCommercial()) : (userProfile?.role === 'admin' || userProfile?.role === 'comercial');
@@ -2573,44 +2656,79 @@
                     const paymentAmount = parseFloat(normalizedPayment.amount);
 
                     if (!db || !invoice || !paymentAmount) return;
-                    
-                    const newTotalPaid = (invoice.totalPaid || 0) + paymentAmount;
-                    let newStatus;
-                    if (newTotalPaid >= invoice.total) {
-                        newStatus = 'Pagada';
-                    } else if (newTotalPaid > 0) {
-                        newStatus = 'Parcialmente Pagada';
-                    } else {
-                        newStatus = 'Enviada';
-                    }
-                    
-                    const updatedInvoice = {
-                        ...invoice,
-                        totalPaid: newTotalPaid,
-                        status: newStatus,
-                        lastPaymentMethod: method,
-                        lastPaymentMethodOther: method === 'Otro' ? (normalizedPayment.methodOther || '') : '',
-                        paymentMethodsUsed: Array.from(new Set([...(invoice.paymentMethodsUsed || []), method])),
+
+                    const method = PAYMENT_METHODS.includes(normalizedPayment.method) ? normalizedPayment.method : 'Otro';
+                    const paymentData = {
+                        amount: paymentAmount,
+                        date: normalizedPayment.date || new Date().toISOString().split('T')[0], // YYYY-MM-DD
+                        method,
+                        methodOther: method === 'Otro' ? (normalizedPayment.methodOther || '') : '',
+                        registeredBy: user.uid
                     };
-                    
-                    // Guardar el pago en la subcolección
-                        const method = PAYMENT_METHODS.includes(normalizedPayment.method) ? normalizedPayment.method : 'Otro';
-                        const paymentData = { 
-                            amount: paymentAmount, 
-                            date: normalizedPayment.date || new Date().toISOString().split('T')[0], // Formato YYYY-MM-DD
-                            method,
-                            methodOther: method === 'Otro' ? (normalizedPayment.methodOther || '') : '',
-                            registeredBy: user.uid
+
+                    const logCtx = {
+                        feature: 'invoice_payment',
+                        invoiceId: invoice.id,
+                        invoiceNumber: invoice.invoiceNumber || invoice.number || null,
+                        amount: paymentData.amount,
+                        date: paymentData.date,
+                        method: paymentData.method
+                    };
+
+                    try {
+                        window.logSupportEvent?.({
+                            level: 'info',
+                            event: 'invoice_payment_register_start',
+                            context: logCtx
+                        });
+
+                        const newTotalPaid = (invoice.totalPaid || 0) + paymentAmount;
+                        let newStatus;
+                        if (newTotalPaid >= invoice.total) {
+                            newStatus = 'Pagada';
+                        } else if (newTotalPaid > 0) {
+                            newStatus = 'Parcialmente Pagada';
+                        } else {
+                            newStatus = 'Enviada';
+                        }
+
+                        const updatedInvoice = {
+                            ...invoice,
+                            totalPaid: newTotalPaid,
+                            status: newStatus,
+                            lastPaymentMethod: method,
+                            lastPaymentMethodOther: method === 'Otro' ? (normalizedPayment.methodOther || '') : '',
+                            paymentMethodsUsed: Array.from(new Set([...(invoice.paymentMethodsUsed || []), method])),
                         };
-                    console.log('💾 Guardando pago:', paymentData);
-                    console.log('💾 Ruta de guardado:', `facturas/${invoice.id}/payments`);
+
+                        console.log('💾 Guardando pago:', paymentData);
+                        console.log('💾 Ruta de guardado:', `facturas/${invoice.id}/payments`);
                         await addDoc(collection(db, `facturas/${invoice.id}/payments`), paymentData);
-                    console.log('[OK]  Pago guardado correctamente');
-                    
-                    // Actualizar la factura principal
-                    await handleSave('facturas', updatedInvoice, updatedInvoice.id);
-                    
-                    setSelectedItem(updatedInvoice);
+                        console.log('[OK]  Pago guardado correctamente');
+
+                        // Actualizar la factura principal
+                        await handleSave('facturas', updatedInvoice, updatedInvoice.id);
+                        setSelectedItem(updatedInvoice);
+
+                        window.logSupportEvent?.({
+                            level: 'info',
+                            event: 'invoice_payment_register_success',
+                            context: logCtx
+                        });
+                    } catch (error) {
+                        console.error('[ERROR] Error registrando pago:', error);
+                        window.logSupportEvent?.({
+                            level: 'error',
+                            event: 'invoice_payment_register_error',
+                            context: logCtx,
+                            error: {
+                                message: error?.message || String(error),
+                                stack: error?.stack || null,
+                                name: error?.name || null
+                            }
+                        });
+                        showNotification('Error', 'No se pudo registrar el pago. Si persiste, contacta con soporte.', 'error');
+                    }
                 };
 
                 // === FUNCIONES ESPECÍFICAS PARA OFERTAS ===

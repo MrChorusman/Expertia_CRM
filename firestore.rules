@@ -123,5 +123,14 @@ service cloud.firestore {
       allow read: if true; // Temporal para inspección
       allow write: if true; // Temporal para migración
     }
+
+    // Logs de soporte (para incidencias: pagos, errores, etc.)
+    // Escritura: cualquier usuario autenticado
+    // Lectura/listado: solo admin
+    match /support_logs/{logId} {
+      allow create: if request.auth != null;
+      allow read, list: if isAdmin();
+      allow update, delete: if false;
+    }
   }
 }
