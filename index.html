@@ -2470,6 +2470,10 @@
                     }
                     
                     const savedInvoiceId = await handleSave('facturas', dataToSave, dataToSave.id);
+                    if (!savedInvoiceId && !dataToSave.id) {
+                        showNotification?.('Error', 'No se pudo guardar la factura.', 'error');
+                        return false;
+                    }
                     window.logSupportEvent?.({
                         level: 'info',
                         event: 'invoice_save_success',
@@ -2614,6 +2618,7 @@
                         showNotification?.('Stock no actualizado', 'La factura se guardó, pero hubo un error actualizando el stock.', 'error');
                     }
                     setActiveView('accounting');
+                    return true;
                 };
 
                 const handleConvertToInvoice = async (proformaInvoice) => {
@@ -2622,7 +2627,49 @@
                         type: 'Factura',
                         status: 'Enviada',
                     };
-                    await handleSaveInvoice(invoiceData, true);
+                    return await handleSaveInvoice(invoiceData, true);
+                };
+
+                const handleConvertProformaAndRegisterPayment = async (proformaInvoice, payment) => {
+                    const normalizedPayment = payment || {};
+                    const amount = Number(normalizedPayment.amount || 0);
+                    const method = PAYMENT_METHODS.includes(normalizedPayment.method) ? normalizedPayment.method : 'Otro';
+                    const invoiceData = {
+                        ...proformaInvoice,
+                        type: 'Factura',
+                        status: 'Enviada',
+                        registerPaymentNow: true,
+                        paymentNowAmount: amount,
+                        paymentNowDate: normalizedPayment.date || new Date().toISOString().split('T')[0],
+                        paymentNowMethod: method,
+                        paymentNowMethodOther: method === 'Otro' ? (normalizedPayment.methodOther || '') : ''
+                    };
+                    window.logSupportEvent?.({
+                        level: 'info',
+                        event: 'proforma_convert_and_pay_start',
+                        context: {
+                            feature: 'invoice_payment',
+                            invoiceId: proformaInvoice?.id || null,
+                            invoiceNumber: proformaInvoice?.invoiceNumber || proformaInvoice?.number || null,
+                            amount,
+                            date: invoiceData.paymentNowDate,
+                            method
+                        }
+                    });
+                    const ok = await handleSaveInvoice(invoiceData, true);
+                    window.logSupportEvent?.({
+                        level: ok ? 'info' : 'error',
+                        event: ok ? 'proforma_convert_and_pay_success' : 'proforma_convert_and_pay_error',
+                        context: {
+                            feature: 'invoice_payment',
+                            invoiceId: proformaInvoice?.id || null,
+                            invoiceNumber: proformaInvoice?.invoiceNumber || proformaInvoice?.number || null,
+                            amount,
+                            date: invoiceData.paymentNowDate,
+                            method
+                        }
+                    });
+                    return ok;
                 };
 
                 const handleSoftDeleteInvoice = async (invoiceId) => {
@@ -3121,6 +3168,7 @@
                                 db={db} 
                                 userId={user?.uid} 
                                 onConvertToInvoice={handleConvertToInvoice} 
+                                onConvertProformaAndRegisterPayment={handleConvertProformaAndRegisterPayment}
                                 onCreateRectificativa={handleCreateRectificativa}
                                 showConfirm={showConfirm}
                                 showNotification={showNotification}
@@ -8837,7 +8885,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
             }
 
             // === DETALLE DE FACTURA ===
-            function InvoiceDetail({ invoice, clients, onBack, onRegisterPayment, db, userId, onConvertToInvoice, onCreateRectificativa, showConfirm, showNotification }) {
+            function InvoiceDetail({ invoice, clients, onBack, onRegisterPayment, db, userId, onConvertToInvoice, onConvertProformaAndRegisterPayment, onCreateRectificativa, showConfirm, showNotification }) {
                 if (!invoice) return null;
                 
                 const client = clients.find(c => c.id === invoice.clientId);
@@ -8851,8 +8899,12 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 const [paymentModalOpen, setPaymentModalOpen] = useState(false);
                 const [isRegisteringPayment, setIsRegisteringPayment] = useState(false);
                 const paymentAmountRef = useRef(null);
-                const amountPaid = invoice.totalPaid || 0;
-                const amountDue = invoice.total - amountPaid;
+                const toCents = (n) => Math.round((Number(n) || 0) * 100);
+                const amountPaid = Number(invoice.totalPaid || 0);
+                const totalCents = toCents(invoice.total);
+                const paidCents = toCents(amountPaid);
+                const dueCents = Math.max(0, totalCents - paidCents);
+                const amountDue = dueCents / 100;
                 
                 // Obtener configuraciones dinámicas
                 const settings = window.getSettings();
@@ -8921,9 +8973,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     if (isRegisteringPayment) return;
                     const rawAmount = String(paymentAmount ?? '').trim().replace(',', '.');
                     const amount = parseFloat(rawAmount);
-                    const toCents = (n) => Math.round((Number(n) || 0) * 100);
                     const amountCents = toCents(amount);
-                    const dueCents = toCents(amountDue);
                     if (!(amountCents > 0 && amountCents <= dueCents)) { 
                         window.logSupportEvent?.({
                             level: 'warning',
@@ -8966,7 +9016,10 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
 
                     setIsRegisteringPayment(true);
                     try {
-                        const result = await onRegisterPayment(invoice, payload);
+                        const isProforma = invoice?.type === 'Factura Proforma';
+                        const result = isProforma
+                            ? await onConvertProformaAndRegisterPayment?.(invoice, payload)
+                            : await onRegisterPayment(invoice, payload);
                         const ok = result === true || (result && result.ok === true);
                         if (ok) {
                             setPaymentAmount(0);
@@ -9003,7 +9056,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     const vatRate = (invoice?.effectiveVATRate ?? invoice?.customVATRate ?? VAT_RATE) || 0;
                     const paid = Number(invoice?.totalPaid || 0);
                     const total = Number(invoice?.total || 0);
-                    const pending = total - paid;
+                    const pending = Math.max(0, total - paid);
                     const discountRate = Number(invoice?.discountRate || 0);
                     const discountAmount = Number(invoice?.discountAmount || 0);
 
@@ -9662,7 +9715,10 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                                                     isRegisteringPayment ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
                                                 }`}
                                             >
-                                                {isRegisteringPayment ? 'Guardando…' : 'Registrar pago'}
+                                                {isRegisteringPayment
+                                                    ? (invoice?.type === 'Factura Proforma' ? 'Convirtiendo…' : 'Guardando…')
+                                                    : (invoice?.type === 'Factura Proforma' ? 'Convertir y pagar' : 'Registrar pago')
+                                                }
                                             </button>
                                         </div>
                                     </form>
