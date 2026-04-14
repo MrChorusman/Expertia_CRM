@@ -2773,6 +2773,7 @@
                             event: 'invoice_payment_register_success',
                             context: logCtx
                         });
+                        return true;
                     } catch (error) {
                         console.error('[ERROR] Error registrando pago:', error);
                         window.logSupportEvent?.({
@@ -2786,6 +2787,7 @@
                             }
                         });
                         showNotification('Error', 'No se pudo registrar el pago. Si persiste, contacta con soporte.', 'error');
+                        return false;
                     }
                 };
 
@@ -8848,6 +8850,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                 const [actionsOpen, setActionsOpen] = useState(false);
                 const actionsButtonRef = useRef(null);
                 const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+                const [isRegisteringPayment, setIsRegisteringPayment] = useState(false);
                 const paymentAmountRef = useRef(null);
                 const amountPaid = invoice.totalPaid || 0;
                 const amountDue = invoice.total - amountPaid;
@@ -8910,28 +8913,57 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     setPaymentModalOpen(true);
                 };
 
-                const handlePaymentModalSubmit = (e) => {
-                    handlePaymentSubmit(e);
-                    // Si el pago se registró, cerramos (si fue inválido, handlePaymentSubmit ya notifica)
-                    const amount = parseFloat(paymentAmount);
-                    if (amount > 0 && amount <= amountDue) setPaymentModalOpen(false);
+                const handlePaymentModalSubmit = async (e) => {
+                    await handlePaymentSubmit(e);
                 };
                 
-                const handlePaymentSubmit = (e) => { 
+                const handlePaymentSubmit = async (e) => { 
                     e.preventDefault(); 
+                    if (isRegisteringPayment) return;
                     const amount = parseFloat(paymentAmount); 
-                    if (amount > 0 && amount <= amountDue) { 
-                        const method = (window.PAYMENT_METHODS || ['Efectivo','Tarjeta','Transferencia','Bizum','Otro']).includes(paymentMethod) ? paymentMethod : 'Otro';
-                        onRegisterPayment(invoice, { 
-                            amount, 
-                            date: paymentDate,
-                            method,
-                            methodOther: method === 'Otro' ? paymentMethodOther : ''
-                        }); 
-                        setPaymentAmount(0); 
-                    } else { 
+                    if (!(amount > 0 && amount <= amountDue)) { 
                         showNotification('Error de pago', 'El importe del pago no es válido. Debe ser mayor que 0 y no superior al importe pendiente.', 'error');
-                    } 
+                        return;
+                    }
+
+                    const method = (window.PAYMENT_METHODS || ['Efectivo','Tarjeta','Transferencia','Bizum','Otro']).includes(paymentMethod) ? paymentMethod : 'Otro';
+                    const payload = { 
+                        amount, 
+                        date: paymentDate,
+                        method,
+                        methodOther: method === 'Otro' ? paymentMethodOther : ''
+                    };
+
+                    window.logSupportEvent?.({
+                        level: 'info',
+                        event: 'invoice_payment_modal_submit',
+                        context: {
+                            feature: 'invoice_payment',
+                            invoiceId: invoice.id,
+                            invoiceNumber: invoice.invoiceNumber || invoice.number || null,
+                            amount,
+                            date: paymentDate,
+                            method
+                        }
+                    });
+
+                    setIsRegisteringPayment(true);
+                    try {
+                        const result = await onRegisterPayment(invoice, payload);
+                        const ok = result === true || (result && result.ok === true);
+                        if (ok) {
+                            setPaymentAmount(0);
+                            setPaymentModalOpen(false);
+                        } else {
+                            // Si no hay confirmación explícita, no cerramos para que el usuario pueda reintentar
+                            showNotification('Pago no registrado', 'No se pudo confirmar el registro del pago. Revisa los datos e inténtalo de nuevo.', 'warning');
+                        }
+                    } catch (error) {
+                        console.error('[ERROR] Error en submit de pago:', error);
+                        showNotification('Error', 'No se pudo registrar el pago. Inténtalo de nuevo.', 'error');
+                    } finally {
+                        setIsRegisteringPayment(false);
+                    }
                 };
 
                 // Función para imprimir la factura
@@ -9608,9 +9640,12 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                                             </button>
                                             <button
                                                 type="submit"
-                                                className="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2"
+                                                disabled={isRegisteringPayment}
+                                                className={`px-4 py-2 rounded-lg text-white font-semibold focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 ${
+                                                    isRegisteringPayment ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                                                }`}
                                             >
-                                                Registrar pago
+                                                {isRegisteringPayment ? 'Guardando…' : 'Registrar pago'}
                                             </button>
                                         </div>
                                     </form>
