@@ -1783,6 +1783,11 @@
                     if (typeof ctx.amount === 'number' && Number.isFinite(ctx.amount)) out.amount = ctx.amount;
                     if (ctx.date) out.date = String(ctx.date).slice(0, 32);
                     if (ctx.method) out.method = String(ctx.method).slice(0, 24);
+                    // Datos de validación (sin PII)
+                    if (typeof ctx.amountCents === 'number' && Number.isFinite(ctx.amountCents)) out.amountCents = ctx.amountCents;
+                    if (typeof ctx.dueCents === 'number' && Number.isFinite(ctx.dueCents)) out.dueCents = ctx.dueCents;
+                    if (typeof ctx.amountDue === 'number' && Number.isFinite(ctx.amountDue)) out.amountDue = ctx.amountDue;
+                    if (ctx.paymentAmountRaw) out.paymentAmountRaw = String(ctx.paymentAmountRaw).slice(0, 32);
                     return out;
                 };
 
@@ -8920,6 +8925,20 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                     const amountCents = toCents(amount);
                     const dueCents = toCents(amountDue);
                     if (!(amountCents > 0 && amountCents <= dueCents)) { 
+                        window.logSupportEvent?.({
+                            level: 'warning',
+                            event: 'invoice_payment_validation_failed',
+                            context: {
+                                feature: 'invoice_payment',
+                                invoiceId: invoice.id,
+                                invoiceNumber: invoice.invoiceNumber || invoice.number || null,
+                                method: paymentMethod,
+                                amountDue: Number(amountDue || 0),
+                                paymentAmountRaw: rawAmount,
+                                amountCents,
+                                dueCents
+                            }
+                        });
                         showNotification('Error de pago', 'El importe del pago no es válido. Debe ser mayor que 0 y no superior al importe pendiente.', 'error');
                         return;
                     }
