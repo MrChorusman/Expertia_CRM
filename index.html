@@ -834,9 +834,9 @@
                 if (!isOpen) return null;
 
                 return (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                        <div className={`bg-white rounded-lg shadow-xl max-w-md w-full mx-4 transform transition-all duration-300 ${
-                            isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+                    <div className="fixed top-4 right-4 z-[20000] pointer-events-none">
+                        <div className={`pointer-events-auto bg-white rounded-lg shadow-xl max-w-md w-[min(92vw,28rem)] transform transition-all duration-300 ${
+                            isVisible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
                         }`}>
                             <div className={`flex items-center gap-3 p-6 ${config.bgColor} ${config.borderColor} border-b rounded-t-lg relative overflow-hidden`}>
                                 <div className={config.iconColor}>
@@ -867,25 +867,19 @@
                                     </div>
                                 )}
                             </div>
-                            <div className="p-6">
-                                <div className="flex items-center gap-3">
-                                    <DownloadIcon width={20} height={20} className="text-gray-500" />
-                                    <span className="text-sm text-gray-600">Actualización completada</span>
+                            {!autoClose && (
+                                <div className="p-4 flex justify-end">
+                                    <button
+                                        onClick={() => {
+                                            setIsVisible(false);
+                                            setTimeout(onClose, 300);
+                                        }}
+                                        className="px-4 py-2 bg-[#006666] hover:bg-[#005555] text-white rounded-md transition-colors"
+                                    >
+                                        Cerrar
+                                    </button>
                                 </div>
-                                {!autoClose && (
-                                    <div className="flex justify-end mt-4">
-                                        <button
-                                            onClick={() => {
-                                                setIsVisible(false);
-                                                setTimeout(onClose, 300);
-                                            }}
-                                            className="px-4 py-2 bg-[#006666] hover:bg-[#005555] text-white rounded-md transition-colors"
-                                        >
-                                            Cerrar
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                            )}
                         </div>
                     </div>
                 );
