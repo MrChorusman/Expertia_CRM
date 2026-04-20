@@ -6454,7 +6454,19 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                         const ok = (typeof ExportUtils !== 'undefined' && ExportUtils.exportToExcel)
                                             ? ExportUtils.exportToExcel(exportData, 'inventario_productos')
                                             : false;
-                                        if (!ok) alert('❌ No se pudo exportar el inventario (XLSX no disponible)');
+                                        if (!ok) {
+                                            window.logSupportEvent?.({
+                                                level: 'warning',
+                                                event: 'inventory_export_failed',
+                                                context: {
+                                                    feature: 'products',
+                                                    action: 'export_inventory',
+                                                    rows: exportData.length,
+                                                    reason: (typeof XLSX === 'undefined') ? 'xlsx_missing' : 'export_failed'
+                                                }
+                                            });
+                                            alert('❌ No se pudo exportar el inventario (exportación fallida).');
+                                        }
                                     }}
                                     className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50"
                                     title="Exportar inventario a Excel"
@@ -10185,10 +10197,21 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                 // Exportar datos a Excel
                 exportToExcel: (data, filename = 'datos_expertia') => {
                     try {
+                        if (typeof XLSX === 'undefined') return false;
+
                         const wb = XLSX.utils.book_new();
+
+                        // Soporte: exportación simple (array de filas) para inventarios/listados
+                        if (Array.isArray(data)) {
+                            const ws = XLSX.utils.json_to_sheet(data);
+                            XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+                            XLSX.writeFile(wb, `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                            return true;
+                        }
                         
                         // Hoja principal con datos de ventas
-                        const salesData = data.invoices.map(inv => ({
+                        const invoices = Array.isArray(data?.invoices) ? data.invoices : [];
+                        const salesData = invoices.map(inv => ({
                             'Fecha': new Date(inv.createdAt?.seconds * 1000 || inv.createdAt).toLocaleDateString('es-ES'),
                             'Nº Factura': inv.invoiceNumber,
                             'Cliente': inv.clientName,
@@ -10233,6 +10256,21 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ''}${settings.company.add
                         return true;
                     } catch (error) {
                         console.error('Error exportando Excel:', error);
+                        window.logSupportEvent?.({
+                            level: 'error',
+                            event: 'export_excel_failed',
+                            context: {
+                                feature: 'export',
+                                filename,
+                                dataType: Array.isArray(data) ? 'array' : (data && typeof data === 'object' ? 'object' : typeof data),
+                                rows: Array.isArray(data) ? data.length : null,
+                                invoices: Array.isArray(data?.invoices) ? data.invoices.length : null
+                            },
+                            error: {
+                                message: error?.message || String(error),
+                                stack: error?.stack
+                            }
+                        });
                         return false;
                     }
                 },
