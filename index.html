@@ -92,11 +92,11 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc, getDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc, getDoc, getDocs, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
         
         window.firebase = {
             initializeApp, getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken,
-            getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc, getDoc, getDocs, where
+            getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, runTransaction, setDoc, getDoc, getDocs, where, orderBy, limit
         };
     </script>
 
@@ -6471,6 +6471,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
             
             // === DASHBOARD DE PRODUCTOS MEJORADO ===
             function ProductsDashboard({ products, onCreateProduct, onEditProduct, onDeleteProduct, showConfirm }) {
+                const { collection, query, where, orderBy, limit, onSnapshot, getDocs } = window.firebase || {};
                 // Estados para filtros y ordenación
                 const [searchTerm, setSearchTerm] = useState('');
                 const [selectedCategory, setSelectedCategory] = useState('all');
@@ -6579,6 +6580,10 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                             setHistoryMovements([]);
                             return;
                         }
+                        if (!collection || !query || !where || !orderBy || !limit || !onSnapshot) {
+                            setHistoryError('Funcionalidad de historial no disponible (SDK).');
+                            return;
+                        }
                         const q = query(
                             collection(window.firebaseDb, 'stockMovements'),
                             where('productId', '==', product.id),
@@ -6642,7 +6647,7 @@ Fdo.: ${client.name || '[Firma del Cliente]'}`;
                                         });
                                         let movementsRows = [];
                                         try {
-                                            if (window.firebaseDb) {
+                                            if (window.firebaseDb && collection && query && orderBy && limit && getDocs) {
                                                 const q = query(
                                                     collection(window.firebaseDb, 'stockMovements'),
                                                     orderBy('createdAt', 'desc'),
