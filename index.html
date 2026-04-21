@@ -2690,6 +2690,13 @@
                                     if (!productSnap.exists()) return;
                                     const currentStock = Number(productSnap.data()?.stock || 0);
                                     const newStock = currentStock - qty;
+                                    if (newStock < 0) {
+                                        const err = new Error('STOCK_INSUFFICIENT');
+                                        err.productId = productId;
+                                        err.currentStock = currentStock;
+                                        err.needed = qty;
+                                        throw err;
+                                    }
                                     transaction.update(productRef, { stock: newStock });
                                 });
 
@@ -2796,6 +2803,28 @@
                             }
                         }
                     } catch (error) {
+                        if (String(error?.message || '').includes('STOCK_INSUFFICIENT')) {
+                            showNotification?.(
+                                'Stock insuficiente',
+                                'No se permite stock negativo. No se han aplicado movimientos de stock.',
+                                'warning'
+                            );
+                            window.logSupportEvent?.({
+                                level: 'warning',
+                                event: 'stock_negative_prevented_transaction',
+                                context: {
+                                    feature: 'stock',
+                                    invoiceId: savedInvoiceId || dataToSave.id || null,
+                                    invoiceNumber: dataToSave.invoiceNumber || null,
+                                    productId: error?.productId || null,
+                                    currentStock: error?.currentStock ?? null,
+                                    needed: error?.needed ?? null
+                                }
+                            });
+                            setActiveView('accounting');
+                            return true;
+                        }
+
                         console.error('Error aplicando movimientos de stock:', error);
                         window.logSupportEvent?.({
                             level: 'error',
