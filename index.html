@@ -2404,6 +2404,27 @@
                     const nextStock = Number(persisted.stock ?? 0);
                     const delta = nextStock - prevStock;
 
+                    // No permitir stock negativo
+                    if (Number.isFinite(nextStock) && nextStock < 0) {
+                        showNotification?.(
+                            'Stock no permitido',
+                            'No se permite guardar un stock negativo. Revisa el valor de stock.',
+                            'warning'
+                        );
+                        window.logSupportEvent?.({
+                            level: 'warning',
+                            event: 'stock_negative_blocked',
+                            context: {
+                                feature: 'stock',
+                                source: 'product_form',
+                                productId: persisted?.id || null,
+                                previousStock: prevStock,
+                                attemptedStock: nextStock
+                            }
+                        });
+                        return;
+                    }
+
                     await handleSave('productos', persisted, persisted.id);
 
                     // Registrar movimiento si hay ajuste manual de stock (alta/edición)
@@ -2582,6 +2603,7 @@
                         const isBillableInvoice = dataToSave.type === 'Factura' && dataToSave.status !== 'Borrador' && dataToSave.status !== 'Anulada';
                         const hasItemsWithProduct = Array.isArray(dataToSave.items) && dataToSave.items.some(it => it?.productId && Number(it?.quantity) > 0);
                         const hasAnyItem = Array.isArray(dataToSave.items) && dataToSave.items.length > 0;
+                        const isRectificativaBillable = dataToSave.type === 'Factura Rectificativa' && dataToSave.status !== 'Borrador' && dataToSave.status !== 'Anulada';
                         if (savedInvoiceId && isBillableInvoice && hasAnyItem && !hasItemsWithProduct) {
                             window.logSupportEvent?.({
                                 level: 'warning',
@@ -2608,6 +2630,55 @@
                                     invoiceNumber: dataToSave.invoiceNumber || null
                                 }
                             });
+
+                            // Pre-check: no permitir stock negativo
+                            const requiredByProduct = new Map();
+                            for (const item of (dataToSave.items || [])) {
+                                const productId = item?.productId;
+                                const qty = Number(item?.quantity) || 0;
+                                if (!productId || qty <= 0) continue;
+                                requiredByProduct.set(productId, (requiredByProduct.get(productId) || 0) + qty);
+                            }
+                            const insufficient = [];
+                            for (const [productId, qty] of requiredByProduct.entries()) {
+                                const snap = await getDoc(doc(db, 'productos', productId));
+                                if (!snap.exists()) continue;
+                                const currentStock = Number(snap.data()?.stock || 0);
+                                if (currentStock - qty < 0) {
+                                    insufficient.push({
+                                        productId,
+                                        name: snap.data()?.name || '',
+                                        currentStock,
+                                        needed: qty
+                                    });
+                                }
+                            }
+                            if (insufficient.length > 0) {
+                                const first = insufficient[0];
+                                showNotification?.(
+                                    'Stock insuficiente',
+                                    `No se permite stock negativo. Producto: ${first.name || first.productId}. Disponible: ${first.currentStock}. Necesario: ${first.needed}.`,
+                                    'warning'
+                                );
+                                window.logSupportEvent?.({
+                                    level: 'warning',
+                                    event: 'stock_negative_prevented',
+                                    context: {
+                                        feature: 'stock',
+                                        invoiceId: savedInvoiceId,
+                                        invoiceNumber: dataToSave.invoiceNumber || null,
+                                        insufficientCount: insufficient.length,
+                                        firstProductId: first.productId,
+                                        firstProductName: first.name,
+                                        firstCurrentStock: first.currentStock,
+                                        firstNeeded: first.needed
+                                    }
+                                });
+                                // No aplicamos stockAppliedAt ni movimientos
+                                setActiveView('accounting');
+                                return true;
+                            }
+
                             for (const item of (dataToSave.items || [])) {
                                 const productId = item?.productId;
                                 const qty = Number(item?.quantity) || 0;
@@ -2650,6 +2721,79 @@
                                     invoiceNumber: dataToSave.invoiceNumber || null
                                 }
                             });
+                        }
+
+                        // Devolver stock al emitir una rectificativa (una sola vez)
+                        if (db && savedInvoiceId && isRectificativaBillable && Array.isArray(dataToSave.items) && dataToSave.items.some(it => it?.productId && Number(it?.quantity) !== 0) && !dataToSave.stockReturnAppliedAt) {
+                            const originalId = dataToSave.originalInvoiceId;
+                            let originalAlreadyReverted = false;
+                            try {
+                                if (originalId) {
+                                    const originalSnap = await getDoc(doc(db, 'facturas', originalId));
+                                    originalAlreadyReverted = Boolean(originalSnap.exists() && originalSnap.data()?.stockRevertedAt);
+                                }
+                            } catch (e) {}
+
+                            if (originalAlreadyReverted) {
+                                showNotification?.('Stock', 'La factura original ya tenía el stock devuelto previamente.', 'info');
+                            } else {
+                                // Aplicar devolución por producto (sumando cantidades absolutas)
+                                for (const item of (dataToSave.items || [])) {
+                                    const productId = item?.productId;
+                                    const qtyAbs = Math.abs(Number(item?.quantity) || 0);
+                                    if (!productId || qtyAbs <= 0) continue;
+
+                                    await runTransaction(db, async (transaction) => {
+                                        const productRef = doc(db, 'productos', productId);
+                                        const productSnap = await transaction.get(productRef);
+                                        if (!productSnap.exists()) return;
+                                        const currentStock = Number(productSnap.data()?.stock || 0);
+                                        const newStock = currentStock + qtyAbs;
+                                        transaction.update(productRef, { stock: newStock });
+                                    });
+
+                                    await addDoc(collection(db, 'stockMovements'), {
+                                        productId,
+                                        productName: item?.description || '',
+                                        invoiceId: savedInvoiceId,
+                                        invoiceNumber: dataToSave.invoiceNumber || '',
+                                        invoiceSeries: dataToSave.invoiceSeries || '',
+                                        originalInvoiceId: originalId || '',
+                                        originalInvoiceNumber: dataToSave.originalInvoiceNumber || '',
+                                        clientId: dataToSave.clientId || '',
+                                        date: dataToSave.invoiceDate || new Date().toISOString().split('T')[0],
+                                        type: 'rectification_return',
+                                        reason: 'rectificativa',
+                                        quantityChange: qtyAbs,
+                                        quantity: qtyAbs,
+                                        createdAt: new Date().toISOString(),
+                                        createdBy: user.uid
+                                    });
+                                }
+
+                                // Marcar rectificativa como aplicada y, si existe, marcar original
+                                await handleSave('facturas', {
+                                    id: savedInvoiceId,
+                                    stockReturnAppliedAt: new Date().toISOString()
+                                }, savedInvoiceId);
+                                if (originalId) {
+                                    await handleSave('facturas', {
+                                        id: originalId,
+                                        stockRevertedAt: new Date().toISOString(),
+                                        rectifiedByInvoiceId: savedInvoiceId
+                                    }, originalId);
+                                }
+                                window.logSupportEvent?.({
+                                    level: 'info',
+                                    event: 'stock_rectificativa_return_success',
+                                    context: {
+                                        feature: 'stock',
+                                        invoiceId: savedInvoiceId,
+                                        invoiceNumber: dataToSave.invoiceNumber || null,
+                                        originalInvoiceId: originalId || null
+                                    }
+                                });
+                            }
                         }
                     } catch (error) {
                         console.error('Error aplicando movimientos de stock:', error);
