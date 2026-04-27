@@ -12974,7 +12974,11 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
                   {formData.includeVAT ? (
                     <div className="space-y-1">
                       <div className="flex justify-between">
-                        <span className="font-semibold">IVA:</span>
+                        <span className="font-semibold">
+                          {vatBreakdown.length === 1
+                            ? `IVA (${(vatBreakdown[0].rate * 100).toFixed(0)}%):`
+                            : "IVA:"}
+                        </span>
                         <span>{vat.toFixed(2)} €</span>
                       </div>
                       {vatBreakdown.length > 1 && (
@@ -13969,7 +13973,9 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
                   {formData.includeVAT ? (
                     <div>
                       <div className="text-sm text-gray-600">
-                        IVA:
+                        {vatBreakdown.length === 1
+                          ? `IVA (${(vatBreakdown[0].rate * 100).toFixed(0)}%):`
+                          : "IVA:"}
                       </div>
                       <div className="font-semibold">{vat.toFixed(2)} €</div>
                       {vatBreakdown.length > 1 && (
