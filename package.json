@@ -13,6 +13,7 @@
   },
   "author": "Expertia Medical Solutions SL",
   "dependencies": {
+    "csv-parse": "^6.2.1",
     "firebase": "^10.14.1",
     "firebase-admin": "^13.4.0",
     "xlsx": "^0.18.5"
