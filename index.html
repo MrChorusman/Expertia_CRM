@@ -12760,7 +12760,7 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
                     key={index}
                     className="grid grid-cols-15 gap-2 mb-2 items-center"
                   >
-                    <div className="col-span-4">
+                    <div className="col-span-3">
                       <select
                         name="productId"
                         value={item.productId}
@@ -12775,6 +12775,15 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
                         ))}
                       </select>
                     </div>
+                    <div className="col-span-3">
+                      <FormField
+                        placeholder="Descripción"
+                        name="description"
+                        type="text"
+                        value={item.description || ""}
+                        onChange={(e) => handleItemChange(index, e)}
+                      />
+                    </div>
                     <div className="col-span-2">
                       <FormField
                         placeholder="Nº Serie"
@@ -12784,7 +12793,7 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
                         onChange={(e) => handleItemChange(index, e)}
                       />
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-1">
                       <FormField
                         placeholder="Cant."
                         name="quantity"
@@ -12817,13 +12826,13 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
                         }
                       >
                         <option value="0.21">21%</option>
-                        <option value="0.10">10%</option>
+                        <option value="0.1">10%</option>
                         <option value="0.04">4%</option>
                         <option value="0.05">5%</option>
                         <option value="0">0%</option>
                       </select>
                     </div>
-                    <div className="col-span-2 font-semibold text-right">
+                    <div className="col-span-1 font-semibold text-right">
                       {(Number(item.quantity || 0) * Number(item.price || 0)).toFixed(
                         2,
                       )}
@@ -13781,7 +13790,7 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
                           className="w-full text-sm border border-gray-300 rounded-md p-2 disabled:bg-gray-100 disabled:text-gray-500"
                         >
                           <option value="0.21">21%</option>
-                          <option value="0.10">10%</option>
+                          <option value="0.1">10%</option>
                           <option value="0.04">4%</option>
                           <option value="0.05">5%</option>
                           <option value="0">0%</option>
@@ -14399,10 +14408,49 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
                                         `
                                             : ""
                                         }
+                                        ${
+                                          (() => {
+                                            try {
+                                              const rows = [];
+                                              const breakdown =
+                                                Array.isArray(invoice?.vatBreakdown) &&
+                                                invoice.vatBreakdown.length
+                                                  ? invoice.vatBreakdown
+                                                  : null;
+                                              if (breakdown) {
+                                                breakdown
+                                                  .filter((b) => (b?.base || 0) > 0)
+                                                  .sort(
+                                                    (a, b) =>
+                                                      (a.rate || 0) - (b.rate || 0),
+                                                  )
+                                                  .forEach((b) => {
+                                                    rows.push(`
+                                        <tr>
+                                            <td style="text-align: right;"><strong>IVA (${((b.rate || 0) * 100).toFixed(0)}%):</strong></td>
+                                            <td style="text-align: right;">${Number(b.vat || 0).toFixed(2)} €</td>
+                                        </tr>
+                                        `);
+                                                  });
+                                              } else {
+                                                rows.push(`
                                         <tr>
                                             <td style="text-align: right;"><strong>IVA (${(vatRate * 100).toFixed(1)}%):</strong></td>
                                             <td style="text-align: right;">${(invoice.vat || 0).toFixed(2)} €</td>
                                         </tr>
+                                        `);
+                                              }
+                                              return rows.join("");
+                                            } catch (e) {
+                                              return `
+                                        <tr>
+                                            <td style="text-align: right;"><strong>IVA (${(vatRate * 100).toFixed(1)}%):</strong></td>
+                                            <td style="text-align: right;">${(invoice.vat || 0).toFixed(2)} €</td>
+                                        </tr>
+                                        `;
+                                            }
+                                          })()
+                                        }
                                         <tr class="total-row">
                                             <td style="text-align: right;"><strong>TOTAL:</strong></td>
                                             <td style="text-align: right;"><strong>${(invoice.total || 0).toFixed(2)} €</strong></td>
@@ -14983,19 +15031,29 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ""}${settings.company.add
                         </div>
                       )}
                       <div className="flex justify-between text-gray-700">
-                        <span>
-                          IVA (
-                          {(
-                            (invoice.effectiveVATRate ??
-                              invoice.customVATRate ??
-                              VAT_RATE) * 100
-                          ).toFixed(1)}
-                          %)
-                        </span>
+                        <span>IVA</span>
                         <span className="font-medium tabular-nums">
                           {(invoice.vat || 0).toFixed(2)} €
                         </span>
                       </div>
+                      {Array.isArray(invoice.vatBreakdown) &&
+                        invoice.vatBreakdown.filter((b) => (b?.base || 0) > 0).length >
+                          1 && (
+                          <div className="text-xs text-gray-600 space-y-1">
+                            {invoice.vatBreakdown
+                              .filter((b) => (b?.base || 0) > 0)
+                              .sort((a, b) => (a.rate || 0) - (b.rate || 0))
+                              .map((b) => (
+                                <div key={b.rate} className="flex justify-between">
+                                  <span>
+                                    {((b.rate || 0) * 100).toFixed(0)}% (Base{" "}
+                                    {Number(b.base || 0).toFixed(2)} €)
+                                  </span>
+                                  <span>{Number(b.vat || 0).toFixed(2)} €</span>
+                                </div>
+                              ))}
+                          </div>
+                        )}
                       <div className="flex justify-between text-gray-900 border-t pt-3 mt-3">
                         <span className="font-semibold">Total</span>
                         <span className="font-semibold tabular-nums">
