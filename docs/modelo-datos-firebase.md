@@ -617,6 +617,7 @@ service cloud.firestore {
 | `supplier` | String | ✅ | Proveedor | Ver tabla de proveedores |
 | `brand` | String | ❌ | Marca del producto | String libre |
 | `model` | String | ❌ | Modelo específico | String libre |
+| `vatRate` | Number | ✅ | Tipo de IVA aplicable al producto | Decimal: `0`, `0.04`, `0.05`, `0.10`, `0.21` (por defecto `0.21`) |
 | `price` | Object | ✅ | Información de precios | Ver tabla de precios |
 | `specifications` | Object | ❌ | Especificaciones técnicas | Ver tabla de especificaciones |
 | `availability` | String | ✅ | Estado de disponibilidad | `Disponible`, `Bajo Pedido`, `Descontinuado` |
@@ -699,7 +700,6 @@ service cloud.firestore {
 | `items` | Array | ✅ | Líneas de factura | Ver tabla de items |
 | `subtotal` | Number | ✅ | Subtotal sin impuestos | Número decimal |
 | `discountTotal` | Number | ✅ | Descuento total aplicado | Número decimal |
-| `vatRate` | Number | ✅ | Tipo de IVA | Decimal (ej: 0.21 para 21%) |
 | `vatAmount` | Number | ✅ | Importe del IVA | Número decimal |
 | `total` | Number | ✅ | Total de la factura | Número decimal |
 | `currency` | String | ✅ | Moneda | `EUR`, `USD` |
@@ -709,6 +709,8 @@ service cloud.firestore {
 | `balance` | Number | ✅ | Saldo pendiente | Número decimal |
 | `notes` | String | ❌ | Notas adicionales | Texto libre |
 | `originOfferId` | String | ❌ | ID de oferta origen | Referencia a `ofertas` |
+
+> Nota (IVA por línea): el tipo de IVA se almacena en cada línea (`items[].vatRate`). El campo `vatRate` a nivel de factura, si existe en facturas antiguas, se considera **legacy**.
 
 #### Tabla de Datos Cliente (`clientData`)
 

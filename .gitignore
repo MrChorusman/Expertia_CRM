@@ -56,3 +56,6 @@ firebase-test.js
 
 # Carpeta functions (si es temporal)
 functions/
+
+# Datos locales (NO commitear): credenciales y artefactos de QA
+.local/
