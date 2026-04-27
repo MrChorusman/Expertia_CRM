@@ -19105,6 +19105,28 @@ Equipo Expertia Medical Solutions"
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
+                            IVA aplicable
+                          </label>
+                          <select
+                            value={String(formData.vatRate ?? 0.21)}
+                            onChange={(e) =>
+                              handleChange("vatRate", Number(e.target.value))
+                            }
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-[#006666] focus:border-[#006666]"
+                          >
+                            <option value="0.21">General (21%)</option>
+                            <option value="0.1">Reducido (10%)</option>
+                            <option value="0.04">Superreducido (4%)</option>
+                            <option value="0.05">Temporal (5%)</option>
+                            <option value="0">Exento (0%)</option>
+                          </select>
+                          <div className="mt-1 text-xs text-gray-500">
+                            El precio se considera <strong>sin IVA</strong>.
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
                             Precio de coste (sin IVA) (€)
                           </label>
                           <input
