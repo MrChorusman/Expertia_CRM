@@ -2596,6 +2596,7 @@
           const [isLoading, setIsLoading] = useState(true);
           const [searchTerm, setSearchTerm] = useState("");
           const [filterTag, setFilterTag] = useState("all");
+          const [filterProfession, setFilterProfession] = useState("all");
 
           useEffect(() => {
             try {
@@ -4113,10 +4114,14 @@
               onSnapshot(
                 clientsCollection,
                 (snapshot) => {
-                  const clientsData = snapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                  }));
+                  const clientsData = snapshot.docs.map((doc) => {
+                    const data = doc.data() || {};
+                    return {
+                      id: doc.id,
+                      ...data,
+                      profession: data.profession || "Otro",
+                    };
+                  });
                   // Ordenar clientes alfabéticamente en español (A antes de Á)
                   clientsData.sort((a, b) => {
                     const aName = (a.name || "").toLowerCase();
@@ -4292,6 +4297,32 @@
             const initialNote = (clientData._noteInitial || "").trim();
             const { _noteMigrateFromLegacy, _noteInitial, ...raw } = clientData;
             const clientPayload = { ...raw, notes: "" };
+
+            // Enforzar profesión (obligatoria)
+            try {
+              const allowedProfessions = new Set([
+                "Fisioterapeuta",
+                "Ginecólogo",
+                "Médico",
+                "Médico Estético",
+                "Urógolo",
+                "Otro",
+              ]);
+              const profession = String(clientPayload.profession || "").trim();
+              if (!profession) {
+                showNotification?.(
+                  "Profesión requerida",
+                  "Selecciona una profesión para el cliente antes de guardar.",
+                  "error",
+                );
+                return;
+              }
+              clientPayload.profession = allowedProfessions.has(profession)
+                ? profession
+                : "Otro";
+            } catch (e) {
+              clientPayload.profession = "Otro";
+            }
 
             const savedId = await handleSave(
               "clientes",
@@ -5874,6 +5905,8 @@
                     setSearchTerm={setSearchTerm}
                     filterTag={filterTag}
                     setFilterTag={setFilterTag}
+                    filterProfession={filterProfession}
+                    setFilterProfession={setFilterProfession}
                   />
                 );
             }
@@ -6318,6 +6351,8 @@
           setSearchTerm,
           filterTag,
           setFilterTag,
+          filterProfession,
+          setFilterProfession,
         }) {
           // Estados para filtros y ordenación
           const [sortField, setSortField] = useState("name");
@@ -6346,6 +6381,21 @@
               ),
             ];
             return stages.sort();
+          }, [clients]);
+
+          const uniqueProfessions = useMemo(() => {
+            const values = [
+              ...new Set(
+                clients
+                  .map((client) => client.profession || "Otro")
+                  .filter(Boolean),
+              ),
+            ];
+            return values.sort((a, b) =>
+              String(a || "").localeCompare(String(b || ""), "es", {
+                sensitivity: "base",
+              }),
+            );
           }, [clients]);
 
           // Función de ordenación
@@ -6395,13 +6445,19 @@
                 client.company?.toLowerCase().includes(searchLower) ||
                 client.email?.toLowerCase().includes(searchLower) ||
                 client.phone?.toLowerCase().includes(searchLower) ||
-                client.sector?.toLowerCase().includes(searchLower);
+                client.sector?.toLowerCase().includes(searchLower) ||
+                client.profession?.toLowerCase().includes(searchLower);
 
               // Filtro por etapa
               const matchesStage =
                 filterTag === "all" || client.funnelStage === filterTag;
 
-              return matchesSearch && matchesStage;
+              const matchesProfession =
+                !filterProfession ||
+                filterProfession === "all" ||
+                (client.profession || "Otro") === filterProfession;
+
+              return matchesSearch && matchesStage && matchesProfession;
             });
 
             // Función auxiliar para ordenar correctamente en español
@@ -6449,6 +6505,10 @@
                   aValue = a.funnelStage || "";
                   bValue = b.funnelStage || "";
                   break;
+                case "profession":
+                  aValue = a.profession || "";
+                  bValue = b.profession || "";
+                  break;
                 case "createdAt":
                   aValue = new Date(a.createdAt || "1970-01-01");
                   bValue = new Date(b.createdAt || "1970-01-01");
@@ -6466,7 +6526,14 @@
             });
 
             return filtered;
-          }, [clients, searchTerm, filterTag, sortField, sortDirection]);
+          }, [
+            clients,
+            searchTerm,
+            filterTag,
+            filterProfession,
+            sortField,
+            sortDirection,
+          ]);
 
           return (
             <div className="space-y-6">
@@ -6562,6 +6629,20 @@
                           ))}
                         </select>
                       </div>
+                      <div>
+                        <select
+                          value={filterProfession || "all"}
+                          onChange={(e) => setFilterProfession(e.target.value)}
+                          className="px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-[#006666]"
+                        >
+                          <option value="all">Todas las profesiones</option>
+                          {uniqueProfessions.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -6570,10 +6651,16 @@
                 <div className="mb-4 text-sm text-gray-600">
                   Mostrando {filteredAndSortedClients.length} de{" "}
                   {clients.length} clientes
-                  {(searchTerm || filterTag !== "all") && (
+                  {(searchTerm ||
+                    filterTag !== "all" ||
+                    (filterProfession && filterProfession !== "all")) && (
                     <span className="ml-2 text-[#006666] font-medium">
                       (filtrado{searchTerm ? ` por "${searchTerm}"` : ""}
-                      {filterTag !== "all" ? ` - etapa ${filterTag}` : ""})
+                      {filterTag !== "all" ? ` - etapa ${filterTag}` : ""}
+                      {filterProfession && filterProfession !== "all"
+                        ? ` - profesión ${filterProfession}`
+                        : ""}
+                      )
                     </span>
                   )}
                 </div>
@@ -6620,6 +6707,15 @@
                         </th>
                         <th
                           className="p-3 cursor-pointer hover:bg-gray-200 select-none"
+                          onClick={() => handleSort("profession")}
+                        >
+                          <div className="flex items-center gap-2">
+                            Profesión
+                            {renderSortIcon("profession")}
+                          </div>
+                        </th>
+                        <th
+                          className="p-3 cursor-pointer hover:bg-gray-200 select-none"
                           onClick={() => handleSort("funnelStage")}
                         >
                           <div className="flex items-center gap-2">
@@ -6655,6 +6751,9 @@
                             <td className="p-3">{client.company || "-"}</td>
                             <td className="p-3">{client.email || "-"}</td>
                             <td className="p-3">{client.phone || "-"}</td>
+                            <td className="p-3">
+                              {client.profession || "Otro"}
+                            </td>
                             <td className="p-3">
                               <span
                                 className={`px-2 py-1 text-xs font-semibold rounded-full ${
@@ -6709,10 +6808,12 @@
                       ) : (
                         <tr>
                           <td
-                            colSpan="7"
+                            colSpan="8"
                             className="text-center py-8 text-gray-500"
                           >
-                            {searchTerm || filterTag !== "all" ? (
+                            {searchTerm ||
+                            filterTag !== "all" ||
+                            (filterProfession && filterProfession !== "all") ? (
                               <>
                                 No se encontraron clientes que coincidan con los
                                 filtros aplicados.
@@ -6720,6 +6821,7 @@
                                   onClick={() => {
                                     setSearchTerm("");
                                     setFilterTag("all");
+                                    setFilterProfession("all");
                                   }}
                                   className="text-[#006666] ml-2 underline"
                                 >
@@ -6793,11 +6895,18 @@
                     : "bg-white"
                 }`}
               >
-                {options.map((opt) => (
-                  <option key={opt.value || opt} value={opt.value || opt}>
-                    {opt.label || opt}
-                  </option>
-                ))}
+                {options.map((opt) => {
+                  const isObj = opt && typeof opt === "object";
+                  const hasValue = isObj && Object.prototype.hasOwnProperty.call(opt, "value");
+                  const value = hasValue ? opt.value : opt;
+                  const label = isObj && Object.prototype.hasOwnProperty.call(opt, "label") ? opt.label : opt;
+                  const key = `${String(value)}-${String(label)}`;
+                  return (
+                    <option key={key} value={value}>
+                      {label}
+                    </option>
+                  );
+                })}
               </select>
               {props.disabled && (
                 <div className="mt-1 text-xs text-gray-500">
@@ -6832,6 +6941,15 @@
           getConfigValue,
           db,
         }) {
+          const professionOptions = [
+            { value: "", label: "Seleccionar profesión..." },
+            { value: "Fisioterapeuta", label: "Fisioterapeuta" },
+            { value: "Ginecólogo", label: "Ginecólogo" },
+            { value: "Médico", label: "Médico" },
+            { value: "Médico Estético", label: "Médico Estético" },
+            { value: "Urógolo", label: "Urógolo" },
+            { value: "Otro", label: "Otro" },
+          ];
           const [formData, setFormData] = useState({
             id: client.id || null,
             name: client.name || "",
@@ -6839,6 +6957,7 @@
             email: client.email || "",
             phone: client.phone || "",
             address: client.address || "",
+            profession: client.profession || "",
             funnelStage: client.funnelStage || "Lead",
             contactPreference: client.contactPreference || "Email",
             productInterest: client.productInterest || [],
@@ -7035,6 +7154,14 @@
 
           const handleSubmit = (e) => {
             e.preventDefault();
+            if (!String(formData.profession || "").trim()) {
+              showNotification(
+                "Profesión requerida",
+                "Selecciona la profesión del cliente antes de guardar.",
+                "error",
+              );
+              return;
+            }
             if (!formData.consentGiven) {
               showNotification(
                 "Consentimiento requerido",
@@ -7087,6 +7214,14 @@
                     name="company"
                     value={formData.company}
                     onChange={handleChange}
+                    required
+                  />
+                  <FormSelect
+                    label="Profesión *"
+                    name="profession"
+                    value={formData.profession}
+                    onChange={handleChange}
+                    options={professionOptions}
                     required
                   />
                   <FormField
@@ -8102,6 +8237,12 @@
                         <span className="text-sm text-gray-500">Empresa</span>
                         <p className="font-medium">
                           {client.company || "No especificada"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Profesión</span>
+                        <p className="font-medium">
+                          {client.profession || "Otro"}
                         </p>
                       </div>
                       <div>
