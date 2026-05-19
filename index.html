@@ -2235,11 +2235,34 @@
           return true;
         }
 
+        /** Tipos de cliente (proveedor/marca): string legacy o array; fallback supplierInterest */
+        function getClientTiposCliente(client) {
+          if (!client) return [];
+          if (Array.isArray(client.tipoCliente)) {
+            return client.tipoCliente.map((t) => String(t).trim()).filter(Boolean);
+          }
+          if (typeof client.tipoCliente === "string" && client.tipoCliente.trim()) {
+            return [client.tipoCliente.trim()];
+          }
+          if (Array.isArray(client.supplierInterest)) {
+            return client.supplierInterest
+              .map((t) => String(t).trim())
+              .filter(Boolean);
+          }
+          return [];
+        }
+
+        function formatClientTiposCliente(client, separator = ", ") {
+          const list = getClientTiposCliente(client);
+          return list.length ? list.join(separator) : "";
+        }
+
         function exportClientsToCSV(clients, showNotification) {
           const activeClients = (clients || []).filter(isClientActiveForExport);
           const csvRows = activeClients.map((c) => ({
             Nombre: c.name || "",
             Empresa: c.company || "",
+            "Tipo Cliente": formatClientTiposCliente(c) || "",
             Email: c.email || "",
             Teléfono: c.phone || "",
             Etapa: c.funnelStage || "",
@@ -2292,6 +2315,7 @@
           const rows = activeClients.map((c) => ({
             Nombre: c.name || "",
             Empresa: c.company || "",
+            "Tipo Cliente": formatClientTiposCliente(c) || "",
             Email: c.email || "",
             Teléfono: c.phone || "",
             Etapa: c.funnelStage || "",
@@ -2599,6 +2623,7 @@
           const [filterProfession, setFilterProfession] = useState("all");
           const [filterActivityStatus, setFilterActivityStatus] =
             useState("all");
+          const [filterTipoCliente, setFilterTipoCliente] = useState("all");
 
           useEffect(() => {
             try {
@@ -5923,6 +5948,8 @@
                     setFilterProfession={setFilterProfession}
                     filterActivityStatus={filterActivityStatus}
                     setFilterActivityStatus={setFilterActivityStatus}
+                    filterTipoCliente={filterTipoCliente}
+                    setFilterTipoCliente={setFilterTipoCliente}
                   />
                 );
             }
@@ -6371,6 +6398,8 @@
           setFilterProfession,
           filterActivityStatus,
           setFilterActivityStatus,
+          filterTipoCliente,
+          setFilterTipoCliente,
         }) {
           // Estados para filtros y ordenación
           const [sortField, setSortField] = useState("name");
@@ -6408,6 +6437,17 @@
                   .map((client) => client.profession || "Otro")
                   .filter(Boolean),
               ),
+            ];
+            return values.sort((a, b) =>
+              String(a || "").localeCompare(String(b || ""), "es", {
+                sensitivity: "base",
+              }),
+            );
+          }, [clients]);
+
+          const uniqueTipoClientes = useMemo(() => {
+            const values = [
+              ...new Set(clients.flatMap((client) => getClientTiposCliente(client))),
             ];
             return values.sort((a, b) =>
               String(a || "").localeCompare(String(b || ""), "es", {
@@ -6481,11 +6521,17 @@
                 filterActivityStatus === "all" ||
                 (client.activityStatus || "Activo") === filterActivityStatus;
 
+              const matchesTipoCliente =
+                !filterTipoCliente ||
+                filterTipoCliente === "all" ||
+                getClientTiposCliente(client).includes(filterTipoCliente);
+
               return (
                 matchesSearch &&
                 matchesStage &&
                 matchesProfession &&
-                matchesActivityStatus
+                matchesActivityStatus &&
+                matchesTipoCliente
               );
             });
 
@@ -6550,6 +6596,10 @@
                   aValue = a.priority || "";
                   bValue = b.priority || "";
                   break;
+                case "tipoCliente":
+                  aValue = formatClientTiposCliente(a);
+                  bValue = formatClientTiposCliente(b);
+                  break;
                 default:
                   return 0;
               }
@@ -6565,6 +6615,7 @@
             filterTag,
             filterProfession,
             filterActivityStatus,
+            filterTipoCliente,
             sortField,
             sortDirection,
           ]);
@@ -6679,13 +6730,27 @@
                       </div>
                       <div>
                         <select
+                          value={filterTipoCliente || "all"}
+                          onChange={(e) => setFilterTipoCliente(e.target.value)}
+                          className="px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-[#006666]"
+                        >
+                          <option value="all">Tipo Cliente</option>
+                          {uniqueTipoClientes.map((v) => (
+                            <option key={v} value={v}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <select
                           value={filterActivityStatus || "all"}
                           onChange={(e) =>
                             setFilterActivityStatus(e.target.value)
                           }
                           className="px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006666] focus:border-[#006666]"
                         >
-                          <option value="all">Todos</option>
+                          <option value="all">Activo/Inactivo</option>
                           <option value="Activo">Activos</option>
                           <option value="Inactivo">Inactivos</option>
                         </select>
@@ -6701,12 +6766,16 @@
                   {(searchTerm ||
                     filterTag !== "all" ||
                     (filterProfession && filterProfession !== "all") ||
+                    (filterTipoCliente && filterTipoCliente !== "all") ||
                     (filterActivityStatus && filterActivityStatus !== "all")) && (
                     <span className="ml-2 text-[#006666] font-medium">
                       (filtrado{searchTerm ? ` por "${searchTerm}"` : ""}
                       {filterTag !== "all" ? ` - etapa ${filterTag}` : ""}
                       {filterProfession && filterProfession !== "all"
                         ? ` - profesión ${filterProfession}`
+                        : ""}
+                      {filterTipoCliente && filterTipoCliente !== "all"
+                        ? ` - tipo ${filterTipoCliente}`
                         : ""}
                       {filterActivityStatus && filterActivityStatus !== "all"
                         ? ` - ${filterActivityStatus.toLowerCase()}s`
@@ -6736,6 +6805,15 @@
                           <div className="flex items-center gap-2">
                             Empresa
                             {renderSortIcon("company")}
+                          </div>
+                        </th>
+                        <th
+                          className="p-3 cursor-pointer hover:bg-gray-200 select-none"
+                          onClick={() => handleSort("tipoCliente")}
+                        >
+                          <div className="flex items-center gap-2">
+                            Tipo Cliente
+                            {renderSortIcon("tipoCliente")}
                           </div>
                         </th>
                         <th
@@ -6809,6 +6887,9 @@
                               {client.name}
                             </td>
                             <td className="p-3">{client.company || "-"}</td>
+                            <td className="p-3">
+                              {formatClientTiposCliente(client) || "-"}
+                            </td>
                             <td className="p-3">{client.email || "-"}</td>
                             <td className="p-3">{client.phone || "-"}</td>
                             <td className="p-3">
@@ -6896,6 +6977,7 @@
                                     setSearchTerm("");
                                     setFilterTag("all");
                                     setFilterProfession("all");
+                                    setFilterTipoCliente("all");
                                     setFilterActivityStatus("all");
                                   }}
                                   className="text-[#006666] ml-2 underline"
@@ -7041,7 +7123,12 @@
             funnelStage: client.funnelStage || "Lead",
             contactPreference: client.contactPreference || "Email",
             productInterest: client.productInterest || [],
-            supplierInterest: client.supplierInterest || [],
+            tipoCliente: (() => {
+              const merged = [
+                ...getClientTiposCliente(client),
+              ];
+              return [...new Set(merged)];
+            })(),
             notes: client.notes || "",
             consentGiven: client.consentGiven || false,
             acceptsMarketing: client.acceptsMarketing || false,
@@ -7212,14 +7299,21 @@
             }));
           };
 
-          // Manejar selección múltiple de proveedores
-          const handleSupplierChange = (supplier) => {
-            setFormData((prev) => ({
-              ...prev,
-              supplierInterest: prev.supplierInterest.includes(supplier)
-                ? prev.supplierInterest.filter((item) => item !== supplier)
-                : [...prev.supplierInterest, supplier],
-            }));
+          const handleTipoClienteChange = (supplier) => {
+            setFormData((prev) => {
+              const current = Array.isArray(prev.tipoCliente)
+                ? prev.tipoCliente
+                : prev.tipoCliente
+                  ? [prev.tipoCliente]
+                  : [];
+              if (current.includes(supplier)) {
+                return {
+                  ...prev,
+                  tipoCliente: current.filter((item) => item !== supplier),
+                };
+              }
+              return { ...prev, tipoCliente: [...current, supplier] };
+            });
           };
 
           // Función legacy para compatibilidad
@@ -7252,9 +7346,20 @@
             }
             const legacyMigrate = client.id ? (client.notes || "").trim() : "";
             const initialNote = !client.id ? (formData.notes || "").trim() : "";
+            const tiposCliente = (
+              Array.isArray(formData.tipoCliente)
+                ? formData.tipoCliente
+                : formData.tipoCliente
+                  ? [formData.tipoCliente]
+                  : []
+            )
+              .map((t) => String(t).trim())
+              .filter(Boolean);
             onSave({
               ...formData,
               notes: "",
+              tipoCliente: tiposCliente,
+              supplierInterest: tiposCliente,
               _noteMigrateFromLegacy: legacyMigrate,
               _noteInitial: initialNote,
             });
@@ -7477,32 +7582,47 @@
                         </div>
                       </div>
 
-                      {/* Proveedores */}
+                      {/* Tipo cliente (proveedores/marcas, selección múltiple) */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Proveedores de Interés
+                          Tipo Cliente
                         </label>
                         <div className="border border-gray-200 rounded-lg p-3 max-h-40 overflow-y-auto">
-                          {suppliers.map((supplier) => (
-                            <label
-                              key={supplier}
-                              className="flex items-center gap-2 mb-2 last:mb-0"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={formData.supplierInterest.includes(
-                                  supplier,
-                                )}
-                                onChange={() => handleSupplierChange(supplier)}
-                                className="h-4 w-4 rounded border-gray-300 text-[#006666] focus:ring-[#006666]"
-                              />
-                              <span className="text-sm">{supplier}</span>
-                            </label>
-                          ))}
+                          {suppliers.map((supplier) => {
+                            const selected = (
+                              Array.isArray(formData.tipoCliente)
+                                ? formData.tipoCliente
+                                : formData.tipoCliente
+                                  ? [formData.tipoCliente]
+                                  : []
+                            ).includes(supplier);
+                            return (
+                              <label
+                                key={supplier}
+                                className="flex items-center gap-2 mb-2 last:mb-0"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selected}
+                                  onChange={() =>
+                                    handleTipoClienteChange(supplier)
+                                  }
+                                  className="h-4 w-4 rounded border-gray-300 text-[#006666] focus:ring-[#006666]"
+                                />
+                                <span className="text-sm">{supplier}</span>
+                              </label>
+                            );
+                          })}
                         </div>
                         <div className="mt-1 text-xs text-gray-500">
-                          {formData.supplierInterest.length} proveedor(es)
-                          seleccionado(s)
+                          {(Array.isArray(formData.tipoCliente)
+                            ? formData.tipoCliente
+                            : formData.tipoCliente
+                              ? [formData.tipoCliente]
+                              : []
+                          ).length > 0
+                            ? `Seleccionados: ${(Array.isArray(formData.tipoCliente) ? formData.tipoCliente : [formData.tipoCliente]).join(", ")}`
+                            : "Ninguno seleccionado"}
                         </div>
                       </div>
                     </div>
@@ -7817,8 +7937,7 @@
 
           // Estado para pestañas activas
           const [activeTab, setActiveTab] = useState("overview");
-          const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-          const [activeMoreTab, setActiveMoreTab] = useState(null);
+          const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
 
           // Estado para recordatorios
           const [reminders, setReminders] = useState([]);
@@ -7857,13 +7976,6 @@
           // Estado para configuración de la empresa
           const [companySettings, setCompanySettings] = useState(null);
 
-          // Referencia para el botón "Más" y posición del dropdown
-          const moreButtonRef = useRef(null);
-          const [dropdownPosition, setDropdownPosition] = useState({
-            top: 0,
-            left: 0,
-          });
-
           // Cargar configuración de la empresa
           useEffect(() => {
             if (!db) return;
@@ -7885,35 +7997,6 @@
             };
             loadCompanySettings();
           }, [db]);
-
-          // Calcular posición del dropdown cuando se abre
-          useEffect(() => {
-            if (moreMenuOpen && moreButtonRef.current) {
-              const rect = moreButtonRef.current.getBoundingClientRect();
-              setDropdownPosition({
-                top: rect.bottom + window.scrollY + 4,
-                left: rect.left + window.scrollX,
-              });
-            }
-          }, [moreMenuOpen]);
-
-          // Cerrar el menú al hacer clic fuera
-          useEffect(() => {
-            const handleClickOutside = (event) => {
-              if (
-                moreMenuOpen &&
-                !event.target.closest(".more-menu-container")
-              ) {
-                setMoreMenuOpen(false);
-              }
-            };
-            if (moreMenuOpen) {
-              document.addEventListener("click", handleClickOutside);
-            }
-            return () => {
-              document.removeEventListener("click", handleClickOutside);
-            };
-          }, [moreMenuOpen]);
 
           // Función para obtener el nombre de un usuario por su ID
           const getUserName = (userId) => {
@@ -8277,7 +8360,7 @@
           const renderOverviewTab = () => {
             return (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">
                       Información de Contacto
@@ -8369,6 +8452,33 @@
                         <p className="font-medium">
                           {client.contactPreference || "No especificado"}
                         </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      Tipo de Cliente
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-sm text-gray-500">
+                          Proveedor / marca
+                        </span>
+                        {getClientTiposCliente(client).length > 0 ? (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {getClientTiposCliente(client).map((tipo) => (
+                              <span
+                                key={tipo}
+                                className="px-2 py-0.5 text-xs font-medium rounded-full bg-[#006666]/10 text-[#006666]"
+                              >
+                                {tipo}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="font-medium">No especificado</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -8597,10 +8707,66 @@
                     Ventas pendientes de pago ({pendingInvoices.length})
                   </h4>
                   {pendingInvoices.length > 0 ? (
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm text-gray-600">
-                        Lista de ventas pendientes próximamente disponible.
-                      </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-4 py-2 text-left">Número</th>
+                            <th className="px-4 py-2 text-left">Concepto</th>
+                            <th className="px-4 py-2 text-left">Precio€</th>
+                            <th className="px-4 py-2 text-left">IVA€</th>
+                            <th className="px-4 py-2 text-left">Fecha</th>
+                            <th className="px-4 py-2 text-left">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pendingInvoices.map((invoice) => {
+                            const vatAmount = getVatAmount(invoice);
+                            const invoiceNumber =
+                              invoice.invoiceNumber ||
+                              invoice.number ||
+                              invoice.id;
+                            return (
+                              <tr
+                                key={invoice.id}
+                                className="border-b hover:bg-gray-50"
+                              >
+                                <td className="px-4 py-2">
+                                  {onViewInvoice ? (
+                                    <button
+                                      onClick={() => onViewInvoice(invoice)}
+                                      className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                    >
+                                      {invoiceNumber}
+                                    </button>
+                                  ) : (
+                                    <span className="font-medium">
+                                      {invoiceNumber}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2">
+                                  {invoice.items?.[0]?.description || "N/A"}
+                                </td>
+                                <td className="px-4 py-2">
+                                  {(invoice.subtotal || 0).toFixed(2)}
+                                </td>
+                                <td className="px-4 py-2">
+                                  {vatAmount.toFixed(2)}
+                                </td>
+                                <td className="px-4 py-2">
+                                  {invoice.invoiceDate || invoice.date || "N/A"}
+                                </td>
+                                <td className="px-4 py-2">
+                                  <span className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800">
+                                    {invoice.status || "Pendiente"}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   ) : (
                     <p className="text-sm text-gray-500 italic">
@@ -8744,12 +8910,6 @@
                           Facturar seleccionados ({selectedInvoices.length})
                         </button>
                       )}
-                      <a
-                        href="#"
-                        className="text-sm text-blue-600 hover:underline"
-                      >
-                        Ver facturas
-                      </a>
                     </div>
                   </div>
                   {paidInvoices.length > 0 ? (
@@ -9277,34 +9437,19 @@
             switch (activeTab) {
               case "overview":
                 return renderOverviewTab();
-              case "reservations":
-                return renderReservationsTab();
               case "sales":
                 return renderSalesTab();
-              case "inapp":
-                return renderInAppTab();
-              case "profile":
-                return renderProfileTab();
-              case "training":
-                return renderTrainingTab();
-              case "clinical":
-                return renderClinicalTab();
-              case "contracts":
-                return renderContractsTab();
               case "offers":
                 return renderOffersTab();
-              case "more":
-                if (activeMoreTab === "paymentMethods") {
-                  return renderPaymentMethodsTab();
-                }
-                return renderMoreTab();
+              case "paymentMethods":
+                return renderPaymentMethodsTab();
               default:
                 return renderOverviewTab();
             }
           };
 
           return (
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
               {/* Cabecera con nombre, email y teléfono */}
               <div className="bg-white rounded-lg shadow-lg mb-4">
                 <div className="p-6 border-b border-gray-200">
@@ -9354,9 +9499,32 @@
                       >
                         Nueva venta
                       </button>
-                      <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium flex items-center gap-1">
-                        Acciones <ChevronDownIcon />
-                      </button>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActionsMenuOpen((v) => !v);
+                          }}
+                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium flex items-center gap-1"
+                        >
+                          Acciones <ChevronDownIcon />
+                        </button>
+                        {actionsMenuOpen && (
+                          <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActionsMenuOpen(false);
+                                if (onEdit) onEdit();
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
+                            >
+                              Editar perfil
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -9373,7 +9541,6 @@
                   <button
                     onClick={() => {
                       setActiveTab("overview");
-                      setActiveMoreTab(null);
                     }}
                     className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                       activeTab === "overview"
@@ -9385,25 +9552,7 @@
                   </button>
                   <button
                     onClick={() => {
-                      setActiveTab("reservations");
-                      setActiveMoreTab(null);
-                    }}
-                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-1 ${
-                      activeTab === "reservations"
-                        ? "border-[#006666] text-[#006666]"
-                        : "border-transparent text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    Reservas
-                    {reminders.filter((r) => new Date(r.dueDate) <= new Date())
-                      .length > 0 && (
-                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
                       setActiveTab("sales");
-                      setActiveMoreTab(null);
                     }}
                     className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                       activeTab === "sales"
@@ -9415,73 +9564,7 @@
                   </button>
                   <button
                     onClick={() => {
-                      setActiveTab("inapp");
-                      setActiveMoreTab(null);
-                    }}
-                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === "inapp"
-                        ? "border-[#006666] text-[#006666]"
-                        : "border-transparent text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    Pagos in-app
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveTab("profile");
-                      setActiveMoreTab(null);
-                    }}
-                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === "profile"
-                        ? "border-[#006666] text-[#006666]"
-                        : "border-transparent text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    Perfil
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveTab("training");
-                      setActiveMoreTab(null);
-                    }}
-                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === "training"
-                        ? "border-[#006666] text-[#006666]"
-                        : "border-transparent text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    Entrenamientos
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveTab("clinical");
-                      setActiveMoreTab(null);
-                    }}
-                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === "clinical"
-                        ? "border-[#006666] text-[#006666]"
-                        : "border-transparent text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    Historia clínica
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveTab("contracts");
-                      setActiveMoreTab(null);
-                    }}
-                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === "contracts"
-                        ? "border-[#006666] text-[#006666]"
-                        : "border-transparent text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    Contratos
-                  </button>
-                  <button
-                    onClick={() => {
                       setActiveTab("offers");
-                      setActiveMoreTab(null);
                     }}
                     className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                       activeTab === "offers"
@@ -9491,88 +9574,18 @@
                   >
                     Ofertas
                   </button>
-                  <div
-                    className="relative more-menu-container"
-                    style={{ zIndex: 100 }}
+                  <button
+                    onClick={() => {
+                      setActiveTab("paymentMethods");
+                    }}
+                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === "paymentMethods"
+                        ? "border-[#006666] text-[#006666]"
+                        : "border-transparent text-gray-600 hover:text-gray-900"
+                    }`}
                   >
-                    <button
-                      ref={moreButtonRef}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveTab("more");
-                        setMoreMenuOpen(!moreMenuOpen);
-                      }}
-                      className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-1 ${
-                        activeTab === "more"
-                          ? "border-[#006666] text-[#006666]"
-                          : "border-transparent text-gray-600 hover:text-gray-900"
-                      }`}
-                    >
-                      Más <ChevronDownIcon />
-                    </button>
-                    {moreMenuOpen && (
-                      <div
-                        className="fixed bg-white border border-gray-200 rounded-lg shadow-xl more-menu-container"
-                        style={{
-                          zIndex: 10000,
-                          width: "192px",
-                          top: dropdownPosition.top + "px",
-                          left: dropdownPosition.left + "px",
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          onClick={() => {
-                            setActiveMoreTab("paymentMethods");
-                            setMoreMenuOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${
-                            activeMoreTab === "paymentMethods"
-                              ? "bg-blue-50 text-blue-600"
-                              : "text-gray-700"
-                          }`}
-                        >
-                          Métodos de pago
-                        </button>
-                        <button
-                          onClick={() => {
-                            setActiveMoreTab("notifications");
-                            setMoreMenuOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          Notificaciones
-                        </button>
-                        <button
-                          onClick={() => {
-                            setActiveMoreTab("mailbox");
-                            setMoreMenuOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          Buzón
-                        </button>
-                        <button
-                          onClick={() => {
-                            setActiveMoreTab("devices");
-                            setMoreMenuOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          Dispositivos
-                        </button>
-                        <button
-                          onClick={() => {
-                            setActiveMoreTab("funnels");
-                            setMoreMenuOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          Embudos
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                    Métodos de pago
+                  </button>
                 </div>
               </div>
 
@@ -12569,7 +12582,7 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
 
           const [formData, setFormData] = useState({
             id: invoiceData?.id || null,
-            clientId: invoiceData?.client?.id || "",
+            clientId: invoiceData?.client?.id || invoiceData?.clientId || "",
             invoiceNumber: invoiceData?.invoiceNumber || "",
             invoiceDate:
               invoiceData?.invoiceDate ||
@@ -13460,7 +13473,7 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
 
           const [formData, setFormData] = useState({
             id: offerData?.id || null,
-            clientId: offerData?.client?.id || "",
+            clientId: offerData?.client?.id || offerData?.clientId || "",
             offerDate:
               offerData?.offerDate || new Date().toISOString().split("T")[0],
             validUntil:
@@ -18570,14 +18583,30 @@ ${data.topProducts
         function BulkCommunication({ clients, onBack }) {
           const [message, setMessage] = useState("");
           const [filter, setFilter] = useState("all");
+          const [filterTipoCliente, setFilterTipoCliente] = useState("all");
+
+          const tipoClienteOptions = useMemo(() => {
+            const values = [
+              ...new Set(clients.flatMap((c) => getClientTiposCliente(c))),
+            ];
+            return values.sort((a, b) =>
+              String(a).localeCompare(String(b), "es", { sensitivity: "base" }),
+            );
+          }, [clients]);
 
           const eligibleClients = useMemo(() => {
-            return clients.filter(
-              (c) =>
-                c.acceptsMarketing &&
-                (filter === "all" || c.funnelStage === filter),
-            );
-          }, [clients, filter]);
+            return clients.filter((c) => {
+              if (!c.acceptsMarketing) return false;
+              if (filter !== "all" && c.funnelStage !== filter) return false;
+              if (
+                filterTipoCliente !== "all" &&
+                !getClientTiposCliente(c).includes(filterTipoCliente)
+              ) {
+                return false;
+              }
+              return true;
+            });
+          }, [clients, filter, filterTipoCliente]);
 
           const handleSendEmail = () => {
             const emails = eligibleClients
@@ -18642,14 +18671,26 @@ ${data.topProducts
 
               {/* Panel de filtros y estadísticas */}
               <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                   <FormSelect
                     label="Filtrar por Fase del Embudo"
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                     options={funnelOptions}
                   />
-                  <div className="md:col-span-2 flex items-center gap-4">
+                  <FormSelect
+                    label="Filtrar por Tipo de Cliente"
+                    value={filterTipoCliente}
+                    onChange={(e) => setFilterTipoCliente(e.target.value)}
+                    options={[
+                      { value: "all", label: "Todos los tipos" },
+                      ...tipoClienteOptions.map((tipo) => ({
+                        value: tipo,
+                        label: tipo,
+                      })),
+                    ]}
+                  />
+                  <div className="lg:col-span-2 flex items-center gap-4">
                     <div className="bg-white p-3 rounded-lg border flex-1">
                       <div className="text-2xl font-bold text-green-600">
                         {eligibleClients.length}
@@ -18686,7 +18727,11 @@ ${data.topProducts
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span className="font-medium">{client.name}</span>
                           <span className="text-gray-500">
-                            ({client.funnelStage})
+                            ({client.funnelStage}
+                            {formatClientTiposCliente(client)
+                              ? ` · ${formatClientTiposCliente(client)}`
+                              : ""}
+                            )
                           </span>
                           {!client.email && (
                             <span className="text-red-500 text-xs flex items-center gap-1">
