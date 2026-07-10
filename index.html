@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.26.10/babel.min.js"></script>
     <!-- PropTypes para Recharts -->
     <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
     <script src="./recharts.min.js"></script>
@@ -862,6 +862,8 @@
           addDoc,
           onSnapshot,
           doc,
+          getDoc,
+          getDocs,
           updateDoc,
           deleteDoc,
           query,
@@ -879,6 +881,8 @@
             addDoc,
             onSnapshot,
             doc,
+            getDoc,
+            getDocs,
             updateDoc,
             deleteDoc,
             query,
@@ -2345,6 +2349,56 @@
           );
         }
 
+        /** Solo estas categorías descuentan stock al facturar. */
+        const STOCK_TRACKED_CATEGORIES = new Set([
+          "Rehabilitación",
+          "Consumibles",
+          "Ginecología",
+        ]);
+
+        function shouldTrackProductStock(productData) {
+          if (!productData || typeof productData !== "object") return false;
+          const category = String(productData.category || "").trim();
+          return STOCK_TRACKED_CATEGORIES.has(category);
+        }
+
+        async function buildStockTrackableInvoiceItems(db, items, getDoc, doc) {
+          const trackableItems = [];
+          const requiredByProduct = new Map();
+          const productCache = new Map();
+
+          for (const item of items || []) {
+            const productId = item?.productId;
+            const qty = Number(item?.quantity) || 0;
+            if (!productId || qty <= 0) continue;
+
+            let productData = productCache.get(productId);
+            if (productData === undefined) {
+              const snap = await getDoc(doc(db, "productos", productId));
+              if (!snap.exists()) {
+                productCache.set(productId, null);
+                continue;
+              }
+              productData = snap.data();
+              productCache.set(productId, productData);
+            }
+            if (!productData || !shouldTrackProductStock(productData)) continue;
+
+            trackableItems.push({
+              item,
+              productId,
+              qty,
+              productName: productData.name || item?.description || "",
+            });
+            requiredByProduct.set(
+              productId,
+              (requiredByProduct.get(productId) || 0) + qty,
+            );
+          }
+
+          return { trackableItems, requiredByProduct };
+        }
+
         async function forceApplyStockForInvoiceByNumber(
           invoiceNumber,
           showNotification,
@@ -2449,17 +2503,23 @@
               return true;
             }
 
-            // Pre-check: no permitir stock negativo
-            const requiredByProduct = new Map();
-            for (const item of items) {
-              const productId = item?.productId;
-              const qty = Number(item?.quantity) || 0;
-              if (!productId || qty <= 0) continue;
-              requiredByProduct.set(
-                productId,
-                (requiredByProduct.get(productId) || 0) + qty,
+            const { trackableItems, requiredByProduct } =
+              await buildStockTrackableInvoiceItems(db, items, getDoc, doc);
+
+            if (trackableItems.length === 0) {
+              await updateDoc(doc(db, "facturas", invoiceId), {
+                stockAppliedAt: new Date().toISOString(),
+                stockSkippedReason: "no_trackable_products",
+              });
+              showNotification?.(
+                "Stock",
+                `La factura ${num} no tiene líneas con productos en categorías de inventario (Rehabilitación, Consumibles o Ginecología).`,
+                "info",
               );
+              return true;
             }
+
+            // Pre-check: no permitir stock negativo (solo productos con inventario)
             const insufficient = [];
             for (const [productId, qty] of requiredByProduct.entries()) {
               const pSnap = await getDoc(doc(db, "productos", productId));
@@ -2503,11 +2563,7 @@
             });
 
             // Aplicar por línea (transacción por producto) + registrar movimiento
-            for (const item of items) {
-              const productId = item?.productId;
-              const qty = Number(item?.quantity) || 0;
-              if (!productId || qty <= 0) continue;
-
+            for (const { item, productId, qty } of trackableItems) {
               let prev = null;
               let next = null;
               await runTransaction(db, async (transaction) => {
@@ -4835,6 +4891,29 @@
                 hasItemsWithProduct &&
                 !dataToSave.stockAppliedAt
               ) {
+                let stockAlreadyApplied = Boolean(dataToSave.stockAppliedAt);
+                if (!stockAlreadyApplied && db && effectiveInvoiceId) {
+                  try {
+                    const persistedInvoiceSnap = await getDoc(
+                      doc(db, "facturas", effectiveInvoiceId),
+                    );
+                    stockAlreadyApplied = Boolean(
+                      persistedInvoiceSnap.exists() &&
+                        persistedInvoiceSnap.data()?.stockAppliedAt,
+                    );
+                  } catch (e) {}
+                }
+                if (stockAlreadyApplied) {
+                  window.logSupportEvent?.({
+                    level: "info",
+                    event: "stock_skip_already_applied",
+                    context: {
+                      feature: "stock",
+                      invoiceId: effectiveInvoiceId,
+                      invoiceNumber: dataToSave.invoiceNumber || null,
+                    },
+                  });
+                } else {
                 // Facturas con importe total 0 € (p. ej. descuento 100 %): no descontar stock.
                 // Evita error al emitir con productos a 0 uds. cuando no hay salida comercial real.
                 const invoiceTotalNum = Number(dataToSave.total);
@@ -4864,17 +4943,35 @@
                     invoiceNumber: dataToSave.invoiceNumber || null,
                   },
                 });
-                // Pre-check: no permitir stock negativo
-                const requiredByProduct = new Map();
-                for (const item of dataToSave.items || []) {
-                  const productId = item?.productId;
-                  const qty = Number(item?.quantity) || 0;
-                  if (!productId || qty <= 0) continue;
-                  requiredByProduct.set(
-                    productId,
-                    (requiredByProduct.get(productId) || 0) + qty,
+                const { trackableItems, requiredByProduct } =
+                  await buildStockTrackableInvoiceItems(
+                    db,
+                    dataToSave.items || [],
+                    getDoc,
+                    doc,
                   );
-                }
+
+                if (trackableItems.length === 0) {
+                  await handleSave(
+                    "facturas",
+                    {
+                      id: effectiveInvoiceId,
+                      stockAppliedAt: new Date().toISOString(),
+                      stockSkippedReason: "no_trackable_products",
+                    },
+                    effectiveInvoiceId,
+                  );
+                  window.logSupportEvent?.({
+                    level: "info",
+                    event: "stock_skip_no_trackable_products",
+                    context: {
+                      feature: "stock",
+                      invoiceId: effectiveInvoiceId,
+                      invoiceNumber: dataToSave.invoiceNumber || null,
+                    },
+                  });
+                } else {
+                // Pre-check: no permitir stock negativo (solo productos con inventario)
                 const insufficient = [];
                 for (const [productId, qty] of requiredByProduct.entries()) {
                   const snap = await getDoc(doc(db, "productos", productId));
@@ -4915,11 +5012,7 @@
                   return true;
                 }
 
-                for (const item of dataToSave.items || []) {
-                  const productId = item?.productId;
-                  const qty = Number(item?.quantity) || 0;
-                  if (!productId || qty <= 0) continue;
-
+                for (const { item, productId, qty } of trackableItems) {
                   let movementPrevious = null;
                   let movementNext = null;
 
@@ -4934,6 +5027,7 @@
                       err.productId = productId;
                       err.currentStock = currentStock;
                       err.needed = qty;
+                      err.productName = productSnap.data()?.name || "";
                       throw err;
                     }
                     movementPrevious = currentStock;
@@ -4983,8 +5077,11 @@
                     feature: "stock",
                     invoiceId: effectiveInvoiceId,
                     invoiceNumber: dataToSave.invoiceNumber || null,
+                    trackableLineCount: trackableItems.length,
                   },
                 });
+                }
+                }
                 }
               }
 
@@ -5020,10 +5117,17 @@
                     "info",
                   );
                 } else {
-                  // Aplicar devolución por producto (sumando cantidades absolutas)
-                  for (const item of dataToSave.items || []) {
-                    const productId = item?.productId;
-                    const qtyAbs = Math.abs(Number(item?.quantity) || 0);
+                  const { trackableItems: rectTrackableItems } =
+                    await buildStockTrackableInvoiceItems(
+                      db,
+                      dataToSave.items || [],
+                      getDoc,
+                      doc,
+                    );
+
+                  // Devolución solo en categorías con inventario (Rehabilitación, Consumibles, Ginecología)
+                  for (const { item, productId, qty } of rectTrackableItems) {
+                    const qtyAbs = Math.abs(Number(qty) || 0);
                     if (!productId || qtyAbs <= 0) continue;
 
                     let rectPrev = null;
@@ -5067,6 +5171,17 @@
                     });
                   }
 
+                  if (rectTrackableItems.length === 0) {
+                    await handleSave(
+                      "facturas",
+                      {
+                        id: effectiveInvoiceId,
+                        stockReturnAppliedAt: new Date().toISOString(),
+                        stockSkippedReason: "no_trackable_products",
+                      },
+                      effectiveInvoiceId,
+                    );
+                  } else {
                   // Marcar rectificativa como aplicada y, si existe, marcar original
                   await handleSave(
                     "facturas",
@@ -5097,6 +5212,7 @@
                       originalInvoiceId: originalId || null,
                     },
                   });
+                  }
                 }
               }
             } catch (error) {
