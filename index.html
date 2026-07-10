@@ -1533,9 +1533,16 @@
               borderColor: "border-orange-200",
               progressColor: "bg-orange-500",
             },
+            error: {
+              icon: <XIcon width={24} height={24} />,
+              iconColor: "text-red-600",
+              bgColor: "bg-red-50",
+              borderColor: "border-red-200",
+              progressColor: "bg-red-500",
+            },
           };
 
-          const config = typeConfig[type] || typeConfig.success;
+          const config = typeConfig[type] || typeConfig.warning;
 
           if (!isOpen) return null;
 
@@ -4665,6 +4672,7 @@
             invoiceData,
             convertFromProforma = false,
           ) => {
+            let stockWarning = null;
             // Extraer campos solo-UI (no persistirlos en la factura)
             const {
               registerPaymentNow,
@@ -5132,15 +5140,24 @@
               const errDetail = String(error?.message || error || "").trim();
               const errShort =
                 errDetail.length > 180 ? `${errDetail.slice(0, 180)}…` : errDetail;
+              stockWarning = {
+                code: "stock_apply_failed",
+                detail: errShort || null,
+              };
               showNotification?.(
-                "Stock no actualizado",
+                convertFromProforma
+                  ? "Factura convertida — aviso de inventario"
+                  : "Factura guardada — aviso de inventario",
                 errShort
-                  ? `La factura se guardó, pero hubo un error actualizando el stock. Detalle: ${errShort}`
-                  : "La factura se guardó, pero hubo un error actualizando el stock.",
-                "error",
+                  ? `La factura y el pago se registraron correctamente. El inventario no se actualizó automáticamente (${errShort}). Si hace falta, un administrador puede reaplicar el stock.`
+                  : "La factura y el pago se registraron correctamente. El inventario no se actualizó automáticamente. Si hace falta, un administrador puede reaplicar el stock.",
+                "warning",
               );
             }
             setActiveView("accounting");
+            if (stockWarning) {
+              return { ok: true, stockWarning: true, warning: stockWarning };
+            }
             return true;
           };
 
@@ -5190,11 +5207,14 @@
                 method,
               },
             });
-            const ok = await handleSaveInvoice(invoiceData, true);
+            const result = await handleSaveInvoice(invoiceData, true);
+            const ok = result === true || result?.ok === true;
             window.logSupportEvent?.({
-              level: ok ? "info" : "error",
+              level: ok ? (result?.stockWarning ? "warning" : "info") : "error",
               event: ok
-                ? "proforma_convert_and_pay_success"
+                ? result?.stockWarning
+                  ? "proforma_convert_and_pay_success_stock_warning"
+                  : "proforma_convert_and_pay_success"
                 : "proforma_convert_and_pay_error",
               context: {
                 feature: "invoice_payment",
@@ -5206,9 +5226,10 @@
                 amount,
                 date: invoiceData.paymentNowDate,
                 method,
+                stockWarning: Boolean(result?.stockWarning),
               },
             });
-            return ok;
+            return result;
           };
 
           const handleSoftDeleteInvoice = async (invoiceId) => {
@@ -14465,6 +14486,15 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
               if (ok) {
                 setPaymentAmount(0);
                 setPaymentModalOpen(false);
+                if (isProforma) {
+                  showNotification(
+                    "Factura convertida y pagada",
+                    result?.stockWarning
+                      ? "La proforma se convirtió en factura y el pago quedó registrado. Revisa el aviso de inventario si apareció."
+                      : "La proforma se convirtió en factura y el pago quedó registrado.",
+                    "success",
+                  );
+                }
               } else {
                 // Si no hay confirmación explícita, no cerramos para que el usuario pueda reintentar
                 showNotification(
