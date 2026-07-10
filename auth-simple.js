@@ -814,12 +814,14 @@ class AuthManager {
                 throw new Error('Acceso denegado: Solo los administradores pueden ver la lista de usuarios');
             }
 
-            const { getFirestore, collection, getDocs } = 
+            const { getFirestore, collection, getDocs, orderBy, query } = 
                 await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
             
             const db = getFirestore(this.app);
             const usersCollection = collection(db, 'users');
-            const usersSnapshot = await getDocs(usersCollection);
+            // Mismo orden que archive/tools/query-support-logs.mjs (--user-index)
+            const usersQuery = query(usersCollection, orderBy('createdAt', 'desc'));
+            const usersSnapshot = await getDocs(usersQuery);
             
             const users = [];
             usersSnapshot.forEach((doc) => {

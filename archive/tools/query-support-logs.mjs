@@ -7,6 +7,9 @@
  *   node archive/tools/query-support-logs.mjs --name "Marta Rebaque"
  *   node archive/tools/query-support-logs.mjs --user-index 5
  *   node archive/tools/query-support-logs.mjs --uid <firebase-uid>
+ *
+ * --user-index usa el mismo orden que el panel admin: createdAt descendente
+ * (Usuario #1 = registro más reciente). Criterio compartido con auth-simple.js.
  */
 
 import { readFileSync, existsSync } from "node:fs";
@@ -61,17 +64,18 @@ function formatTs(value) {
   return String(value);
 }
 
+/**
+ * Mismo orden que auth-simple.js getAllUsers: orderBy("createdAt", "desc").
+ */
+async function fetchUsersOrderedLikeAdmin(db) {
+  const usersSnap = await db.collection("users").orderBy("createdAt", "desc").get();
+  return usersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
 async function resolveUserId(db, { name, uid, userIndex }) {
   if (uid) return { id: uid, profile: null };
 
-  const usersSnap = await db.collection("users").get();
-  const users = usersSnap.docs
-    .map((doc) => ({ id: doc.id, ...doc.data() }))
-    .sort((a, b) => {
-      const aTs = a.createdAt || "";
-      const bTs = b.createdAt || "";
-      return String(aTs).localeCompare(String(bTs));
-    });
+  const users = await fetchUsersOrderedLikeAdmin(db);
 
   if (userIndex != null && Number.isFinite(userIndex)) {
     const match = users[userIndex - 1];
