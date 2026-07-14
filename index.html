@@ -2009,6 +2009,43 @@
         };
         const VAT_RATE = 0.21;
 
+        // Comparaciones de dinero en céntimos para evitar falsos "Parcialmente Pagada"
+        // por ruido de coma flotante (IVA por línea, descuentos, toFixed en UI).
+        function toCents(n) {
+          return Math.round((Number(n) || 0) * 100);
+        }
+        function roundMoney(n) {
+          return toCents(n) / 100;
+        }
+        function resolveInvoicePaymentStatus(totalPaid, total) {
+          const paidCents = toCents(totalPaid);
+          const totalCents = toCents(total);
+          if (totalCents > 0 && paidCents >= totalCents) return "Pagada";
+          if (paidCents > 0) return "Parcialmente Pagada";
+          return "Enviada";
+        }
+        function isInvoiceFullyPaid(invoice) {
+          if (!invoice) return false;
+          const totalCents = toCents(invoice.total);
+          if (totalCents <= 0) return false;
+          return toCents(invoice.totalPaid) >= totalCents;
+        }
+        function getEffectiveInvoiceStatus(invoice) {
+          if (!invoice) return "";
+          const status = invoice.status || "";
+          if (status === "Anulada" || status === "Borrador") return status;
+          if (isInvoiceFullyPaid(invoice)) return "Pagada";
+          if (toCents(invoice.totalPaid) > 0) return "Parcialmente Pagada";
+          return status || "Enviada";
+        }
+        try {
+          window.toCents = toCents;
+          window.roundMoney = roundMoney;
+          window.resolveInvoicePaymentStatus = resolveInvoicePaymentStatus;
+          window.isInvoiceFullyPaid = isInvoiceFullyPaid;
+          window.getEffectiveInvoiceStatus = getEffectiveInvoiceStatus;
+        } catch (e) {}
+
         // --- Exportaciones de facturas (CSV para remesado, XLSX para detalle) ---
         function computeInvoiceVatBreakdown(invoice) {
           const buckets = new Map([
@@ -4793,8 +4830,9 @@
               const method = PAYMENT_METHODS.includes(paymentNowMethod)
                 ? paymentNowMethod
                 : "Otro";
+              const paymentAmountRounded = roundMoney(parsedPaymentAmount);
               const paymentData = {
-                amount: parsedPaymentAmount,
+                amount: paymentAmountRounded,
                 date: paymentNowDate || new Date().toISOString().split("T")[0],
                 method,
                 methodOther:
@@ -4809,14 +4847,17 @@
                 );
 
                 // Actualizar totales de pago y estado de la factura
+                // Comparar en céntimos: total.toFixed(2) del UI puede quedar
+                // 0.01 céntimos por debajo del float guardado tras IVA/líneas.
                 const basePaid = Number(dataToSave.totalPaid || 0);
-                const totalPaid = basePaid + parsedPaymentAmount;
+                const totalPaid = roundMoney(basePaid + paymentAmountRounded);
                 const invoiceTotal = Number(dataToSave.total || 0);
                 let newStatus = dataToSave.status || "Enviada";
-                if (invoiceTotal > 0) {
-                  if (totalPaid >= invoiceTotal) newStatus = "Pagada";
-                  else if (totalPaid > 0) newStatus = "Parcialmente Pagada";
-                  else newStatus = "Enviada";
+                if (toCents(invoiceTotal) > 0) {
+                  newStatus = resolveInvoicePaymentStatus(
+                    totalPaid,
+                    invoiceTotal,
+                  );
                 }
 
                 await handleSave(
@@ -5445,7 +5486,7 @@
               ? normalizedPayment.method
               : "Otro";
             const paymentData = {
-              amount: paymentAmount,
+              amount: roundMoney(paymentAmount),
               date:
                 normalizedPayment.date ||
                 new Date().toISOString().split("T")[0], // YYYY-MM-DD
@@ -5471,15 +5512,17 @@
                 context: logCtx,
               });
 
-              const newTotalPaid = (invoice.totalPaid || 0) + paymentAmount;
-              let newStatus;
-              if (newTotalPaid >= invoice.total) {
-                newStatus = "Pagada";
-              } else if (newTotalPaid > 0) {
-                newStatus = "Parcialmente Pagada";
-              } else {
-                newStatus = "Enviada";
-              }
+              // Comparar en céntimos (misma regla que el modal de cobro).
+              // Evita dejar facturas en "Parcialmente Pagada" cuando el pendiente
+              // redondeado a 2 decimales es 0 pero el float del total es ligeramente mayor.
+              const paymentAmountRounded = roundMoney(paymentAmount);
+              const newTotalPaid = roundMoney(
+                (Number(invoice.totalPaid) || 0) + paymentAmountRounded,
+              );
+              const newStatus = resolveInvoicePaymentStatus(
+                newTotalPaid,
+                invoice.total,
+              );
 
               const updatedInvoice = {
                 ...invoice,
@@ -5530,6 +5573,50 @@
                 "Error",
                 "No se pudo registrar el pago. Si persiste, contacta con soporte.",
                 "error",
+              );
+              return false;
+            }
+          };
+
+          // Corrige facturas ya guardadas como "Parcialmente Pagada" por ruido float
+          // cuando el cobro cubre el total en céntimos.
+          const handleReconcileInvoicePaymentStatus = async (invoice) => {
+            if (!db || !invoice?.id) return false;
+            if (invoice.status === "Anulada" || invoice.status === "Borrador") {
+              return false;
+            }
+            const effectiveStatus = getEffectiveInvoiceStatus(invoice);
+            if (effectiveStatus === invoice.status) return false;
+
+            const totalPaid = roundMoney(invoice.totalPaid || 0);
+            const updatedInvoice = {
+              ...invoice,
+              totalPaid,
+              status: effectiveStatus,
+            };
+            try {
+              window.logSupportEvent?.({
+                level: "info",
+                event: "invoice_payment_status_reconcile",
+                context: {
+                  feature: "invoice_payment",
+                  invoiceId: invoice.id,
+                  invoiceNumber: invoice.invoiceNumber || invoice.number || null,
+                  previousStatus: invoice.status || null,
+                  newStatus: effectiveStatus,
+                  totalPaid,
+                  total: invoice.total ?? null,
+                },
+              });
+              await handleSave("facturas", updatedInvoice, updatedInvoice.id);
+              if (selectedItem?.id === invoice.id) {
+                setSelectedItem(updatedInvoice);
+              }
+              return true;
+            } catch (error) {
+              console.error(
+                "Error reconciliando estado de pago de factura:",
+                error,
               );
               return false;
             }
@@ -6013,6 +6100,7 @@
                     clients={clients}
                     onBack={() => setActiveView("accounting")}
                     onRegisterPayment={handleRegisterPayment}
+                    onReconcilePaymentStatus={handleReconcileInvoicePaymentStatus}
                     db={db}
                     userId={user?.uid}
                     onConvertToInvoice={handleConvertToInvoice}
@@ -8777,11 +8865,14 @@
           };
 
           const renderSalesTab = () => {
-            const pendingInvoices = clientInvoices.filter(
-              (inv) => inv.status !== "Pagada" && inv.status !== "Anulada",
-            );
+            const pendingInvoices = clientInvoices.filter((inv) => {
+              const effectiveStatus = getEffectiveInvoiceStatus(inv);
+              return (
+                effectiveStatus !== "Pagada" && effectiveStatus !== "Anulada"
+              );
+            });
             const paidInvoices = clientInvoices.filter(
-              (inv) => inv.status === "Pagada",
+              (inv) => getEffectiveInvoiceStatus(inv) === "Pagada",
             );
 
             const handleSelectAll = (e) => {
@@ -8895,9 +8986,20 @@
                                   {invoice.invoiceDate || invoice.date || "N/A"}
                                 </td>
                                 <td className="px-4 py-2">
-                                  <span className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800">
-                                    {invoice.status || "Pendiente"}
-                                  </span>
+                                  {(() => {
+                                    const effectiveStatus =
+                                      getEffectiveInvoiceStatus(invoice);
+                                    return (
+                                      <span
+                                        className={`px-2 py-1 text-xs rounded ${
+                                          INVOICE_STATUSES[effectiveStatus] ||
+                                          "bg-yellow-100 text-yellow-800"
+                                        }`}
+                                      >
+                                        {effectiveStatus || "Pendiente"}
+                                      </span>
+                                    );
+                                  })()}
                                 </td>
                               </tr>
                             );
@@ -13014,20 +13116,24 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
                 serialNumber: it.serialNumber || "",
                 vatRate: it.vatRate,
               })),
-              subtotal,
-              vat,
-              total,
+              subtotal: roundMoney(subtotal),
+              vat: roundMoney(vat),
+              total: roundMoney(total),
               discountRate: effectiveDiscountRate,
-              discountAmount,
-              subtotalAfterDiscount,
+              discountAmount: roundMoney(discountAmount),
+              subtotalAfterDiscount: roundMoney(subtotalAfterDiscount),
               includeVAT: formData.includeVAT,
               customVATRate: formData.customVATRate,
               effectiveVATRate: effectiveVATRate,
-              vatBreakdown,
+              vatBreakdown: (vatBreakdown || []).map((x) => ({
+                ...x,
+                base: roundMoney(x.base),
+                vat: roundMoney(x.vat),
+              })),
               // Campos solo-UI que handleSaveInvoice extrae y NO persiste
               registerPaymentNow,
               paymentNowAmount: registerPaymentNow
-                ? paymentNowAmount || total.toFixed(2)
+                ? paymentNowAmount || roundMoney(total).toFixed(2)
                 : "",
               paymentNowDate,
               paymentNowMethod,
@@ -14416,6 +14522,7 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
           clients,
           onBack,
           onRegisterPayment,
+          onReconcilePaymentStatus,
           db,
           userId,
           onConvertToInvoice,
@@ -14440,10 +14547,10 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
           const [isRegisteringPayment, setIsRegisteringPayment] =
             useState(false);
           const paymentAmountRef = useRef(null);
-          const toCents = (n) => Math.round((Number(n) || 0) * 100);
+          const toCentsFn = window.toCents || ((n) => Math.round((Number(n) || 0) * 100));
           const amountPaid = Number(invoice.totalPaid || 0);
-          const totalCents = toCents(invoice.total);
-          const paidCents = toCents(amountPaid);
+          const totalCents = toCentsFn(invoice.total);
+          const paidCents = toCentsFn(amountPaid);
           const dueCents = Math.max(0, totalCents - paidCents);
           const amountDue = dueCents / 100;
           const amountDueDisplay =
@@ -14452,9 +14559,23 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
             const fixed = (Number(n) || 0).toFixed(2);
             return fixed === "-0.00" ? "0.00" : fixed;
           };
+          const displayStatus =
+            (window.getEffectiveInvoiceStatus &&
+              window.getEffectiveInvoiceStatus(invoice)) ||
+            invoice.status;
 
           // Obtener configuraciones dinámicas
           const settings = window.getSettings();
+
+          useEffect(() => {
+            if (!onReconcilePaymentStatus || !invoice?.id) return;
+            if (
+              invoice.status === "Parcialmente Pagada" &&
+              window.isInvoiceFullyPaid?.(invoice)
+            ) {
+              onReconcilePaymentStatus(invoice);
+            }
+          }, [invoice?.id, invoice?.status, invoice?.totalPaid, invoice?.total]);
 
           useEffect(() => {
             if (!db || !userId || !invoice.id) return;
@@ -14536,7 +14657,7 @@ Fdo.: ${client.name || "[Firma del Cliente]"}`;
               .trim()
               .replace(",", ".");
             const amount = parseFloat(rawAmount);
-            const amountCents = toCents(amount);
+            const amountCents = toCentsFn(amount);
             if (!(amountCents > 0 && amountCents <= dueCents)) {
               window.logSupportEvent?.({
                 level: "warning",
@@ -15013,9 +15134,9 @@ ${settings.company.nit ? `${settings.company.nit}\n` : ""}${settings.company.add
                             {invoice.type}
                           </h2>
                           <span
-                            className={`px-2.5 py-1 text-xs font-semibold rounded-full ${INVOICE_STATUSES[invoice.status]}`}
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-full ${INVOICE_STATUSES[displayStatus]}`}
                           >
-                            {invoice.status}
+                            {displayStatus}
                           </span>
                         </div>
                         <div className="mt-1 text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
@@ -16922,18 +17043,26 @@ ${data.topProducts
 
           // 🚀 CÁLCULOS CORREGIDOS: Facturas cobradas y pendientes
           const invoicesByStatus = useMemo(() => {
-            const issued = allInvoices.filter(
-              (inv) =>
-                inv.status === "Enviada" ||
-                inv.status === "Parcialmente Pagada" ||
-                inv.status === "Pagada",
+            const statusOf = (inv) =>
+              (typeof getEffectiveInvoiceStatus === "function"
+                ? getEffectiveInvoiceStatus(inv)
+                : inv.status) || "";
+            const issued = allInvoices.filter((inv) => {
+              const s = statusOf(inv);
+              return (
+                s === "Enviada" ||
+                s === "Parcialmente Pagada" ||
+                s === "Pagada"
+              );
+            });
+            const paid = allInvoices.filter(
+              (inv) => statusOf(inv) === "Pagada",
             );
-            const paid = allInvoices.filter((inv) => inv.status === "Pagada");
             const partiallyPaid = allInvoices.filter(
-              (inv) => inv.status === "Parcialmente Pagada",
+              (inv) => statusOf(inv) === "Parcialmente Pagada",
             );
             const pending = allInvoices.filter(
-              (inv) => inv.status === "Enviada",
+              (inv) => statusOf(inv) === "Enviada",
             );
 
             return {
