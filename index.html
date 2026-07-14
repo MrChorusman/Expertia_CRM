@@ -4830,8 +4830,9 @@
               const method = PAYMENT_METHODS.includes(paymentNowMethod)
                 ? paymentNowMethod
                 : "Otro";
+              const paymentAmountRounded = roundMoney(parsedPaymentAmount);
               const paymentData = {
-                amount: parsedPaymentAmount,
+                amount: paymentAmountRounded,
                 date: paymentNowDate || new Date().toISOString().split("T")[0],
                 method,
                 methodOther:
@@ -4840,10 +4841,9 @@
               };
 
               try {
-                const paymentAmountRounded = roundMoney(parsedPaymentAmount);
                 await addDoc(
                   collection(db, `facturas/${effectiveInvoiceId}/payments`),
-                  { ...paymentData, amount: paymentAmountRounded },
+                  paymentData,
                 );
 
                 // Actualizar totales de pago y estado de la factura
