@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herramienta de Recuperación de Chat - Expertia CRM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script src="./firebase-config.js"></script>
+    <script src="./auth-simple.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function ChatRecoveryTool() {
+            const [isLoading, setIsLoading] = useState(false);
+            const [report, setReport] = useState(null);
+            const [error, setError] = useState(null);
+            const [authStatus, setAuthStatus] = useState('Esperando autenticación...');
+
+            useEffect(() => {
+                // Esperar a que el authManager esté disponible
+                const checkAuth = () => {
+                    if (window.authManager && window.authManager.currentUser) {
+                        setAuthStatus('Autenticado correctamente');
+                    } else {
+                        setTimeout(checkAuth, 1000);
+                    }
+                };
+                checkAuth();
+            }, []);
+
+            const scanForChatData = async () => {
+                if (!window.authManager || !window.authManager.app) {
+                    setError('Firebase no está inicializado');
+                    return;
+                }
+
+                setIsLoading(true);
+                setError(null);
+
+                try {
+                    // Importar Firestore
+                    const { getFirestore, collection, getDocs, doc, getDoc } = 
+                        await import('https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js');
+
+                    const db = getFirestore(window.authManager.app);
+                    const chatKeywords = [
+                        'chat', 'mensaje', 'message', 'conversacion', 'conversation',
+                        'comentario', 'comment', 'nota', 'note', 'comunicacion',
+                        'whatsapp', 'telegram', 'sms', 'email_thread', 'thread'
+                    ];
+
+                    const report = {
+                        timestamp: new Date().toISOString(),
+                        summary: {
+                            chatCollectionsFound: 0,
+                            chatRelatedFields: 0,
+                            clientCommunications: 0
+                        },
+                        findings: {
+                            collections: [],
+                            chatData: [],
+                            hiddenCollections: [],
+                            communications: []
+                        },
+                        recommendations: []
+                    };
+
+                    // Escanear colecciones conocidas
+                    const knownCollections = [
+                        'users', 'clientes', 'productos', 'facturas', 'ofertas', 
+                        'expenses', 'counters', 'settings', 'system_settings', 
+                        'configuracion', 'adminUsers'
+                    ];
+
+                    console.log('🔍 Escaneando colecciones conocidas...');
+                    
+                    for (const collectionName of knownCollections) {
+                        try {
+                            const collectionRef = collection(db, collectionName);
+                            const snapshot = await getDocs(collectionRef);
+                            
+                            if (!snapshot.empty) {
+                                report.findings.collections.push({
+                                    name: collectionName,
+                                    count: snapshot.size
+                                });
+
+                                // Buscar campos relacionados con chat
+                                snapshot.forEach(doc => {
+                                    const data = doc.data();
+                                    const chatFields = findChatFields(data, doc.id, collectionName, chatKeywords);
+                                    if (chatFields.length > 0) {
+                                        report.findings.chatData.push({
+                                            collection: collectionName,
+                                            documentId: doc.id,
+                                            fields: chatFields
+                                        });
+                                    }
+                                });
+                            }
+                        } catch (error) {
+                            console.log(`Error accediendo a ${collectionName}:`, error.message);
+                        }
+                    }
+
+                    // Buscar colecciones ocultas de chat
+                    const possibleChatCollections = [
+                        'chats', 'messages', 'mensajes', 'conversations', 'conversaciones',
+                        'communications', 'comunicaciones', 'threads', 'hilos',
+                        'chat_history', 'historial_chat', 'chat_logs', 'logs_chat',
+                        'support_chat', 'chat_soporte', 'customer_chat', 'chat_clientes',
+                        'internal_chat', 'chat_interno', 'team_chat', 'chat_equipo'
+                    ];
+
+                    console.log('🔍 Buscando colecciones ocultas de chat...');
+
+                    for (const collectionName of possibleChatCollections) {
+                        try {
+                            const collectionRef = collection(db, collectionName);
+                            const snapshot = await getDocs(collectionRef);
+                            
+                            if (!snapshot.empty) {
+                                report.findings.hiddenCollections.push({
+                                    name: collectionName,
+                                    count: snapshot.size,
+                                    documents: snapshot.docs.map(doc => ({
+                                        id: doc.id,
+                                        data: doc.data()
+                                    }))
+                                });
+                            }
+                        } catch (error) {
+                            // Silenciar errores de colecciones que no existen
+                        }
+                    }
+
+                    // Analizar comunicaciones con clientes
+                    try {
+                        const clientesRef = collection(db, 'clientes');
+                        const clientesSnapshot = await getDocs(clientesRef);
+                        
+                        clientesSnapshot.forEach(doc => {
+                            const cliente = doc.data();
+                            const communications = [];
+                            
+                            if (cliente.email) communications.push({ type: 'email', value: cliente.email });
+                            if (cliente.telefono) communications.push({ type: 'telefono', value: cliente.telefono });
+                            if (cliente.whatsapp) communications.push({ type: 'whatsapp', value: cliente.whatsapp });
+                            if (cliente.notas) communications.push({ type: 'notas', value: cliente.notas });
+                            if (cliente.comentarios) communications.push({ type: 'comentarios', value: cliente.comentarios });
+                            
+                            if (communications.length > 0) {
+                                report.findings.communications.push({
+                                    clienteId: doc.id,
+                                    nombre: cliente.nombre || 'Sin nombre',
+                                    communications: communications
+                                });
+                            }
+                        });
+                    } catch (error) {
+                        console.log('Error analizando comunicaciones:', error.message);
+                    }
+
+                    // Actualizar resumen
+                    report.summary.chatCollectionsFound = report.findings.hiddenCollections.length;
+                    report.summary.chatRelatedFields = report.findings.chatData.length;
+                    report.summary.clientCommunications = report.findings.communications.length;
+
+                    // Generar recomendaciones
+                    if (report.findings.hiddenCollections.length > 0) {
+                        report.recommendations.push('✅ Se encontraron colecciones de chat existentes');
+                        report.recommendations.push('💡 Puedes recuperar los datos usando las herramientas de Firebase');
+                    } else if (report.findings.chatData.length > 0) {
+                        report.recommendations.push('⚠️ Se encontraron campos relacionados con chat en colecciones existentes');
+                        report.recommendations.push('💡 Los datos de chat pueden estar integrados en otras colecciones');
+                    } else if (report.findings.communications.length > 0) {
+                        report.recommendations.push('📞 Se encontraron comunicaciones con clientes');
+                        report.recommendations.push('💡 Puedes usar estos datos como base para un sistema de chat');
+                    } else {
+                        report.recommendations.push('❌ No se encontraron datos de chat existentes');
+                        report.recommendations.push('💡 Necesitarás implementar un sistema de chat desde cero');
+                    }
+
+                    setReport(report);
+
+                } catch (error) {
+                    setError(`Error durante el escaneo: ${error.message}`);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const findChatFields = (data, docId, collectionName, chatKeywords) => {
+                const chatFields = [];
+                
+                const searchInObject = (obj, path = '') => {
+                    if (!obj || typeof obj !== 'object') return;
+                    
+                    Object.entries(obj).forEach(([key, value]) => {
+                        const currentPath = path ? `${path}.${key}` : key;
+                        
+                        const isChatField = chatKeywords.some(keyword => 
+                            key.toLowerCase().includes(keyword.toLowerCase())
+                        );
+                        
+                        if (isChatField) {
+                            chatFields.push({
+                                path: currentPath,
+                                value: typeof value === 'string' ? value.substring(0, 100) : value,
+                                type: typeof value
+                            });
+                        }
+                        
+                        if (typeof value === 'object' && value !== null) {
+                            searchInObject(value, currentPath);
+                        }
+                    });
+                };
+                
+                searchInObject(data);
+                return chatFields;
+            };
+
+            const downloadReport = () => {
+                if (!report) return;
+                
+                const blob = new Blob([JSON.stringify(report, null, 2)], {
+                    type: 'application/json'
+                });
+                
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `chat_recovery_report_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50 py-8">
+                    <div className="max-w-4xl mx-auto px-4">
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h1 className="text-3xl font-bold text-gray-900 mb-6">
+                                🔍 Herramienta de Recuperación de Chat
+                            </h1>
+                            
+                            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                                <p className="text-blue-800">
+                                    <strong>Estado de autenticación:</strong> {authStatus}
+                                </p>
+                            </div>
+
+                            {error && (
+                                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                    <p className="text-red-800">{error}</p>
+                                </div>
+                            )}
+
+                            <div className="mb-6">
+                                <button
+                                    onClick={scanForChatData}
+                                    disabled={isLoading || !window.authManager?.currentUser}
+                                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                                >
+                                    {isLoading ? '🔍 Escaneando...' : '🚀 Iniciar Escaneo'}
+                                </button>
+                            </div>
+
+                            {report && (
+                                <div className="space-y-6">
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                        <h2 className="text-xl font-semibold text-green-800 mb-4">
+                                            📊 Resumen de Recuperación
+                                        </h2>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="text-center">
+                                                <div className="text-2xl font-bold text-green-600">
+                                                    {report.summary.chatCollectionsFound}
+                                                </div>
+                                                <div className="text-sm text-green-700">Colecciones de chat</div>
+                                            </div>
+                                            <div className="text-center">
+                                                <div className="text-2xl font-bold text-green-600">
+                                                    {report.summary.chatRelatedFields}
+                                                </div>
+                                                <div className="text-sm text-green-700">Campos relacionados</div>
+                                            </div>
+                                            <div className="text-center">
+                                                <div className="text-2xl font-bold text-green-600">
+                                                    {report.summary.clientCommunications}
+                                                </div>
+                                                <div className="text-sm text-green-700">Comunicaciones</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                        <h2 className="text-xl font-semibold text-yellow-800 mb-4">
+                                            💡 Recomendaciones
+                                        </h2>
+                                        <ul className="space-y-2">
+                                            {report.recommendations.map((rec, index) => (
+                                                <li key={index} className="text-yellow-700">
+                                                    {rec}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+
+                                    {report.findings.hiddenCollections.length > 0 && (
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                            <h2 className="text-xl font-semibold text-blue-800 mb-4">
+                                                📁 Colecciones de Chat Encontradas
+                                            </h2>
+                                            {report.findings.hiddenCollections.map((col, index) => (
+                                                <div key={index} className="mb-3 p-3 bg-white rounded border">
+                                                    <div className="font-medium text-blue-700">
+                                                        {col.name} ({col.count} documentos)
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {report.findings.chatData.length > 0 && (
+                                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                            <h2 className="text-xl font-semibold text-purple-800 mb-4">
+                                                🔍 Campos Relacionados con Chat
+                                            </h2>
+                                            {report.findings.chatData.map((item, index) => (
+                                                <div key={index} className="mb-3 p-3 bg-white rounded border">
+                                                    <div className="font-medium text-purple-700">
+                                                        {item.collection}/{item.documentId}
+                                                    </div>
+                                                    {item.fields.map((field, fieldIndex) => (
+                                                        <div key={fieldIndex} className="text-sm text-purple-600 ml-4">
+                                                            • {field.path}: {field.value} ({field.type})
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {report.findings.communications.length > 0 && (
+                                        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                                            <h2 className="text-xl font-semibold text-indigo-800 mb-4">
+                                                📞 Comunicaciones con Clientes
+                                            </h2>
+                                            {report.findings.communications.slice(0, 5).map((comm, index) => (
+                                                <div key={index} className="mb-3 p-3 bg-white rounded border">
+                                                    <div className="font-medium text-indigo-700">
+                                                        {comm.nombre} ({comm.clienteId})
+                                                    </div>
+                                                    {comm.communications.map((commItem, commIndex) => (
+                                                        <div key={commIndex} className="text-sm text-indigo-600 ml-4">
+                                                            • {commItem.type}: {commItem.value}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                            {report.findings.communications.length > 5 && (
+                                                <div className="text-sm text-indigo-600">
+                                                    ... y {report.findings.communications.length - 5} más
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-center">
+                                        <button
+                                            onClick={downloadReport}
+                                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                                        >
+                                            📄 Descargar Reporte Completo
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<ChatRecoveryTool />, document.getElementById('root'));
+    </script>
+</body>
+</html>
